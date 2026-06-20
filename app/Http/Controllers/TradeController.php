@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Helpers\Jalali;
 use App\Models\Notification;
 use App\Models\Transaction;
+use App\Models\WalletTransaction;
 use App\Services\PriceService;
 use App\Services\SmsService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class TradeController extends Controller
@@ -68,23 +70,39 @@ class TradeController extends Controller
         $total = (int) round($qty * $price);
         $user  = $request->user();
 
-        Transaction::create([
-            'user_id'       => $user->id,
-            'type'          => $request->trade_type,
-            'item'          => $item,
-            'item_label'    => $meta['label'],
-            'quantity'      => $qty,
-            'price_per_unit'=> (int) $price,
-            'total'         => $total,
-        ]);
+        // خرید: باید موجودی کیف پول کافی باشد (به همان مبلغ کسر می‌شود)
+        // فروش: مبلغ به کیف پول کاربر واریز می‌شود
+        if ($request->trade_type === 'buy' && $user->walletBalance() < $total) {
+            return back()->withErrors(['quantity' => 'موجودی کیف پول شما کافی نیست. لطفاً ابتدا کیف پول خود را شارژ کنید.']);
+        }
 
         $typeLabel = $request->trade_type === 'buy' ? 'خرید' : 'فروش';
-        Notification::create([
-            'user_id' => $user->id,
-            'title'   => "ثبت {$typeLabel} — {$meta['label']}",
-            'body'    => "نوع: {$typeLabel} | مقدار: {$qty} | مبلغ: " . number_format($total) . " تومان | تاریخ: " . Jalali::now(),
-            'type'    => 'trade',
-        ]);
+
+        DB::transaction(function () use ($user, $request, $item, $meta, $qty, $price, $total, $typeLabel) {
+            Transaction::create([
+                'user_id'       => $user->id,
+                'type'          => $request->trade_type,
+                'item'          => $item,
+                'item_label'    => $meta['label'],
+                'quantity'      => $qty,
+                'price_per_unit'=> (int) $price,
+                'total'         => $total,
+            ]);
+
+            WalletTransaction::create([
+                'user_id'     => $user->id,
+                'amount'      => $request->trade_type === 'buy' ? -$total : $total,
+                'type'        => $request->trade_type === 'buy' ? 'withdraw' : 'deposit',
+                'description' => "{$typeLabel} {$meta['label']} ({$qty})",
+            ]);
+
+            Notification::create([
+                'user_id' => $user->id,
+                'title'   => "ثبت {$typeLabel} — {$meta['label']}",
+                'body'    => "نوع: {$typeLabel} | مقدار: {$qty} | مبلغ: " . number_format($total) . " تومان | تاریخ: " . Jalali::now(),
+                'type'    => 'trade',
+            ]);
+        });
 
         try {
             $this->sms->sendTradeConfirm($user->phone, $user->name, $request->trade_type, $meta['label'], $qty, $total);

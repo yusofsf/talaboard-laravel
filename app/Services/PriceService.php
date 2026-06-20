@@ -35,20 +35,21 @@ class PriceService
     {
         $errors = [];
 
-        $goldMid     = $this->fetchGold($errors);
-        $silverMid   = $this->fetchSilver($errors);
-        $silverOunce = $silverMid['ounce'] ?? null;
-        unset($silverMid['ounce']);
-        $dollar      = $this->fetchDollar($errors);
+        $goldMid    = $this->fetchGold($errors);
+        $silverData = $this->fetchSilver($errors);
+        $dollar     = $this->fetchDollar($errors);
 
-        $gold      = $this->applySpread($goldMid, 1 + $this->factor);
-        $goldBuy   = $this->applySpread($goldMid, 1 - $this->factor);
-        $silver    = $this->applySpread($silverMid, 1 + $this->factor);
-        $silverBuy = $this->applySpread($silverMid, 1 - $this->factor);
+        // طلا: askPrice طلالند = قیمت میانی → فروش/خرید با فاکتور حول آن ساخته می‌شود
+        $gold    = $this->applySpread($goldMid, 1 + $this->factor);
+        $goldBuy = $this->applySpread($goldMid, 1 - $this->factor);
+
+        // نقره: ستون‌های فروش/خرید مستقیماً از دیتابیس ربات نقره می‌آیند (بدون فاکتور)
+        $silver    = $silverData['sell'];
+        $silverBuy = $silverData['buy'];
 
         $ounce = [
             'gold'   => $this->fetchGoldOunce($errors),
-            'silver' => $silverOunce,
+            'silver' => $silverData['ounce'] ?? null,
         ];
 
         $open = $this->trackOpenPrices(compact('gold', 'silver', 'dollar'));
@@ -126,13 +127,14 @@ class PriceService
         });
     }
 
-    /** قیمت میانی نقره از دیتابیس ربات نقره (sachmebot_laravel) — آخرین رکورد. */
+    /**
+     * قیمت فروش و خرید نقره از دیتابیس ربات نقره (sachmebot_laravel) — آخرین رکورد.
+     * ستون‌های _buy همان قیمت خرید واقعی ربات هستند؛ اینجا فاکتور اعمال نمی‌شود.
+     */
     private function fetchSilver(array &$errors): array
     {
-        $null = [
-            'mithqal_999' => null, 'gram_999' => null,
-            'mithqal_995' => null, 'gram_995' => null, 'ounce' => null,
-        ];
+        $nullSide = ['mithqal_999' => null, 'gram_999' => null, 'mithqal_995' => null, 'gram_995' => null];
+        $null = ['sell' => $nullSide, 'buy' => $nullSide, 'ounce' => null];
 
         return Cache::remember('prices.silver', $this->cacheTtl, function () use (&$errors, $null) {
             try {
@@ -142,11 +144,19 @@ class PriceService
                     return $null;
                 }
                 return [
-                    'mithqal_999' => (int) round($row->mithqal_price),
-                    'gram_999'    => (float) $row->gram_price,
-                    'mithqal_995' => isset($row->mithqal_995_price) ? (int) round($row->mithqal_995_price) : null,
-                    'gram_995'    => isset($row->gram_995) ? (float) $row->gram_995 : null,
-                    'ounce'       => isset($row->silver_ounce) ? (float) $row->silver_ounce : null,
+                    'sell' => [
+                        'mithqal_999' => (int) round($row->mithqal_price),
+                        'gram_999'    => (float) $row->gram_price,
+                        'mithqal_995' => isset($row->mithqal_995_price) ? (int) round($row->mithqal_995_price) : null,
+                        'gram_995'    => isset($row->gram_995) ? (float) $row->gram_995 : null,
+                    ],
+                    'buy' => [
+                        'mithqal_999' => isset($row->mithqal_price_buy) ? (int) round($row->mithqal_price_buy) : null,
+                        'gram_999'    => isset($row->gram_price_buy) ? (float) $row->gram_price_buy : null,
+                        'mithqal_995' => isset($row->mithqal_995_price_buy) ? (int) round($row->mithqal_995_price_buy) : null,
+                        'gram_995'    => isset($row->gram_995_buy) ? (float) $row->gram_995_buy : null,
+                    ],
+                    'ounce' => isset($row->silver_ounce) ? (float) $row->silver_ounce : null,
                 ];
             } catch (\Throwable $e) {
                 Log::warning('PriceService silver fetch failed: ' . $e->getMessage());

@@ -34,12 +34,14 @@ class TradeController extends Controller
         $meta = self::ITEMS[$item] ?? null;
         if (!$meta) return redirect('/');
 
-        $price = $this->priceFor($item, $meta);
+        $data = $this->prices->all();
 
         return Inertia::render('Trade', [
-            'item'  => $item,
-            'meta'  => $meta,
-            'price' => $price,
+            'item'      => $item,
+            'meta'      => $meta,
+            // مشتری می‌خرد → قیمت فروش ما؛ مشتری می‌فروشد → قیمت خرید ما
+            'sellPrice' => $this->lookup($data, $item, $meta, 'gold', 'silver'),
+            'buyPrice'  => $this->lookup($data, $item, $meta, 'gold_buy', 'silver_buy'),
         ]);
     }
 
@@ -53,7 +55,10 @@ class TradeController extends Controller
             'quantity'   => 'required|numeric|min:0.001',
         ]);
 
-        $price = $this->priceFor($item, $meta);
+        $data  = $this->prices->all();
+        $price = $request->trade_type === 'buy'
+            ? $this->lookup($data, $item, $meta, 'gold', 'silver')
+            : $this->lookup($data, $item, $meta, 'gold_buy', 'silver_buy');
 
         if (!$price) {
             return back()->withErrors(['quantity' => 'قیمت در حال حاضر در دسترس نیست.']);
@@ -88,11 +93,10 @@ class TradeController extends Controller
         return redirect()->route('history')->with('success', "{$typeLabel} با موفقیت ثبت شد.");
     }
 
-    private function priceFor(string $item, array $meta): ?float
+    private function lookup(array $data, string $item, array $meta, string $goldKey, string $silverKey): ?float
     {
-        $data = $this->prices->all();
         return $meta['group'] === 'gold'
-            ? ($data['gold'][$item] ?? null)
-            : ($data['silver'][$item] ?? null);
+            ? ($data[$goldKey][$item] ?? null)
+            : ($data[$silverKey][$item] ?? null);
     }
 }

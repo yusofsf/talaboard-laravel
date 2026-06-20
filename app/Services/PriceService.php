@@ -35,20 +35,29 @@ class PriceService
     {
         $errors = [];
 
-        $gold   = $this->fetchGold($errors);
-        $silver = $this->fetchSilver($errors);
-        $dollar = $this->fetchDollar($errors);
-        $ounce  = [
+        $goldMid     = $this->fetchGold($errors);
+        $silverMid   = $this->fetchSilver($errors);
+        $silverOunce = $silverMid['ounce'] ?? null;
+        unset($silverMid['ounce']);
+        $dollar      = $this->fetchDollar($errors);
+
+        $gold      = $this->applySpread($goldMid, 1 + $this->factor);
+        $goldBuy   = $this->applySpread($goldMid, 1 - $this->factor);
+        $silver    = $this->applySpread($silverMid, 1 + $this->factor);
+        $silverBuy = $this->applySpread($silverMid, 1 - $this->factor);
+
+        $ounce = [
             'gold'   => $this->fetchGoldOunce($errors),
-            'silver' => $silver['ounce'] ?? null,
+            'silver' => $silverOunce,
         ];
-        unset($silver['ounce']);
 
         $open = $this->trackOpenPrices(compact('gold', 'silver', 'dollar'));
 
         return [
             'gold'       => $gold,
+            'gold_buy'   => $goldBuy,
             'silver'     => $silver,
+            'silver_buy' => $silverBuy,
             'dollar'     => $dollar,
             'ounce'      => $ounce,
             'open'       => $open,
@@ -57,7 +66,17 @@ class PriceService
         ];
     }
 
-    /** قیمت فروش طلا و سکه از REST API طلالند — کش‌شده. */
+    /** ضرب همه‌ی مقادیر عددی یک آرایه‌ی قیمت در ضریب (برای ساخت قیمت خرید/فروش از روی قیمت میانی). */
+    private function applySpread(array $mid, float $mult): array
+    {
+        $out = [];
+        foreach ($mid as $key => $v) {
+            $out[$key] = is_numeric($v) ? (is_int($v) ? (int) round($v * $mult) : round($v * $mult, 2)) : $v;
+        }
+        return $out;
+    }
+
+    /** قیمت میانی طلا و سکه از REST API طلالند (askPrice) — کش‌شده. */
     private function fetchGold(array &$errors): array
     {
         $null = array_fill_keys(array_keys(self::STOCK_MAP), null);
@@ -89,16 +108,14 @@ class PriceService
                     if (isset($it['stockId'])) $byId[$it['stockId']] = $it;
                 }
 
-                $out  = [];
-                $mult = 1 + $this->factor;
+                $out = [];
                 foreach (self::STOCK_MAP as $key => [$sid, $mode]) {
                     $ask = $byId[$sid]['askPrice'] ?? null;
                     if ($ask === null) {
                         $out[$key] = null;
                         continue;
                     }
-                    $base = $mode === 'gram' ? $ask / $this->mithqalGrams : $ask;
-                    $out[$key] = (int) round($base * $mult);
+                    $out[$key] = (int) round($mode === 'gram' ? $ask / $this->mithqalGrams : $ask);
                 }
                 return $out;
             } catch (\Throwable $e) {
@@ -109,7 +126,7 @@ class PriceService
         });
     }
 
-    /** قیمت نقره از دیتابیس ربات نقره (sachmebot_laravel) — آخرین رکورد. */
+    /** قیمت میانی نقره از دیتابیس ربات نقره (sachmebot_laravel) — آخرین رکورد. */
     private function fetchSilver(array &$errors): array
     {
         $null = [

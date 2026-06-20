@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Helpers\Jalali;
 use App\Models\Notification;
+use App\Models\SilverLedger;
 use App\Models\Transaction;
 use App\Models\WalletTransaction;
 use App\Services\PriceService;
@@ -102,6 +103,19 @@ class TradeController extends Controller
                 'body'    => "نوع: {$typeLabel} | مقدار: {$qty} | مبلغ: " . number_format($total) . " تومان | تاریخ: " . Jalali::now(),
                 'type'    => 'trade',
             ]);
+
+            // خرید نقره از مغازه → به موجودی نقره‌ی فیزیکی (دیجیتال) کاربر اضافه می‌شود
+            // تا بتواند در اتاق معاملاتی به‌فروش برساند یا تحویل فیزیکی بگیرد.
+            if ($meta['group'] === 'silver' && $request->trade_type === 'buy') {
+                [$purity, $grams] = $this->silverGrams($item, $qty);
+                SilverLedger::create([
+                    'user_id' => $user->id,
+                    'purity'  => $purity,
+                    'grams'   => $grams,
+                    'type'    => 'purchase',
+                    'description' => "خرید از فروشگاه — {$meta['label']} ({$qty})",
+                ]);
+            }
         });
 
         try {
@@ -116,5 +130,15 @@ class TradeController extends Controller
         return $meta['group'] === 'gold'
             ? ($data[$goldKey][$item] ?? null)
             : ($data[$silverKey][$item] ?? null);
+    }
+
+    /** تبدیل آیتم نقره + مقدار خریداری‌شده به [عیار, گرم]. */
+    private function silverGrams(string $item, float $qty): array
+    {
+        $purity = str_contains($item, '995') ? '995' : '999';
+        $grams  = str_starts_with($item, 'mithqal_')
+            ? $qty * (float) env('MITHQAL_GRAMS', 4.3318)
+            : $qty;
+        return [$purity, round($grams, 4)];
     }
 }

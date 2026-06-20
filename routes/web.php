@@ -7,7 +7,9 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SilverDeliveryController;
 use App\Http\Controllers\TradeController;
+use App\Http\Controllers\TradeRoomController;
 use App\Http\Controllers\WalletController;
 use Illuminate\Support\Facades\Route;
 
@@ -53,6 +55,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/membership/apply', [MembershipController::class, 'apply'])->name('membership.apply');
 
     Route::get('/speed-test', fn () => \Inertia\Inertia::render('SpeedTest'))->name('speed-test');
+
+    Route::get('/trade-room', [TradeRoomController::class, 'index'])->name('trade-room');
+    Route::post('/trade-room', [TradeRoomController::class, 'store'])->name('trade-room.store');
+    Route::post('/trade-room/{id}/accept', [TradeRoomController::class, 'accept'])->name('trade-room.accept');
+    Route::post('/trade-room/{id}/cancel', [TradeRoomController::class, 'cancel'])->name('trade-room.cancel');
+
+    Route::get('/silver-delivery', [SilverDeliveryController::class, 'index'])->name('silver-delivery');
+    Route::post('/silver-delivery', [SilverDeliveryController::class, 'store'])->name('silver-delivery.store');
 });
 
 // پنل ادمین
@@ -65,4 +75,5 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/generate-code', [AdminController::class, 'generateCode'])->name('generate-code');
     Route::post('/membership/approve/{uid}', [AdminController::class, 'membershipApprove'])->name('membership.approve');
     Route::post('/membership/reject/{uid}', [AdminController::class, 'membershipReject'])->name('membership.reject');
+    Route::post('/delivery/{id}/update', [AdminController::class, 'deliveryUpdate'])->name('delivery.update');
 });

@@ -50,4 +50,20 @@ class User extends Authenticatable
             $q->where('user_id', $this->id)->orWhereNull('user_id');
         })->whereNotIn('id', $readIds)->count();
     }
+
+    public function silverLedger()
+    {
+        return $this->hasMany(SilverLedger::class)->orderByDesc('created_at');
+    }
+
+    /** موجودی نقره‌ی فیزیکی کاربر برحسب گرم، به تفکیک عیار (999 یا 995). */
+    public function silverBalance(string $purity): float
+    {
+        return (float) $this->silverLedger()->where('purity', $purity)->sum('grams');
+    }
+
+    public function isVipMember(): bool
+    {
+        return $this->is_vip || $this->membership_level === 2;
+    }
 }

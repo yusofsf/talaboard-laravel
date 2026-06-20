@@ -41,6 +41,9 @@ export default function AppLayout({ children, title }) {
                             <Link href="/membership">
                                 {user.is_vip ? '👑 ویژه' : 'عضویت ویژه'}
                             </Link>
+                            {(user.is_vip || user.membership_level === 2) && (
+                                <Link href="/trade-room" title="اتاق معاملاتی">🤝 اتاق معاملاتی</Link>
+                            )}
                             <Link href="/speed-test" title="تست سرعت اینترنت">⚡ تست سرعت</Link>
                             {user.is_admin && (
                                 <Link href="/admin" className="btn-gold">مدیریت</Link>

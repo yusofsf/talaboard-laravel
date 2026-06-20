@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Helpers\Jalali;
 use App\Models\InviteCode;
 use App\Models\Notification;
+use App\Models\SilverDeliveryRequest;
+use App\Models\SilverLedger;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\WalletTransaction;
@@ -96,7 +98,23 @@ class AdminController extends Controller
                 'submitted_at'         => Jalali::format($u->updated_at),
             ]);
 
-        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'invites', 'stats', 'memberApplications'));
+        $deliveryRequests = SilverDeliveryRequest::with('user')
+            ->where('status', '!=', 'delivered')
+            ->orderByDesc('created_at')->get()
+            ->map(fn ($r) => [
+                'id'             => $r->id,
+                'user_name'      => $r->user?->name,
+                'user_phone'     => $r->user?->phone,
+                'purity'         => $r->purity,
+                'grams'          => (float) $r->grams,
+                'recipient_name' => $r->recipient_name,
+                'phone'          => $r->phone,
+                'address'        => $r->address,
+                'status'         => $r->status,
+                'created_at'     => Jalali::format($r->created_at),
+            ]);
+
+        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'invites', 'stats', 'memberApplications', 'deliveryRequests'));
     }
 
     public function setLevel(Request $request, int $uid)
@@ -216,5 +234,39 @@ class AdminController extends Controller
         ]);
 
         return back()->with('success', 'درخواست رد شد.');
+    }
+
+    public function deliveryUpdate(Request $request, int $id)
+    {
+        $request->validate(['status' => 'required|in:approved,shipped,delivered,rejected']);
+
+        $delivery = SilverDeliveryRequest::findOrFail($id);
+
+        // در صورت رد درخواست، نقره‌ی رزرو‌شده به موجودی کاربر برمی‌گردد
+        if ($request->status === 'rejected' && $delivery->status !== 'rejected') {
+            SilverLedger::create([
+                'user_id' => $delivery->user_id, 'purity' => $delivery->purity, 'grams' => $delivery->grams,
+                'type' => 'delivery_refund', 'reference_type' => SilverDeliveryRequest::class, 'reference_id' => $delivery->id,
+                'description' => "بازگشت نقره — رد درخواست تحویل #{$delivery->id}",
+            ]);
+        }
+
+        $delivery->update(['status' => $request->status]);
+
+        $statusLabel = [
+            'approved'  => 'تأیید شد',
+            'shipped'   => 'ارسال شد',
+            'delivered' => 'تحویل داده شد',
+            'rejected'  => 'رد شد',
+        ][$request->status];
+
+        Notification::create([
+            'user_id' => $delivery->user_id,
+            'title'   => 'وضعیت درخواست تحویل فیزیکی نقره',
+            'body'    => "درخواست شما «{$statusLabel}». تاریخ: " . Jalali::now(),
+            'type'    => 'system',
+        ]);
+
+        return back()->with('success', 'وضعیت به‌روزرسانی شد.');
     }
 }

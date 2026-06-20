@@ -4,7 +4,7 @@ import AppLayout, { faNum } from '../../Layouts/AppLayout';
 
 const TYPE_ICON = { trade: '📊', wallet: '💰', system: '⚙️', promo: '🎁', info: '🔔' };
 
-export default function Dashboard({ users, txns, wTxns, notifs, invites, stats, memberApplications }) {
+export default function Dashboard({ users, txns, wTxns, notifs, invites, stats, memberApplications, deliveryRequests }) {
     const { auth } = usePage().props;
     const [tab, setTab] = useState('users');
 
@@ -29,6 +29,11 @@ export default function Dashboard({ users, txns, wTxns, notifs, invites, stats, 
         router.post(`/admin/membership/reject/${uid}`, {}, { preserveScroll: true });
     }
 
+    function updateDelivery(id, status) {
+        if (status === 'rejected' && !confirm('رد شود؟ نقره به موجودی کاربر برمی‌گردد.')) return;
+        router.post(`/admin/delivery/${id}/update`, { status }, { preserveScroll: true });
+    }
+
     const TABS = [
         ['users', 'کاربران'],
         ['txns', 'معاملات'],
@@ -36,6 +41,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, invites, stats, 
         ['notifs', 'اعلان‌ها'],
         ['codes', 'کدهای دعوت'],
         ['membership', `درخواست‌های عضویت${memberApplications?.length ? ` (${memberApplications.length})` : ''}`],
+        ['delivery', `تحویل فیزیکی نقره${deliveryRequests?.length ? ` (${deliveryRequests.length})` : ''}`],
     ];
 
     return (
@@ -291,6 +297,53 @@ export default function Dashboard({ users, txns, wTxns, notifs, invites, stats, 
                         </div>
                     ) : (
                         <div className="empty"><div className="ico">👑</div>درخواست عضویت ویژه‌ای در انتظار بررسی نیست.</div>
+                    )
+                )}
+
+                {/* تحویل فیزیکی نقره */}
+                {tab === 'delivery' && (
+                    deliveryRequests?.length ? (
+                        <div className="table-wrap">
+                            <table>
+                                <thead><tr><th>کاربر</th><th>موبایل</th><th>عیار</th><th>مقدار</th><th>گیرنده</th><th>آدرس</th><th>وضعیت</th><th>تاریخ</th><th></th></tr></thead>
+                                <tbody>
+                                    {deliveryRequests.map(r => (
+                                        <tr key={r.id}>
+                                            <td><strong>{r.user_name}</strong></td>
+                                            <td className="num" dir="ltr" style={{ fontSize: 13 }}>{r.user_phone}</td>
+                                            <td>{r.purity}</td>
+                                            <td className="num">{r.grams} گرم</td>
+                                            <td>{r.recipient_name}<br /><span dir="ltr" style={{ fontSize: 12, color: 'var(--muted)' }}>{r.phone}</span></td>
+                                            <td style={{ fontSize: 12, color: 'var(--muted)', maxWidth: 220 }}>{r.address}</td>
+                                            <td>
+                                                <span className={`badge ${r.status === 'pending' ? 'silver' : r.status === 'rejected' ? 'sell-b' : 'buy-b'}`}>
+                                                    {{ pending: 'در انتظار', approved: 'تأییدشده', shipped: 'ارسال‌شده', rejected: 'رد‌شده' }[r.status]}
+                                                </span>
+                                            </td>
+                                            <td style={{ fontSize: 12, color: 'var(--muted)' }}>{r.created_at}</td>
+                                            <td>
+                                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                                    {r.status === 'pending' && (
+                                                        <button onClick={() => updateDelivery(r.id, 'approved')} className="btn-sm">تأیید</button>
+                                                    )}
+                                                    {r.status === 'approved' && (
+                                                        <button onClick={() => updateDelivery(r.id, 'shipped')} className="btn-sm">ارسال شد</button>
+                                                    )}
+                                                    {r.status === 'shipped' && (
+                                                        <button onClick={() => updateDelivery(r.id, 'delivered')} className="btn-sm" style={{ borderColor: 'rgba(65,225,166,.4)', color: 'var(--up)', background: 'rgba(65,225,166,.08)' }}>تحویل داده شد</button>
+                                                    )}
+                                                    {r.status !== 'rejected' && (
+                                                        <button onClick={() => updateDelivery(r.id, 'rejected')} className="btn-sm danger">رد</button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="empty"><div className="ico">🚚</div>درخواست تحویل فیزیکی‌ای ثبت نشده.</div>
                     )
                 )}
 

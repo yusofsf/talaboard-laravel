@@ -50,6 +50,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/membership', [MembershipController::class, 'show'])->name('membership');
     Route::post('/membership', [MembershipController::class, 'activate']);
+    Route::post('/membership/apply', [MembershipController::class, 'apply'])->name('membership.apply');
 
     Route::get('/speed-test', fn () => \Inertia\Inertia::render('SpeedTest'))->name('speed-test');
 });
@@ -62,4 +63,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/notify', [AdminController::class, 'notify'])->name('notify');
     Route::delete('/notify/{id}', [AdminController::class, 'deleteNotification'])->name('notify.delete');
     Route::post('/generate-code', [AdminController::class, 'generateCode'])->name('generate-code');
+    Route::post('/membership/approve/{uid}', [AdminController::class, 'membershipApprove'])->name('membership.approve');
+    Route::post('/membership/reject/{uid}', [AdminController::class, 'membershipReject'])->name('membership.reject');
 });

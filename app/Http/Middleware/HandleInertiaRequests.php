@@ -46,6 +46,8 @@ class HandleInertiaRequests extends Middleware
                     'email'    => $user->email,
                     'is_vip'   => $user->is_vip,
                     'is_admin' => $user->is_admin || $user->phone === env('ADMIN_PHONE'),
+                    'membership_level'  => $user->membership_level,
+                    'membership_status' => $user->membership_status,
                     'wallet_balance' => $user->walletBalance(),
                     'unread_count'   => $user->unreadCount(),
                 ] : null,

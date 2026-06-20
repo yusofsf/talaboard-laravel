@@ -4,7 +4,7 @@ import AppLayout, { faNum } from '../../Layouts/AppLayout';
 
 const TYPE_ICON = { trade: '📊', wallet: '💰', system: '⚙️', promo: '🎁', info: '🔔' };
 
-export default function Dashboard({ users, txns, wTxns, notifs, invites, stats }) {
+export default function Dashboard({ users, txns, wTxns, notifs, invites, stats, memberApplications }) {
     const { auth } = usePage().props;
     const [tab, setTab] = useState('users');
 
@@ -20,12 +20,22 @@ export default function Dashboard({ users, txns, wTxns, notifs, invites, stats }
         router.delete(`/admin/notify/${id}`, { preserveScroll: true });
     }
 
+    function approveMembership(uid) {
+        router.post(`/admin/membership/approve/${uid}`, {}, { preserveScroll: true });
+    }
+
+    function rejectMembership(uid) {
+        if (!confirm('درخواست رد شود؟')) return;
+        router.post(`/admin/membership/reject/${uid}`, {}, { preserveScroll: true });
+    }
+
     const TABS = [
         ['users', 'کاربران'],
         ['txns', 'معاملات'],
         ['wallet', 'کیف پول'],
         ['notifs', 'اعلان‌ها'],
         ['codes', 'کدهای دعوت'],
+        ['membership', `درخواست‌های عضویت${memberApplications?.length ? ` (${memberApplications.length})` : ''}`],
     ];
 
     return (
@@ -225,6 +235,63 @@ export default function Dashboard({ users, txns, wTxns, notifs, invites, stats }
                             </table>
                         </div>
                     </>
+                )}
+
+                {/* درخواست‌های عضویت ویژه */}
+                {tab === 'membership' && (
+                    memberApplications?.length ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            {memberApplications.map(m => (
+                                <div key={m.id} className="fcard" style={{ padding: 20 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+                                        <div>
+                                            <strong style={{ fontSize: 16 }}>{m.name}</strong>
+                                            <span style={{ color: 'var(--muted)', fontSize: 13, marginInlineStart: 10 }} dir="ltr">{m.phone}</span>
+                                            {m.national_id && <span style={{ color: 'var(--muted)', fontSize: 13, marginInlineStart: 10 }}>کد ملی: {m.national_id}</span>}
+                                        </div>
+                                        <span style={{ fontSize: 12, color: 'var(--muted)' }}>ارسال: {m.submitted_at}</span>
+                                    </div>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 14, marginBottom: 16 }}>
+                                        <div>
+                                            <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>تصویر کارت ملی</div>
+                                            {m.national_id_doc
+                                                ? <a href={m.national_id_doc} target="_blank" rel="noopener noreferrer">
+                                                    <img src={m.national_id_doc} alt="کارت ملی" style={{ width: '100%', borderRadius: 10, border: '1px solid var(--line)' }} />
+                                                  </a>
+                                                : <div style={{ color: 'var(--muted)' }}>—</div>}
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>تصویر مدرک شناسایی</div>
+                                            {m.identity_doc
+                                                ? <a href={m.identity_doc} target="_blank" rel="noopener noreferrer">
+                                                    <img src={m.identity_doc} alt="مدرک شناسایی" style={{ width: '100%', borderRadius: 10, border: '1px solid var(--line)' }} />
+                                                  </a>
+                                                : <div style={{ color: 'var(--muted)' }}>—</div>}
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>فیلم اعتبارسنجی</div>
+                                            {m.verification_video
+                                                ? <video src={m.verification_video} controls style={{ width: '100%', borderRadius: 10, border: '1px solid var(--line)' }} />
+                                                : <div style={{ color: 'var(--muted)' }}>—</div>}
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', gap: 10 }}>
+                                        <button onClick={() => approveMembership(m.id)} className="btn"
+                                            style={{ width: 'auto', padding: '9px 22px', background: 'linear-gradient(135deg,var(--up),#1f9d72)' }}>
+                                            تأیید عضویت ویژه
+                                        </button>
+                                        <button onClick={() => rejectMembership(m.id)} className="btn-sm danger" style={{ padding: '9px 22px' }}>
+                                            رد درخواست
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="empty"><div className="ico">👑</div>درخواست عضویت ویژه‌ای در انتظار بررسی نیست.</div>
+                    )
                 )}
 
             </div>

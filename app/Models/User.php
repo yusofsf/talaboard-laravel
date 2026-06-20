@@ -9,7 +9,12 @@ class User extends Authenticatable
 {
     use Notifiable;
 
-    protected $fillable = ['name', 'phone', 'email', 'national_id', 'password', 'is_vip', 'is_admin'];
+    protected $fillable = [
+        'name', 'phone', 'email', 'national_id', 'password',
+        'is_vip', 'is_admin', 'must_reset_password', 'legacy_password_hash',
+        'membership_level', 'national_id_doc', 'identity_doc', 'verification_video',
+        'membership_status',
+    ];
     protected $hidden   = ['password', 'remember_token', 'legacy_password_hash'];
 
     protected function casts(): array
@@ -19,6 +24,7 @@ class User extends Authenticatable
             'is_vip'              => 'boolean',
             'is_admin'            => 'boolean',
             'must_reset_password' => 'boolean',
+            'membership_level'    => 'integer',
         ];
     }
 

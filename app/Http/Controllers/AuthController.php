@@ -71,7 +71,7 @@ class AuthController extends Controller
 
         // ادمین خودکار بر اساس ADMIN_PHONE
         if (env('ADMIN_PHONE') && $user->phone === env('ADMIN_PHONE') && !$user->is_admin) {
-            $user->update(['is_admin' => true, 'is_vip' => true]);
+            $user->update(['is_admin' => true, 'is_vip' => true, 'membership_level' => 2]);
         }
 
         if (config('sms.two_fa_enabled') && !empty(config('sms.kavenegar_api_key'))) {

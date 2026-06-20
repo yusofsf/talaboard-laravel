@@ -157,21 +157,41 @@ class PriceService
         });
     }
 
-    /** انس طلا (دلار) از alanchand.com/gold-price. */
+    /** انس طلا (دلار) — اول Yahoo Finance (فیوچرز کوماکس GC=F)، در صورت خطا alanchand.com/gold-price. */
     private function fetchGoldOunce(array &$errors): ?float
     {
         return Cache::remember('prices.ounce_gold', $this->cacheTtl, function () use (&$errors) {
+            $v = $this->fetchGoldOunceYahoo();
+            if ($v !== null) return $v;
+
             try {
                 $url = env('DOLLAR_GOLD_URL', 'https://alanchand.com/gold-price');
                 $res = Http::timeout(15)->withHeaders(['User-Agent' => self::UA])->get($url);
                 $v = $res->ok() ? $this->findSellInTables($res->body(), 'انس طلا') : null;
-                return $v !== null ? (float) $v : null;
+                if ($v !== null) return (float) $v;
             } catch (\Throwable $e) {
-                Log::warning('PriceService gold ounce fetch failed: ' . $e->getMessage());
-                $errors[] = 'انس طلا: ' . $e->getMessage();
-                return null;
+                Log::warning('PriceService gold ounce (alanchand) fetch failed: ' . $e->getMessage());
             }
+
+            $errors[] = 'انس طلا: دریافت نشد';
+            return null;
         });
+    }
+
+    private function fetchGoldOunceYahoo(): ?float
+    {
+        try {
+            $symbol = env('GOLD_OUNCE_SYMBOL', 'GC=F');
+            $res = Http::timeout(10)
+                ->withHeaders(['User-Agent' => self::UA])
+                ->get("https://query1.finance.yahoo.com/v8/finance/chart/{$symbol}");
+
+            $price = $res->json('chart.result.0.meta.regularMarketPrice');
+            return $price !== null ? (float) $price : null;
+        } catch (\Throwable $e) {
+            Log::warning('PriceService gold ounce (Yahoo) fetch failed: ' . $e->getMessage());
+            return null;
+        }
     }
 
     /** در جدول‌های HTML: ستون۰=نام، ستون۲=قیمت فروش. */

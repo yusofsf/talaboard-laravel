@@ -197,6 +197,8 @@ Error generating stack: `+e.message+`
                 .tv-icon svg{width:60%; height:60%}
                 .tv-name{font-size:clamp(12px,1vw,18px); font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
                 .tv-sub{font-size:clamp(9px,.72vw,12px); color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+                /* دلار: نام بلند است، اجازه‌ی چندخطی شدن کامل */
+                .tv-card.usd .tv-name{white-space:normal; font-size:clamp(11px,.9vw,15px); line-height:1.25}
 
                 .tv-value{flex:1; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
                   gap:2px; text-align:center; position:relative; padding-bottom:24px; width:100%}

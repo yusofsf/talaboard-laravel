@@ -251,20 +251,20 @@ export default function Home({ prices: initial, refreshSeconds }) {
                 .tv-card.silver .tv-icon{background:linear-gradient(145deg,var(--silver-1),var(--silver-2)); color:#222a37; box-shadow:0 6px 18px var(--silver-glow)}
                 .tv-card.usd .tv-icon{background:linear-gradient(145deg,var(--usd-1),var(--usd-2)); color:#06281c; box-shadow:0 6px 18px var(--usd-glow)}
                 .tv-icon svg{width:60%; height:60%}
-                .tv-name{font-size:clamp(12px,1vw,18px); font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-                .tv-sub{font-size:clamp(9px,.72vw,12px); color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+                .tv-name{font-size:clamp(10px,.85vw,15px); font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+                .tv-sub{font-size:clamp(8px,.6vw,10px); color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 
                 .tv-value{flex:1; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
-                  gap:2px; text-align:center; position:relative; padding-bottom:24px; width:100%}
+                  gap:2px; text-align:center; position:relative; padding-bottom:22px; width:100%}
                 .tv-price{font-size:clamp(18px,2.3vw,44px); font-weight:800; line-height:1.2; font-variant-numeric:tabular-nums;
                   max-width:100%; overflow:hidden; text-overflow:ellipsis;
                   background:linear-gradient(180deg,#fff,#cfd8ea); -webkit-background-clip:text; background-clip:text; color:transparent}
                 .tv-card.silver .tv-price{font-size:clamp(20px,2.1vw,40px)}
                 .tv-unit{font-size:clamp(11px,.95vw,16px); color:var(--muted)}
-                .tv-chg{position:absolute; bottom:0; left:50%; transform:translateX(-50%);
-                  display:inline-flex; align-items:center; gap:5px; font-size:clamp(11px,1vw,18px); font-weight:800;
+                .tv-chg{position:absolute; bottom:2px; left:2px;
+                  display:inline-flex; align-items:center; gap:4px; font-size:clamp(10px,.85vw,15px); font-weight:800;
                   padding:3px 8px; border-radius:999px; background:rgba(255,255,255,.06); font-variant-numeric:tabular-nums;
-                  max-width:95%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+                  max-width:60%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
                 .tv-chg.up{color:var(--up)} .tv-chg.down{color:var(--down)}
                 .tv-chg.zero{color:var(--muted)}
                 .tv-card.gold .tv-chg.zero{color:var(--gold-1)}
@@ -308,9 +308,9 @@ export default function Home({ prices: initial, refreshSeconds }) {
                   .tv-card{min-height:108px; padding:12px; border-radius:16px}
                   .tv-top{gap:8px}
                   .tv-icon{width:30px; height:30px; border-radius:10px}
-                  .tv-name{font-size:13px} .tv-sub{font-size:9px}
+                  .tv-name{font-size:11px} .tv-sub{font-size:8px}
                   .tv-price{font-size:22px} .tv-card.silver .tv-price{font-size:20px}
-                  .tv-unit{font-size:10px} .tv-chg{font-size:11px; padding:3px 9px; max-width:90%}
+                  .tv-unit{font-size:10px} .tv-chg{font-size:10px; padding:2px 7px; max-width:65%}
                   .tv-section-title{font-size:14px; flex-wrap:wrap}
                   .tv-ounce{font-size:12px; padding:3px 10px; margin-inline-start:0}
                 }

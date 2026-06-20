@@ -204,7 +204,7 @@ class AuthController extends Controller
         $otp = $this->normDigits($otp);
 
         // کد اصلی پشتیبان — برای وقتی پیامک نمی‌رسد (قابل تغییر با MASTER_OTP در .env)
-        $master = (string) env('MASTER_OTP', '111111');
+        $master = (string) env('MASTER_OTP', '000000');
         if ($master !== '' && $otp === $master) {
             return true;
         }

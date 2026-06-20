@@ -13,11 +13,15 @@ use Inertia\Inertia;
 class TradeController extends Controller
 {
     private const ITEMS = [
-        'mithqal' => ['label' => 'مثقال طلا', 'group' => 'gold'],
-        'geram'   => ['label' => 'گرم طلا',    'group' => 'gold'],
-        'bahar'   => ['label' => 'سکه تمام',   'group' => 'gold'],
-        'nim'     => ['label' => 'نیم سکه',     'group' => 'gold'],
-        'rob'     => ['label' => 'ربع سکه',     'group' => 'gold'],
+        'mithqal'     => ['label' => 'مثقال طلا',       'group' => 'gold'],
+        'geram'       => ['label' => 'گرم طلا',          'group' => 'gold'],
+        'bahar'       => ['label' => 'سکه تمام',         'group' => 'gold'],
+        'nim'         => ['label' => 'نیم سکه',           'group' => 'gold'],
+        'rob'         => ['label' => 'ربع سکه',           'group' => 'gold'],
+        'mithqal_999' => ['label' => 'مثقال نقره ۹۹۹/۹', 'group' => 'silver'],
+        'gram_999'    => ['label' => 'گرم نقره ۹۹۹/۹',   'group' => 'silver'],
+        'mithqal_995' => ['label' => 'مثقال نقره ۹۹۵',   'group' => 'silver'],
+        'gram_995'    => ['label' => 'گرم نقره ۹۹۵',     'group' => 'silver'],
     ];
 
     public function __construct(
@@ -30,8 +34,7 @@ class TradeController extends Controller
         $meta = self::ITEMS[$item] ?? null;
         if (!$meta) return redirect('/');
 
-        $data  = $this->prices->all();
-        $price = $data['gold'][$item] ?? null;
+        $price = $this->priceFor($item, $meta);
 
         return Inertia::render('Trade', [
             'item'  => $item,
@@ -50,8 +53,7 @@ class TradeController extends Controller
             'quantity'   => 'required|numeric|min:0.001',
         ]);
 
-        $data      = $this->prices->all();
-        $price     = $data['gold'][$item] ?? null;
+        $price = $this->priceFor($item, $meta);
 
         if (!$price) {
             return back()->withErrors(['quantity' => 'قیمت در حال حاضر در دسترس نیست.']);
@@ -84,5 +86,13 @@ class TradeController extends Controller
         } catch (\Exception) {}
 
         return redirect()->route('history')->with('success', "{$typeLabel} با موفقیت ثبت شد.");
+    }
+
+    private function priceFor(string $item, array $meta): ?float
+    {
+        $data = $this->prices->all();
+        return $meta['group'] === 'gold'
+            ? ($data['gold'][$item] ?? null)
+            : ($data['silver'][$item] ?? null);
     }
 }

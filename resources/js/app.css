@@ -3,7 +3,8 @@
   --card:#171f3f; --card-2:#1c2550; --line:rgba(255,255,255,.08);
   --txt:#f4f7ff; --muted:#94a3c4;
   --gold-1:#f6cf63; --gold-2:#c79a2e; --gold-glow:rgba(246,207,99,.22);
-  --silver-1:#d7e0ee; --silver-2:#8b97ad;
+  --silver-1:#d7e0ee; --silver-2:#8b97ad; --silver-glow:rgba(199,208,220,.18);
+  --usd-1:#43e1a6; --usd-2:#1f9d72; --usd-glow:rgba(67,225,166,.20);
   --up:#41e1a6; --down:#ff6b78;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

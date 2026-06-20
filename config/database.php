@@ -44,6 +44,13 @@ return [
             'transaction_mode' => 'DEFERRED',
         ],
 
+        // دیتابیس ربات نقره (sachmebot_laravel) — فقط خواندنی
+        'silver' => [
+            'driver'   => 'sqlite',
+            'database' => env('SILVER_DB_PATH', database_path('database.sqlite')),
+            'prefix'   => '',
+        ],
+
         'mysql' => [
             'driver' => 'mysql',
             'url' => env('DB_URL'),

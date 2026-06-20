@@ -11,7 +11,10 @@ class HomeController extends Controller
 
     public function index()
     {
-        return Inertia::render('Home', ['prices' => $this->prices->all()]);
+        return Inertia::render('Home', [
+            'prices'         => $this->prices->all(),
+            'refreshSeconds' => (int) env('REFRESH_SECONDS', 30),
+        ]);
     }
 
     public function prices()

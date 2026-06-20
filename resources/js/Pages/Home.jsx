@@ -175,7 +175,7 @@ export default function Home({ prices: initial, refreshSeconds }) {
                 .tv-status{display:flex; align-items:center; gap:14px}
                 .tv-clock{text-align:left; font-variant-numeric:tabular-nums}
                 .tv-clock .t{font-size:clamp(26px,3.1vw,54px); font-weight:800; line-height:1}
-                .tv-clock .d{font-size:clamp(12px,1vw,17px); color:var(--muted); margin-top:4px}
+                .tv-clock .d{font-size:clamp(12px,1vw,17px); color:var(--txt); margin-top:4px}
                 .tv-live{
                   display:flex; align-items:center; gap:8px; font-size:clamp(12px,1vw,16px);
                   padding:8px 14px; border-radius:999px; border:1px solid var(--line);
@@ -375,7 +375,7 @@ export default function Home({ prices: initial, refreshSeconds }) {
                                     icon={<IngotIcon />} cls="silver" buyable href={`/trade/${s.key}`}
                                     price={data.silver?.[s.key]} open={open[`silver.${s.key}`]} />
                             ))}
-                            <PriceCard id="card-usd-price" name="دلار آمریکا" sub="هر دلار"
+                            <PriceCard id="card-usd-price" name="دلار (خرید و فروش نداریم)" sub="هر دلار"
                                 icon={<UsdIcon />} cls="usd" buyable={false}
                                 price={data.dollar?.price} open={open['dollar.price']} />
                         </div>

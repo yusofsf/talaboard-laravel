@@ -153,9 +153,9 @@ export default function Home({ prices: initial, refreshSeconds }) {
     return (
         <>
             <style>{`
-                .tv-wrap{height:100vh; display:flex; flex-direction:column; padding:clamp(12px,1.6vw,28px); overflow:hidden;}
+                .tv-wrap{min-height:100vh; display:flex; flex-direction:column; padding:clamp(12px,1.6vw,28px);}
                 .tv-wrap header{
-                  display:flex; align-items:center; justify-content:space-between;
+                  display:flex; align-items:center; justify-content:space-between; flex-direction:row;
                   gap:18px; padding:clamp(8px,1vw,16px) clamp(14px,1.6vw,26px);
                   background:linear-gradient(90deg,rgba(255,255,255,.04),rgba(255,255,255,.01));
                   border:1px solid var(--line); border-radius:22px; backdrop-filter:blur(6px);
@@ -199,16 +199,18 @@ export default function Home({ prices: initial, refreshSeconds }) {
 
                 .tv-main{flex:1; display:flex; flex-direction:column; gap:clamp(10px,1.1vw,20px); margin-top:clamp(10px,1.1vw,20px); min-height:0}
                 .tv-block{display:flex; flex-direction:column; gap:clamp(8px,.8vw,14px); flex:1; min-height:0}
-                .tv-section-title{display:flex; align-items:center; gap:10px; font-size:clamp(14px,1.15vw,20px); font-weight:700; color:var(--muted); margin:2px 4px}
-                .tv-section-title .tv-bar{width:6px; height:20px; border-radius:6px; background:linear-gradient(var(--gold-1),var(--gold-2))}
+                .tv-section-title{display:flex; align-items:center; justify-content:space-between; gap:10px;
+                  font-size:clamp(14px,1.15vw,20px); font-weight:700; color:var(--muted); margin:2px 4px}
+                .tv-title-label{display:flex; align-items:center; gap:10px; min-width:0; flex-wrap:wrap}
+                .tv-section-title .tv-bar{width:6px; height:20px; border-radius:6px; background:linear-gradient(var(--gold-1),var(--gold-2)); flex:none}
                 .tv-section-title.silver .tv-bar{background:linear-gradient(var(--silver-1),var(--silver-2))}
-                .tv-section-title .tv-tic{display:inline-flex; width:26px; height:26px}
+                .tv-section-title .tv-tic{display:inline-flex; width:26px; height:26px; flex:none}
                 .tv-section-title .tv-tic svg{width:100%; height:100%}
                 .tv-tic.gold-ic{color:var(--gold-1)}
                 .tv-tic.silver-ic{color:var(--silver-1)}
-                .tv-ounce{margin-inline-start:auto; font-weight:800; font-variant-numeric:tabular-nums;
+                .tv-ounce{flex:none; font-weight:800; font-variant-numeric:tabular-nums;
                   font-size:clamp(14px,1.2vw,22px); padding:4px 16px; border-radius:999px;
-                  background:rgba(255,255,255,.04); border:1px solid var(--line)}
+                  background:rgba(255,255,255,.04); border:1px solid var(--line); white-space:nowrap}
                 .tv-ounce.gold-o{color:var(--gold-1)}
                 .tv-ounce.silver-o{color:var(--silver-1)}
                 .tv-ounce.up{color:var(--up); border-color:rgba(65,225,166,.45)}
@@ -251,20 +253,20 @@ export default function Home({ prices: initial, refreshSeconds }) {
                 .tv-card.silver .tv-icon{background:linear-gradient(145deg,var(--silver-1),var(--silver-2)); color:#222a37; box-shadow:0 6px 18px var(--silver-glow)}
                 .tv-card.usd .tv-icon{background:linear-gradient(145deg,var(--usd-1),var(--usd-2)); color:#06281c; box-shadow:0 6px 18px var(--usd-glow)}
                 .tv-icon svg{width:60%; height:60%}
-                .tv-name{font-size:clamp(10px,.85vw,15px); font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-                .tv-sub{font-size:clamp(8px,.6vw,10px); color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+                .tv-name{font-size:clamp(12px,1vw,18px); font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+                .tv-sub{font-size:clamp(9px,.72vw,12px); color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 
                 .tv-value{flex:1; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
-                  gap:2px; text-align:center; position:relative; padding-bottom:22px; width:100%}
+                  gap:2px; text-align:center; position:relative; padding-bottom:24px; width:100%}
                 .tv-price{font-size:clamp(18px,2.3vw,44px); font-weight:800; line-height:1.2; font-variant-numeric:tabular-nums;
                   max-width:100%; overflow:hidden; text-overflow:ellipsis;
                   background:linear-gradient(180deg,#fff,#cfd8ea); -webkit-background-clip:text; background-clip:text; color:transparent}
                 .tv-card.silver .tv-price{font-size:clamp(20px,2.1vw,40px)}
                 .tv-unit{font-size:clamp(11px,.95vw,16px); color:var(--muted)}
                 .tv-chg{position:absolute; bottom:2px; left:2px;
-                  display:inline-flex; align-items:center; gap:4px; font-size:clamp(10px,.85vw,15px); font-weight:800;
+                  display:inline-flex; align-items:center; gap:5px; font-size:clamp(11px,1vw,18px); font-weight:800;
                   padding:3px 8px; border-radius:999px; background:rgba(255,255,255,.06); font-variant-numeric:tabular-nums;
-                  max-width:60%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+                  max-width:95%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
                 .tv-chg.up{color:var(--up)} .tv-chg.down{color:var(--down)}
                 .tv-chg.zero{color:var(--muted)}
                 .tv-card.gold .tv-chg.zero{color:var(--gold-1)}
@@ -283,22 +285,19 @@ export default function Home({ prices: initial, refreshSeconds }) {
                 .tv-ratio-bar .r-label{font-weight:700; color:var(--silver-2)}
                 .tv-ratio-bar .r-val{font-size:clamp(9px,0.9vw,15px); font-weight:800; color:var(--gold-1); font-variant-numeric:tabular-nums}
 
-                /* تبلت / لپ‌تاپ متوسط: هدر می‌شکند، گرید با auto-fit خودش تنظیم می‌شود */
+                /* لپ‌تاپ/تبلت با عرض متوسط: فقط گرید کمی جمع‌تر می‌شود، هدر افقی می‌ماند */
                 @media (max-width:1100px){
-                  .tv-wrap{height:auto; min-height:100vh; overflow:auto}
-                  .tv-wrap header{flex-wrap:wrap; gap:10px}
+                  .tv-grid{grid-template-columns:repeat(auto-fit, minmax(130px,1fr))}
+                }
+
+                /* موبایل واقعی: اینجا هدر می‌شکند و ستونی می‌شود */
+                @media (max-width:700px){
+                  .tv-wrap{padding:10px}
+                  .tv-wrap header{flex-wrap:wrap; gap:10px; padding:10px 12px}
                   .tv-headright{flex:1 1 100%; align-items:center; order:2; text-align:center}
                   .tv-brandc{flex:1 1 100%; order:1}
                   .tv-status{flex:1 1 100%; justify-content:center; order:3; flex-wrap:wrap; gap:10px}
                   .tv-clock{text-align:center}
-                  .tv-main{flex:initial}
-                  .tv-block{flex:initial}
-                  .tv-grid{flex:initial; grid-template-columns:repeat(auto-fit, minmax(130px,1fr))}
-                }
-
-                @media (max-width:768px){
-                  .tv-wrap{padding:10px}
-                  .tv-wrap header{padding:10px 12px}
                   .tv-shopname{font-size:26px; line-height:1.9; padding-block:.2em .3em}
                   .tv-htitle{font-size:15px} .tv-hsub{font-size:11px}
                   .tv-clock .t{font-size:20px} .tv-clock .d{font-size:11px}
@@ -308,11 +307,12 @@ export default function Home({ prices: initial, refreshSeconds }) {
                   .tv-card{min-height:108px; padding:12px; border-radius:16px}
                   .tv-top{gap:8px}
                   .tv-icon{width:30px; height:30px; border-radius:10px}
-                  .tv-name{font-size:11px} .tv-sub{font-size:8px}
+                  .tv-name{font-size:13px} .tv-sub{font-size:9px}
                   .tv-price{font-size:22px} .tv-card.silver .tv-price{font-size:20px}
-                  .tv-unit{font-size:10px} .tv-chg{font-size:10px; padding:2px 7px; max-width:65%}
-                  .tv-section-title{font-size:14px; flex-wrap:wrap}
-                  .tv-ounce{font-size:12px; padding:3px 10px; margin-inline-start:0}
+                  .tv-unit{font-size:10px} .tv-chg{font-size:11px; padding:3px 9px; max-width:90%}
+                  .tv-section-title{font-size:14px}
+                  .tv-title-label{gap:8px}
+                  .tv-ounce{font-size:12px; padding:3px 10px}
                 }
 
                 @media (max-width:360px){
@@ -362,9 +362,11 @@ export default function Home({ prices: initial, refreshSeconds }) {
                     {/* بالا: نقره + دلار */}
                     <div className="tv-block">
                         <div className="tv-section-title silver">
-                            <span className="tv-bar" />
-                            <span className="tv-tic silver-ic"><IngotIcon /></span>
-                            نقره و دلار <span style={{ fontWeight: 400 }}>(فروش)</span>
+                            <div className="tv-title-label">
+                                <span className="tv-bar" />
+                                <span className="tv-tic silver-ic"><IngotIcon /></span>
+                                نقره و دلار <span style={{ fontWeight: 400 }}>(فروش)</span>
+                            </div>
                             <OunceDisplay value={data.ounce?.silver} label="انس نقره" cls="silver-o" />
                         </div>
                         <div className="tv-grid">
@@ -389,9 +391,11 @@ export default function Home({ prices: initial, refreshSeconds }) {
                     {/* پایین: طلا و سکه */}
                     <div className="tv-block">
                         <div className="tv-section-title">
-                            <span className="tv-bar" />
-                            <span className="tv-tic gold-ic"><CoinIcon /></span>
-                            طلا و سکه <span style={{ fontWeight: 400 }}>(فروش)</span>
+                            <div className="tv-title-label">
+                                <span className="tv-bar" />
+                                <span className="tv-tic gold-ic"><CoinIcon /></span>
+                                طلا و سکه <span style={{ fontWeight: 400 }}>(فروش)</span>
+                            </div>
                             <OunceDisplay value={data.ounce?.gold} label="انس طلا" cls="gold-o" />
                         </div>
                         <div className="tv-grid">

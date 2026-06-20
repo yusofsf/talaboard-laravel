@@ -214,13 +214,17 @@ export default function Home({ prices: initial, refreshSeconds }) {
                 .tv-ounce.up{color:var(--up); border-color:rgba(65,225,166,.45)}
                 .tv-ounce.down{color:var(--down); border-color:rgba(255,107,120,.45)}
 
-                .tv-grid{display:grid; gap:clamp(10px,1.1vw,18px); flex:1; min-height:0; grid-template-columns:repeat(5,1fr)}
+                .tv-grid{
+                  display:grid; gap:clamp(10px,1.1vw,18px); flex:1; min-height:0;
+                  grid-template-columns:repeat(auto-fit, minmax(150px,1fr));
+                }
 
                 .tv-card{
                   position:relative; overflow:hidden; cursor:default;
                   background:linear-gradient(160deg,var(--card),var(--card-2));
                   border:1px solid var(--line); border-radius:20px;
                   padding:clamp(12px,1.3vw,24px);
+                  min-height:140px;
                   display:flex; flex-direction:column; justify-content:space-between;
                   box-shadow:0 10px 30px rgba(0,0,0,.25);
                   transition:border-color .45s ease, box-shadow .45s ease;
@@ -236,7 +240,8 @@ export default function Home({ prices: initial, refreshSeconds }) {
                 .tv-card.buyable{cursor:pointer}
                 .tv-card.buyable:active{transform:scale(.985)}
 
-                .tv-top{display:flex; align-items:center; gap:12px}
+                .tv-top{display:flex; align-items:center; gap:12px; min-width:0}
+                .tv-top > div{min-width:0; overflow:hidden}
                 .tv-icon{
                   width:clamp(36px,2.9vw,52px); height:clamp(36px,2.9vw,52px); flex:none;
                   border-radius:14px; display:grid; place-items:center;
@@ -246,19 +251,20 @@ export default function Home({ prices: initial, refreshSeconds }) {
                 .tv-card.silver .tv-icon{background:linear-gradient(145deg,var(--silver-1),var(--silver-2)); color:#222a37; box-shadow:0 6px 18px var(--silver-glow)}
                 .tv-card.usd .tv-icon{background:linear-gradient(145deg,var(--usd-1),var(--usd-2)); color:#06281c; box-shadow:0 6px 18px var(--usd-glow)}
                 .tv-icon svg{width:60%; height:60%}
-                .tv-name{font-size:clamp(12px,1vw,18px); font-weight:700}
-                .tv-sub{font-size:clamp(9px,.72vw,12px); color:var(--muted)}
+                .tv-name{font-size:clamp(12px,1vw,18px); font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+                .tv-sub{font-size:clamp(9px,.72vw,12px); color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 
                 .tv-value{flex:1; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
-                  gap:2px; text-align:center; position:relative; padding-bottom:24px}
-                .tv-price{font-size:clamp(22px,2.3vw,44px); font-weight:800; line-height:1.2; font-variant-numeric:tabular-nums;
-                  white-space:nowrap;
+                  gap:2px; text-align:center; position:relative; padding-bottom:24px; width:100%}
+                .tv-price{font-size:clamp(18px,2.3vw,44px); font-weight:800; line-height:1.2; font-variant-numeric:tabular-nums;
+                  max-width:100%; overflow:hidden; text-overflow:ellipsis;
                   background:linear-gradient(180deg,#fff,#cfd8ea); -webkit-background-clip:text; background-clip:text; color:transparent}
                 .tv-card.silver .tv-price{font-size:clamp(20px,2.1vw,40px)}
                 .tv-unit{font-size:clamp(11px,.95vw,16px); color:var(--muted)}
                 .tv-chg{position:absolute; bottom:0; left:50%; transform:translateX(-50%);
-                  display:inline-flex; align-items:center; gap:5px; font-size:clamp(12px,1vw,18px); font-weight:800;
-                  padding:3px 8px; border-radius:999px; background:rgba(255,255,255,.06); font-variant-numeric:tabular-nums}
+                  display:inline-flex; align-items:center; gap:5px; font-size:clamp(11px,1vw,18px); font-weight:800;
+                  padding:3px 8px; border-radius:999px; background:rgba(255,255,255,.06); font-variant-numeric:tabular-nums;
+                  max-width:95%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
                 .tv-chg.up{color:var(--up)} .tv-chg.down{color:var(--down)}
                 .tv-chg.zero{color:var(--muted)}
                 .tv-card.gold .tv-chg.zero{color:var(--gold-1)}
@@ -277,26 +283,40 @@ export default function Home({ prices: initial, refreshSeconds }) {
                 .tv-ratio-bar .r-label{font-weight:700; color:var(--silver-2)}
                 .tv-ratio-bar .r-val{font-size:clamp(9px,0.9vw,15px); font-weight:800; color:var(--gold-1); font-variant-numeric:tabular-nums}
 
-                @media (max-width:768px){
-                  .tv-wrap{height:auto; min-height:100vh; padding:10px; overflow:auto}
-                  .tv-wrap header{flex-wrap:wrap; gap:8px; padding:10px 12px}
-                  .tv-headright{flex:1 1 100%; align-items:center; order:2}
+                /* تبلت / لپ‌تاپ متوسط: هدر می‌شکند، گرید با auto-fit خودش تنظیم می‌شود */
+                @media (max-width:1100px){
+                  .tv-wrap{height:auto; min-height:100vh; overflow:auto}
+                  .tv-wrap header{flex-wrap:wrap; gap:10px}
+                  .tv-headright{flex:1 1 100%; align-items:center; order:2; text-align:center}
                   .tv-brandc{flex:1 1 100%; order:1}
-                  .tv-status{flex:1 1 100%; justify-content:center; order:3; gap:10px}
+                  .tv-status{flex:1 1 100%; justify-content:center; order:3; flex-wrap:wrap; gap:10px}
+                  .tv-clock{text-align:center}
+                  .tv-main{flex:initial}
+                  .tv-block{flex:initial}
+                  .tv-grid{flex:initial; grid-template-columns:repeat(auto-fit, minmax(130px,1fr))}
+                }
+
+                @media (max-width:768px){
+                  .tv-wrap{padding:10px}
+                  .tv-wrap header{padding:10px 12px}
                   .tv-shopname{font-size:26px; line-height:1.9; padding-block:.2em .3em}
                   .tv-htitle{font-size:15px} .tv-hsub{font-size:11px}
-                  .tv-clock{text-align:center} .tv-clock .t{font-size:20px} .tv-clock .d{font-size:11px}
-                  .tv-main{flex:initial; gap:12px; margin-top:8px}
-                  .tv-block{flex:initial; gap:6px}
-                  .tv-grid{flex:initial; grid-template-columns:repeat(2,1fr); gap:10px}
+                  .tv-clock .t{font-size:20px} .tv-clock .d{font-size:11px}
+                  .tv-main{gap:12px; margin-top:8px}
+                  .tv-block{gap:6px}
+                  .tv-grid{grid-template-columns:repeat(2,1fr); gap:10px}
                   .tv-card{min-height:108px; padding:12px; border-radius:16px}
                   .tv-top{gap:8px}
                   .tv-icon{width:30px; height:30px; border-radius:10px}
                   .tv-name{font-size:13px} .tv-sub{font-size:9px}
                   .tv-price{font-size:22px} .tv-card.silver .tv-price{font-size:20px}
-                  .tv-unit{font-size:10px} .tv-chg{font-size:11px; padding:3px 9px}
-                  .tv-section-title{font-size:14px}
-                  .tv-ounce{font-size:12px; padding:3px 10px}
+                  .tv-unit{font-size:10px} .tv-chg{font-size:11px; padding:3px 9px; max-width:90%}
+                  .tv-section-title{font-size:14px; flex-wrap:wrap}
+                  .tv-ounce{font-size:12px; padding:3px 10px; margin-inline-start:0}
+                }
+
+                @media (max-width:360px){
+                  .tv-grid{grid-template-columns:1fr}
                 }
             `}</style>
 

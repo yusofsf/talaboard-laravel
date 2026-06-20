@@ -10,14 +10,15 @@ class User extends Authenticatable
     use Notifiable;
 
     protected $fillable = ['name', 'phone', 'email', 'national_id', 'password', 'is_vip', 'is_admin'];
-    protected $hidden   = ['password', 'remember_token'];
+    protected $hidden   = ['password', 'remember_token', 'legacy_password_hash'];
 
     protected function casts(): array
     {
         return [
-            'password' => 'hashed',
-            'is_vip'   => 'boolean',
-            'is_admin' => 'boolean',
+            'password'            => 'hashed',
+            'is_vip'              => 'boolean',
+            'is_admin'            => 'boolean',
+            'must_reset_password' => 'boolean',
         ];
     }
 

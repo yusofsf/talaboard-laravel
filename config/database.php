@@ -51,6 +51,13 @@ return [
             'prefix'   => '',
         ],
 
+        // shop.db نسخه‌ی قبلی Flask — فقط برای ایمپورت یک‌باره
+        'flask_shop' => [
+            'driver'   => 'sqlite',
+            'database' => env('FLASK_SHOP_DB_PATH', database_path('database.sqlite')),
+            'prefix'   => '',
+        ],
+
         'mysql' => [
             'driver' => 'mysql',
             'url' => env('DB_URL'),

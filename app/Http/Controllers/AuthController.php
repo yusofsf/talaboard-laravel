@@ -57,6 +57,14 @@ class AuthController extends Controller
         $phone = $this->normPhone($request->phone);
         $user  = User::where('phone', $phone)->first();
 
+        if ($user && $user->must_reset_password) {
+            $otp = $this->createOtp($phone, 'reset');
+            $this->sms->sendOtpReset($phone, $otp);
+            $request->session()->put('reset_phone', $phone);
+            return redirect()->route('reset-password')
+                ->with('error', 'به‌دلیل به‌روزرسانی سامانه، لازم است رمز عبور خود را بازنشانی کنید. کد تأیید برای شما ارسال شد.');
+        }
+
         if (!$user || !Hash::check($request->password, $user->password)) {
             return back()->withErrors(['phone' => 'شماره موبایل یا رمز عبور اشتباه است.']);
         }
@@ -165,7 +173,11 @@ class AuthController extends Controller
 
         $user = User::where('phone', $phone)->first();
         if ($user) {
-            $user->update(['password' => Hash::make($request->password)]);
+            $user->update([
+                'password'             => Hash::make($request->password),
+                'must_reset_password'  => false,
+                'legacy_password_hash' => null,
+            ]);
         }
 
         OtpToken::where('phone', $phone)->where('purpose', 'reset')->delete();

@@ -161,13 +161,15 @@ class AuthController extends Controller
         }
 
         $user = User::where('phone', $phone)->first();
-        if ($user) {
-            $user->update([
-                'password'             => Hash::make($request->password),
-                'must_reset_password'  => false,
-                'legacy_password_hash' => null,
-            ]);
+        if (!$user) {
+            return back()->withErrors(['otp' => 'کاربری با این شماره پیدا نشد.']);
         }
+
+        $user->update([
+            'password'             => Hash::make($request->password),
+            'must_reset_password'  => false,
+            'legacy_password_hash' => null,
+        ]);
 
         OtpToken::where('phone', $phone)->where('purpose', 'reset')->delete();
         $request->session()->forget('reset_phone');

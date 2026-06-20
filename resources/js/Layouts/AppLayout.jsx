@@ -41,6 +41,7 @@ export default function AppLayout({ children, title }) {
                             <Link href="/membership">
                                 {user.is_vip ? '👑 ویژه' : 'عضویت ویژه'}
                             </Link>
+                            <Link href="/speed-test" title="تست سرعت اینترنت">⚡ تست سرعت</Link>
                             {user.is_admin && (
                                 <Link href="/admin" className="btn-gold">مدیریت</Link>
                             )}
@@ -60,6 +61,29 @@ export default function AppLayout({ children, title }) {
             {flash?.error   && <div className="alert err" style={{ margin: '16px auto', maxWidth: 700 }}>{flash.error}</div>}
 
             {children}
+
+            <footer style={{
+                borderTop: '1px solid var(--line)', marginTop: 48,
+                padding: '28px 16px 32px', textAlign: 'center',
+            }}>
+                <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 18, marginBottom: 14 }}>
+                    <a href="https://instagram.com/noghresazanshargh" target="_blank" rel="noopener noreferrer"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--muted)', fontSize: 14 }}>
+                        <span style={{ fontSize: 18 }}>📷</span> noghresazanshargh@
+                    </a>
+                    <a href="https://t.me/sachme_kaf" target="_blank" rel="noopener noreferrer"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--muted)', fontSize: 14 }}>
+                        <span style={{ fontSize: 18 }}>✈️</span> sachme_kaf@
+                    </a>
+                    <a href="tel:09158952885"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--muted)', fontSize: 14 }}>
+                        <span style={{ fontSize: 18 }}>📞</span> <span dir="ltr">۰۹۱۵۸۹۵۲۸۸۵</span>
+                    </a>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--muted)', opacity: .7 }}>
+                    آبشده صفرپور — تمامی حقوق محفوظ است
+                </div>
+            </footer>
         </>
     );
 }

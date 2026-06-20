@@ -50,6 +50,8 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/membership', [MembershipController::class, 'show'])->name('membership');
     Route::post('/membership', [MembershipController::class, 'activate']);
+
+    Route::get('/speed-test', fn () => \Inertia\Inertia::render('SpeedTest'))->name('speed-test');
 });
 
 // پنل ادمین

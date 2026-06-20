@@ -7,12 +7,15 @@ use App\Models\Notification;
 use App\Models\SilverDeliveryRequest;
 use App\Models\SilverLedger;
 use App\Models\User;
+use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class SilverDeliveryController extends Controller
 {
+    public function __construct(private SmsService $sms) {}
+
     public function index(Request $request)
     {
         $user = $request->user();
@@ -54,7 +57,9 @@ class SilverDeliveryController extends Controller
             return back()->withErrors(['grams' => 'موجودی نقره‌ی شما برای این عیار کافی نیست.']);
         }
 
-        DB::transaction(function () use ($user, $request, $grams) {
+        $admins = User::where('is_admin', true)->get();
+
+        DB::transaction(function () use ($user, $request, $grams, $admins) {
             $delivery = SilverDeliveryRequest::create([
                 'user_id'        => $user->id,
                 'purity'         => $request->purity,
@@ -71,15 +76,29 @@ class SilverDeliveryController extends Controller
                 'description' => "درخواست تحویل فیزیکی #{$delivery->id}",
             ]);
 
-            User::where('is_admin', true)->each(function ($admin) use ($user, $delivery, $grams) {
+            Notification::create([
+                'user_id' => $user->id,
+                'title'   => 'درخواست تحویل فیزیکی ثبت شد',
+                'body'    => "{$grams} گرم نقره {$delivery->purity} — تاریخ: " . Jalali::now() . ' — در حال بررسی.',
+                'type'    => 'system',
+            ]);
+
+            foreach ($admins as $admin) {
                 Notification::create([
                     'user_id' => $admin->id,
                     'title'   => "درخواست تحویل فیزیکی نقره — {$user->name}",
                     'body'    => "{$grams} گرم نقره {$delivery->purity} — تاریخ: " . Jalali::now(),
                     'type'    => 'system',
                 ]);
-            });
+            }
         });
+
+        try {
+            $this->sms->sendDeliveryRequestUser($user->phone, $user->name, $grams, $request->purity);
+            foreach ($admins as $admin) {
+                $this->sms->sendDeliveryRequestAdmin($admin->phone, $user->name, $grams, $request->purity);
+            }
+        } catch (\Exception) {}
 
         return back()->with('success', 'درخواست تحویل فیزیکی شما ثبت شد.');
     }

@@ -10,6 +10,7 @@ use App\Models\SilverLedger;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\WalletTransaction;
+use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -17,6 +18,8 @@ use Inertia\Inertia;
 
 class AdminController extends Controller
 {
+    public function __construct(private SmsService $sms) {}
+
     public function dashboard()
     {
         $users = User::withCount('transactions')
@@ -240,7 +243,7 @@ class AdminController extends Controller
     {
         $request->validate(['status' => 'required|in:approved,shipped,delivered,rejected']);
 
-        $delivery = SilverDeliveryRequest::findOrFail($id);
+        $delivery = SilverDeliveryRequest::with('user')->findOrFail($id);
 
         // در صورت رد درخواست، نقره‌ی رزرو‌شده به موجودی کاربر برمی‌گردد
         if ($request->status === 'rejected' && $delivery->status !== 'rejected') {
@@ -266,6 +269,10 @@ class AdminController extends Controller
             'body'    => "درخواست شما «{$statusLabel}». تاریخ: " . Jalali::now(),
             'type'    => 'system',
         ]);
+
+        try {
+            $this->sms->sendDeliveryStatusUpdate($delivery->user->phone, $delivery->user->name, $statusLabel);
+        } catch (\Exception) {}
 
         return back()->with('success', 'وضعیت به‌روزرسانی شد.');
     }

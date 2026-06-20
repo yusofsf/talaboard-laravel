@@ -46,6 +46,24 @@ class SmsService
         return $this->sendText($phone, $msg);
     }
 
+    public function sendDeliveryRequestUser(string $phone, string $name, float $grams, string $purity): bool
+    {
+        $msg = "کاربر گرامی {$name}، درخواست تحویل فیزیکی {$grams} گرم نقره {$purity} شما ثبت شد و در حال بررسی است.";
+        return $this->sendText($phone, $msg);
+    }
+
+    public function sendDeliveryRequestAdmin(string $phone, string $userName, float $grams, string $purity): bool
+    {
+        $msg = "درخواست تحویل فیزیکی جدید: {$userName} — {$grams} گرم نقره {$purity}.";
+        return $this->sendText($phone, $msg);
+    }
+
+    public function sendDeliveryStatusUpdate(string $phone, string $name, string $statusLabel): bool
+    {
+        $msg = "کاربر گرامی {$name}، وضعیت درخواست تحویل فیزیکی نقره‌ی شما: {$statusLabel}";
+        return $this->sendText($phone, $msg);
+    }
+
     private function sendLookup(string $phone, string $token, string $template): bool
     {
         if (!$this->enabled()) return false;

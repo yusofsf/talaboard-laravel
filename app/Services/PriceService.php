@@ -35,13 +35,13 @@ class PriceService
     {
         $errors = [];
 
-        $goldMid    = $this->fetchGold($errors);
+        $goldData   = $this->fetchGold($errors);
         $silverData = $this->fetchSilver($errors);
         $dollar     = $this->fetchDollar($errors);
 
-        // طلا: askPrice طلالند = قیمت میانی → فروش/خرید با فاکتور حول آن ساخته می‌شود
-        $gold    = $this->applySpread($goldMid, 1 + $this->factor);
-        $goldBuy = $this->applySpread($goldMid, 1 - $this->factor);
+        // طلا: فروش از askPrice، خرید از bidPrice طلالند — هرکدام با فاکتور خودش
+        $gold    = $this->applySpread($goldData['ask'], 1 + $this->factor);
+        $goldBuy = $this->applySpread($goldData['bid'], 1 - $this->factor);
 
         // نقره: ستون‌های فروش/خرید مستقیماً از دیتابیس ربات نقره می‌آیند (بدون فاکتور)
         $silver    = $silverData['sell'];
@@ -77,10 +77,14 @@ class PriceService
         return $out;
     }
 
-    /** قیمت میانی طلا و سکه از REST API طلالند (askPrice) — کش‌شده. */
+    /**
+     * مبنای فروش (askPrice) و خرید (bidPrice) طلا و سکه از REST API طلالند — کش‌شده.
+     * فروش = askPrice × (۱+فاکتور)   |   خرید = bidPrice × (۱−فاکتور)
+     */
     private function fetchGold(array &$errors): array
     {
-        $null = array_fill_keys(array_keys(self::STOCK_MAP), null);
+        $nullSide = array_fill_keys(array_keys(self::STOCK_MAP), null);
+        $null = ['ask' => $nullSide, 'bid' => $nullSide];
 
         return Cache::remember('prices.gold', $this->cacheTtl, function () use (&$errors, $null) {
             try {
@@ -109,16 +113,15 @@ class PriceService
                     if (isset($it['stockId'])) $byId[$it['stockId']] = $it;
                 }
 
-                $out = [];
+                $ask = [];
+                $bid = [];
                 foreach (self::STOCK_MAP as $key => [$sid, $mode]) {
-                    $ask = $byId[$sid]['askPrice'] ?? null;
-                    if ($ask === null) {
-                        $out[$key] = null;
-                        continue;
-                    }
-                    $out[$key] = (int) round($mode === 'gram' ? $ask / $this->mithqalGrams : $ask);
+                    $a = $byId[$sid]['askPrice'] ?? null;
+                    $b = $byId[$sid]['bidPrice'] ?? null;
+                    $ask[$key] = $a !== null ? (int) round($mode === 'gram' ? $a / $this->mithqalGrams : $a) : null;
+                    $bid[$key] = $b !== null ? (int) round($mode === 'gram' ? $b / $this->mithqalGrams : $b) : null;
                 }
-                return $out;
+                return ['ask' => $ask, 'bid' => $bid];
             } catch (\Throwable $e) {
                 Log::warning('PriceService gold fetch failed: ' . $e->getMessage());
                 $errors[] = 'طلا: ' . $e->getMessage();

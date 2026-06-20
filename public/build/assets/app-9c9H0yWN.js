@@ -142,7 +142,7 @@ Error generating stack: `+e.message+`
                 .tv-main{flex:1; display:flex; flex-direction:column; gap:clamp(10px,1.1vw,20px); margin-top:clamp(10px,1.1vw,20px); min-height:0}
                 .tv-block{display:flex; flex-direction:column; gap:clamp(8px,.8vw,14px); flex:1; min-height:0}
                 .tv-section-title{display:flex; align-items:center; justify-content:space-between; gap:10px;
-                  font-size:clamp(14px,1.15vw,20px); font-weight:700; color:var(--muted); margin:2px 4px}
+                  font-size:clamp(14px,1.15vw,20px); font-weight:700; color:var(--txt); margin:2px 4px}
                 .tv-title-label{display:flex; align-items:center; gap:10px; min-width:0; flex-wrap:wrap}
                 .tv-section-title .tv-bar{width:6px; height:20px; border-radius:6px; background:linear-gradient(var(--gold-1),var(--gold-2)); flex:none}
                 .tv-section-title.silver .tv-bar{background:linear-gradient(var(--silver-1),var(--silver-2))}

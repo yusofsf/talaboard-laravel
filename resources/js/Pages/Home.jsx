@@ -2,13 +2,11 @@ import { useEffect, useState } from 'react';
 import AppLayout, { faNum } from '../Layouts/AppLayout';
 
 const ITEMS = [
-    { key: 'mithqal', label: 'مثقال طلا',    unit: 'مثقال', group: 'gold'   },
-    { key: 'geram18', label: 'گرم ۱۸ عیار',  unit: 'گرم',   group: 'gold'   },
-    { key: 'geram24', label: 'گرم ۲۴ عیار',  unit: 'گرم',   group: 'gold'   },
-    { key: 'bahar',   label: 'بهار آزادی',   unit: 'عدد',   group: 'gold'   },
-    { key: 'nim',     label: 'نیم سکه',       unit: 'عدد',   group: 'gold'   },
-    { key: 'rob',     label: 'ربع سکه',       unit: 'عدد',   group: 'gold'   },
-    { key: 'silver',  label: 'نقره (گرم)',    unit: 'گرم',   group: 'silver' },
+    { key: 'mithqal', label: 'مثقال طلا',  unit: 'مثقال', group: 'gold' },
+    { key: 'geram',   label: 'گرم طلا',     unit: 'گرم',   group: 'gold' },
+    { key: 'bahar',   label: 'سکه تمام',    unit: 'عدد',   group: 'gold' },
+    { key: 'nim',     label: 'نیم سکه',      unit: 'عدد',   group: 'gold' },
+    { key: 'rob',     label: 'ربع سکه',      unit: 'عدد',   group: 'gold' },
 ];
 
 export default function Home({ prices: initial }) {

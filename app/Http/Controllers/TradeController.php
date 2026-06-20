@@ -13,13 +13,11 @@ use Inertia\Inertia;
 class TradeController extends Controller
 {
     private const ITEMS = [
-        'mithqal'  => ['label' => 'مثقال طلا',      'group' => 'gold'],
-        'geram18'  => ['label' => 'گرم ۱۸ عیار',    'group' => 'gold'],
-        'geram24'  => ['label' => 'گرم ۲۴ عیار',    'group' => 'gold'],
-        'bahar'    => ['label' => 'بهار آزادی',      'group' => 'gold'],
-        'nim'      => ['label' => 'نیم سکه',          'group' => 'gold'],
-        'rob'      => ['label' => 'ربع سکه',          'group' => 'gold'],
-        'silver'   => ['label' => 'نقره (گرم)',       'group' => 'silver'],
+        'mithqal' => ['label' => 'مثقال طلا', 'group' => 'gold'],
+        'geram'   => ['label' => 'گرم طلا',    'group' => 'gold'],
+        'bahar'   => ['label' => 'سکه تمام',   'group' => 'gold'],
+        'nim'     => ['label' => 'نیم سکه',     'group' => 'gold'],
+        'rob'     => ['label' => 'ربع سکه',     'group' => 'gold'],
     ];
 
     public function __construct(
@@ -33,7 +31,7 @@ class TradeController extends Controller
         if (!$meta) return redirect('/');
 
         $data  = $this->prices->all();
-        $price = $data['gold'][$item] ?? $data['silver'] ?? null;
+        $price = $data['gold'][$item] ?? null;
 
         return Inertia::render('Trade', [
             'item'  => $item,
@@ -53,7 +51,7 @@ class TradeController extends Controller
         ]);
 
         $data      = $this->prices->all();
-        $price     = $data['gold'][$item] ?? $data['silver'] ?? null;
+        $price     = $data['gold'][$item] ?? null;
 
         if (!$price) {
             return back()->withErrors(['quantity' => 'قیمت در حال حاضر در دسترس نیست.']);

@@ -135,7 +135,7 @@ class PriceService
      */
     private function fetchSilver(array &$errors): array
     {
-        $nullSide = ['gram_999' => null, 'gram_995' => null];
+        $nullSide = ['mithqal_999' => null, 'gram_999' => null, 'mithqal_995' => null, 'gram_995' => null];
         $null = ['sell' => $nullSide, 'buy' => $nullSide, 'ounce' => null];
 
         return Cache::remember('prices.silver', $this->cacheTtl, function () use (&$errors, $null) {
@@ -147,12 +147,16 @@ class PriceService
                 }
                 return [
                     'sell' => [
-                        'gram_999' => (float) $row->gram_price,
-                        'gram_995' => isset($row->gram_995) ? (float) $row->gram_995 : null,
+                        'mithqal_999' => (int) round($row->mithqal_price),
+                        'gram_999'    => (float) $row->gram_price,
+                        'mithqal_995' => isset($row->mithqal_995_price) ? (int) round($row->mithqal_995_price) : null,
+                        'gram_995'    => isset($row->gram_995) ? (float) $row->gram_995 : null,
                     ],
                     'buy' => [
-                        'gram_999' => isset($row->gram_price_buy) ? (float) $row->gram_price_buy : null,
-                        'gram_995' => isset($row->gram_995_buy) ? (float) $row->gram_995_buy : null,
+                        'mithqal_999' => isset($row->mithqal_price_buy) ? (int) round($row->mithqal_price_buy) : null,
+                        'gram_999'    => isset($row->gram_price_buy) ? (float) $row->gram_price_buy : null,
+                        'mithqal_995' => isset($row->mithqal_995_price_buy) ? (int) round($row->mithqal_995_price_buy) : null,
+                        'gram_995'    => isset($row->gram_995_buy) ? (float) $row->gram_995_buy : null,
                     ],
                     'ounce' => isset($row->silver_ounce) ? (float) $row->silver_ounce : null,
                 ];

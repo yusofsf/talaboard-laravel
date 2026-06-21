@@ -21,8 +21,8 @@ class TradeControllerTest extends TestCase
             $mock->shouldReceive('all')->andReturn([
                 'gold'       => ['geram' => 50_000_000],
                 'gold_buy'   => ['geram' => 49_000_000],
-                'silver'     => ['gram_999' => 400_000],
-                'silver_buy' => ['gram_999' => 390_000],
+                'silver'     => ['gram_999' => 400_000, 'mithqal_999' => 1_732_720],
+                'silver_buy' => ['gram_999' => 390_000, 'mithqal_999' => 1_689_402],
                 'dollar'     => ['price' => 90_000, 'label' => 'دلار آمریکا'],
                 'ounce'      => ['gold' => null, 'silver' => null],
                 'open'       => [],
@@ -162,5 +162,31 @@ class TradeControllerTest extends TestCase
         $response = $this->actingAs($user)->get('/trade/not-a-real-item');
 
         $response->assertRedirect('/');
+    }
+
+    public function test_buy_mithqal_silver_credits_ledger_in_grams(): void
+    {
+        $this->fakePrices();
+        $user = User::factory()->create();
+        WalletTransaction::create(['user_id' => $user->id, 'amount' => 2_000_000, 'type' => 'deposit', 'description' => 'charge']);
+
+        $this->actingAs($user)->post('/trade/mithqal_999', ['trade_type' => 'buy', 'quantity' => 1]);
+
+        // ۱ مثقال = ۴.۳۳۱۸ گرم
+        $this->assertEqualsWithDelta(4.3318, $user->refresh()->silverBalance('999'), 0.0001);
+    }
+
+    public function test_sell_mithqal_silver_fails_without_enough_gram_holding(): void
+    {
+        $this->fakePrices();
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post('/trade/mithqal_999', [
+            'trade_type' => 'sell',
+            'quantity'   => 1,
+        ]);
+
+        $response->assertSessionHasErrors('quantity');
+        $this->assertSame(0, Transaction::count());
     }
 }

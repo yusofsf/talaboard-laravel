@@ -17,12 +17,14 @@ use Inertia\Inertia;
 class TradeController extends Controller
 {
     private const ITEMS = [
-        'geram'    => ['label' => 'گرم طلا',          'group' => 'gold'],
-        'bahar'    => ['label' => 'سکه تمام',         'group' => 'gold'],
-        'nim'      => ['label' => 'نیم سکه',           'group' => 'gold'],
-        'rob'      => ['label' => 'ربع سکه',           'group' => 'gold'],
-        'gram_999' => ['label' => 'گرم نقره ۹۹۹/۹',   'group' => 'silver'],
-        'gram_995' => ['label' => 'گرم نقره ۹۹۵',     'group' => 'silver'],
+        'geram'       => ['label' => 'گرم طلا',          'group' => 'gold'],
+        'bahar'       => ['label' => 'سکه تمام',         'group' => 'gold'],
+        'nim'         => ['label' => 'نیم سکه',           'group' => 'gold'],
+        'rob'         => ['label' => 'ربع سکه',           'group' => 'gold'],
+        'mithqal_999' => ['label' => 'مثقال نقره ۹۹۹/۹', 'group' => 'silver'],
+        'gram_999'    => ['label' => 'گرم نقره ۹۹۹/۹',   'group' => 'silver'],
+        'mithqal_995' => ['label' => 'مثقال نقره ۹۹۵',   'group' => 'silver'],
+        'gram_995'    => ['label' => 'گرم نقره ۹۹۵',     'group' => 'silver'],
     ];
 
     public function __construct(
@@ -87,8 +89,8 @@ class TradeController extends Controller
                     return back()->withErrors(['quantity' => "موجودی شما از «{$meta['label']}» کافی نیست. موجودی فعلی: {$holding}"]);
                 }
             } else {
-                $purity = $this->silverPurity($item);
-                if ($user->silverBalance($purity) < $qty) {
+                [$purity, $grams] = $this->silverGrams($item, $qty);
+                if ($user->silverBalance($purity) < $grams) {
                     return back()->withErrors(['quantity' => 'موجودی نقره‌ی شما برای این عیار کافی نیست.']);
                 }
             }
@@ -131,12 +133,13 @@ class TradeController extends Controller
                 ]);
             }
 
-            // خرید/فروش گرم نقره → موجودی انبار نقره‌ی کاربر تغییر می‌کند
+            // خرید/فروش نقره (گرم یا مثقال) → موجودی انبار نقره‌ی کاربر برحسب گرم تغییر می‌کند
             if ($meta['group'] === 'silver') {
+                [$purity, $grams] = $this->silverGrams($item, $qty);
                 SilverLedger::create([
                     'user_id' => $user->id,
-                    'purity'  => $this->silverPurity($item),
-                    'grams'   => $request->trade_type === 'buy' ? $qty : -$qty,
+                    'purity'  => $purity,
+                    'grams'   => $request->trade_type === 'buy' ? $grams : -$grams,
                     'type'    => $request->trade_type === 'buy' ? 'purchase' : 'sale',
                     'description' => "{$typeLabel} از فروشگاه — {$meta['label']} ({$qty})",
                 ]);
@@ -165,8 +168,13 @@ class TradeController extends Controller
         return round($bought - $sold, 4);
     }
 
-    private function silverPurity(string $item): string
+    /** تبدیل آیتم نقره + مقدار خریداری/فروخته‌شده به [عیار, گرم]. */
+    private function silverGrams(string $item, float $qty): array
     {
-        return str_contains($item, '995') ? '995' : '999';
+        $purity = str_contains($item, '995') ? '995' : '999';
+        $grams  = str_starts_with($item, 'mithqal_')
+            ? $qty * (float) env('MITHQAL_GRAMS', 4.3318)
+            : $qty;
+        return [$purity, round($grams, 4)];
     }
 }

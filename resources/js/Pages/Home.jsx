@@ -100,8 +100,10 @@ function OunceDisplay({ value, label, cls }) {
 }
 
 const SILVER = [
-    { key: 'gram_999', name: 'گرم نقره ۹۹۹/۹', sub: 'هر گرم' },
-    { key: 'gram_995', name: 'گرم نقره ۹۹۵',   sub: 'هر گرم' },
+    { key: 'mithqal_999', name: 'مثقال نقره ۹۹۹/۹', sub: 'هر مثقال' },
+    { key: 'gram_999',    name: 'گرم نقره ۹۹۹/۹',   sub: 'هر گرم' },
+    { key: 'mithqal_995', name: 'مثقال نقره ۹۹۵',   sub: 'هر مثقال' },
+    { key: 'gram_995',    name: 'گرم نقره ۹۹۵',     sub: 'هر گرم' },
 ];
 const GOLD = [
     { key: 'bahar', name: 'سکه تمام', sub: 'طرح جدید' },

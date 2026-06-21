@@ -60,6 +60,7 @@ export default function AppLayout({ children }) {
                             }}>
                                 <MenuLink href="/" onClick={() => setOpen(false)}>تابلوی قیمت</MenuLink>
                                 <MenuLink href="/chart" onClick={() => setOpen(false)}>📈 چارت</MenuLink>
+                                <MenuLink href="/calculator" onClick={() => setOpen(false)}>🧮 ماشین حساب</MenuLink>
 
                                 {user ? (
                                     <>

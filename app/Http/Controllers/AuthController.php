@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\OtpToken;
 use App\Models\User;
 use App\Services\SmsService;
@@ -35,6 +36,8 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
+        ActivityLog::record('register', 'auth', "ثبت‌نام کاربر جدید: {$user->name} ({$user->phone})", $user->id);
+
         $this->sms->sendWelcome($user->phone, $user->name);
         Auth::login($user, true);
         return redirect('/');
@@ -66,6 +69,7 @@ class AuthController extends Controller
         }
 
         if (!$user || !Hash::check($request->password, $user->password)) {
+            ActivityLog::record('login_failed', 'auth', "تلاش ناموفق ورود با شماره: {$phone}", $user?->id);
             return back()->withErrors(['phone' => 'شماره موبایل یا رمز عبور اشتباه است.']);
         }
 
@@ -84,6 +88,7 @@ class AuthController extends Controller
             return redirect()->route('verify-otp');
         }
 
+        ActivityLog::record('login', 'auth', "ورود موفق: {$user->name} ({$user->phone})", $user->id);
         Auth::login($user, $request->boolean('remember'));
         return redirect('/');
     }
@@ -114,6 +119,7 @@ class AuthController extends Controller
 
         OtpToken::where('phone', $user->phone)->where('purpose', 'login')->delete();
         $request->session()->forget('pending_2fa');
+        ActivityLog::record('login', 'auth', "ورود موفق با کد دو مرحله‌ای: {$user->name} ({$user->phone})", $user->id);
         Auth::login($user, true);
         return redirect('/');
     }
@@ -173,11 +179,16 @@ class AuthController extends Controller
 
         OtpToken::where('phone', $phone)->where('purpose', 'reset')->delete();
         $request->session()->forget('reset_phone');
+        ActivityLog::record('password_reset', 'auth', "بازنشانی رمز عبور: {$user->name} ({$user->phone})", $user->id);
         return redirect()->route('login')->with('success', 'رمز عبور با موفقیت تغییر کرد.');
     }
 
     public function logout(Request $request)
     {
+        $user = $request->user();
+        if ($user) {
+            ActivityLog::record('logout', 'auth', "خروج: {$user->name} ({$user->phone})", $user->id);
+        }
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

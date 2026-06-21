@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\Jalali;
+use App\Models\ActivityLog;
 use App\Models\Notification;
 use App\Models\User;
 use App\Models\WalletTransaction;
@@ -97,6 +98,9 @@ class WalletController extends Controller
                 ]);
             }
         });
+
+        ActivityLog::record('withdrawal_request', 'wallet',
+            "درخواست تسویه حساب " . number_format($request->amount) . " تومان — کاربر: {$user->name}", $user->id);
 
         try {
             $this->sms->send($user->phone, 'درخواست تسویه حساب ' . number_format($request->amount) . ' تومانی شما ثبت شد و در حال بررسی است.');

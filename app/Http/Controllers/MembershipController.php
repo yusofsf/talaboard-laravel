@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\Jalali;
+use App\Models\ActivityLog;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -54,6 +55,8 @@ class MembershipController extends Controller
             'body'    => 'درخواست شما در تاریخ ' . Jalali::now() . ' ثبت شد و در حال بررسی است.',
             'type'    => 'system',
         ]);
+
+        ActivityLog::record('membership_apply', 'membership', "ثبت درخواست عضویت ویژه — کاربر: {$user->name} ({$user->phone})", $user->id);
 
         User::where('is_admin', true)->each(function ($admin) use ($user) {
             Notification::create([

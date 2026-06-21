@@ -1,7 +1,16 @@
 import { useMemo, useState } from 'react';
-import { router, useForm, usePage } from '@inertiajs/react';
+import { Link, router, useForm, usePage } from '@inertiajs/react';
 import AppLayout, { faNum } from '../../Layouts/AppLayout';
 import JalaliDatePicker from '../../Components/JalaliDatePicker';
+
+const LOG_CAT = {
+    auth:       { label: 'ورود/احراز', badge: 'silver' },
+    trade:      { label: 'معامله',      badge: 'gold' },
+    wallet:     { label: 'کیف پول',      badge: 'buy-b' },
+    admin:      { label: 'مدیریت',       badge: 'sell-b' },
+    membership: { label: 'عضویت',        badge: 'silver' },
+    other:      { label: 'سایر',         badge: 'silver' },
+};
 
 const TYPE_ICON = { trade: '📊', wallet: '💰', system: '⚙️', promo: '🎁', info: '🔔' };
 
@@ -65,7 +74,8 @@ function UserRow({ u, isSelf }) {
                     )}
                 </td>
                 <td>
-                    <div style={{ display: 'flex', gap: 6 }}>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <Link href={`/admin/users/${u.id}/trades`} className="btn-sm">ریز معاملات</Link>
                         <button onClick={() => setExpand(expand === 'inventory' ? null : 'inventory')} className="btn-sm">موجودی</button>
                         <button onClick={() => setExpand(expand === 'edit' ? null : 'edit')} className="btn-sm">ویرایش</button>
                         {!isSelf && <button onClick={destroyUser} className="btn-sm danger">حذف</button>}
@@ -188,7 +198,7 @@ function TxnRow({ t }) {
     );
 }
 
-export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApplications, deliveryRequests, withdrawalRequests, allTrades }) {
+export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApplications, deliveryRequests, withdrawalRequests, allTrades, activityLogs }) {
     const { auth } = usePage().props;
     const [tab, setTab] = useState('users');
 
@@ -199,6 +209,12 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     const [tradeFilterDate, setTradeFilterDate] = useState('');
     const [rejectingId, setRejectingId] = useState(null);
     const [rejectReason, setRejectReason] = useState('');
+    const [logCat, setLogCat] = useState('all');
+    const [logDate, setLogDate] = useState('');
+
+    const filteredLogs = useMemo(() => (activityLogs || []).filter(l =>
+        (logCat === 'all' || l.category === logCat) && (!logDate || l.date_raw === logDate)
+    ), [activityLogs, logCat, logDate]);
 
     function submitTradeReject(t) {
         const reason = rejectReason.trim();
@@ -256,6 +272,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
         ['membership', `درخواست‌های عضویت${memberApplications?.length ? ` (${memberApplications.length})` : ''}`],
         ['delivery', `تحویل فیزیکی${deliveryRequests?.length ? ` (${deliveryRequests.length})` : ''}`],
         ['withdrawals', `تسویه حساب${withdrawalRequests?.length ? ` (${withdrawalRequests.length})` : ''}`],
+        ['logs', 'گزارش فعالیت'],
     ];
 
     return (
@@ -609,6 +626,53 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                     ) : (
                         <div className="empty"><div className="ico">🏦</div>درخواست تسویه حساب در انتظار بررسی نیست.</div>
                     )
+                )}
+
+                {/* گزارش فعالیت (سیستم لاگ) */}
+                {tab === 'logs' && (
+                    <>
+                        <div className="no-print" style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 18 }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: 13, color: 'var(--muted)', marginBottom: 6, fontWeight: 600 }}>دسته</label>
+                                <select value={logCat} onChange={e => setLogCat(e.target.value)}
+                                    style={{ background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 10, padding: '9px 12px', fontFamily: 'inherit', fontSize: 14 }}>
+                                    <option value="all">همه</option>
+                                    {Object.entries(LOG_CAT).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                                </select>
+                            </div>
+                            <div style={{ minWidth: 280 }}>
+                                <label style={{ display: 'block', fontSize: 13, color: 'var(--muted)', marginBottom: 6, fontWeight: 600 }}>تاریخ (برای چاپ)</label>
+                                <JalaliDatePicker value={logDate} onChange={setLogDate} yearsBack={5} allowCurrentYear />
+                            </div>
+                            {(logDate || logCat !== 'all') && <button type="button" className="btn-sm" onClick={() => { setLogDate(''); setLogCat('all'); }}>حذف فیلتر</button>}
+                            <button type="button" className="btn-sm gold" onClick={() => window.print()}>🖨️ چاپ / خروجی PDF</button>
+                        </div>
+
+                        {filteredLogs.length ? (
+                            <div className="table-wrap print-area">
+                                <div className="print-only" style={{ marginBottom: 6, fontWeight: 800, fontSize: 16 }}>گزارش فعالیت سامانه</div>
+                                <table>
+                                    <thead><tr><th>تاریخ</th><th>دسته</th><th>کاربر</th><th>شرح</th><th>IP</th></tr></thead>
+                                    <tbody>
+                                        {filteredLogs.map(l => {
+                                            const cat = LOG_CAT[l.category] || LOG_CAT.other;
+                                            return (
+                                                <tr key={l.id}>
+                                                    <td style={{ fontSize: 12, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{l.created_at}</td>
+                                                    <td><span className={`badge ${cat.badge}`}>{cat.label}</span></td>
+                                                    <td style={{ fontSize: 13 }}>{l.user_name || '—'}</td>
+                                                    <td style={{ fontSize: 13, whiteSpace: 'normal', minWidth: 280 }}>{l.description}</td>
+                                                    <td className="num" dir="ltr" style={{ fontSize: 12, color: 'var(--muted)' }}>{l.ip || '—'}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="empty"><div className="ico">🗒️</div>رویدادی برای نمایش نیست.</div>
+                        )}
+                    </>
                 )}
 
             </div>

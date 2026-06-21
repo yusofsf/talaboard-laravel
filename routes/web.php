@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 // تابلوی قیمت (عمومی)
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/api/prices', [HomeController::class, 'prices'])->name('prices.api');
+Route::get('/calculator', fn () => \Inertia\Inertia::render('Calculator'))->name('calculator');
 
 // احراز هویت
 Route::middleware('guest')->group(function () {
@@ -85,6 +86,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     Route::put('/users/{uid}', [AdminController::class, 'userUpdate'])->name('users.update');
     Route::delete('/users/{uid}', [AdminController::class, 'userDestroy'])->name('users.destroy');
+    Route::get('/users/{uid}/trades', [AdminController::class, 'userTrades'])->name('users.trades');
 
     Route::put('/transactions/{id}', [AdminController::class, 'transactionUpdate'])->name('transactions.update');
     Route::delete('/transactions/{id}', [AdminController::class, 'transactionDestroy'])->name('transactions.destroy');

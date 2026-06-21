@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\Jalali;
+use App\Models\ActivityLog;
 use App\Models\GoldLedger;
 use App\Models\Notification;
 use App\Models\SilverLedger;
@@ -96,6 +97,11 @@ class TradeRoomController extends Controller
             }
         });
 
+        $sideLabel = $request->side === 'sell' ? 'فروش' : 'خرید';
+        $metalLabel = $metal === 'gold' ? 'طلا' : ('نقره ' . $purity);
+        ActivityLog::record('room_offer', 'trade',
+            "ثبت پیشنهاد {$sideLabel} {$metalLabel} در اتاق معاملاتی — {$grams} گرم — کاربر: {$user->name}", $user->id);
+
         return back()->with('success', 'پیشنهاد شما در اتاق معاملاتی ثبت شد.');
     }
 
@@ -154,6 +160,9 @@ class TradeRoomController extends Controller
             return back()->withErrors(['offer' => $e->getMessage()]);
         }
 
+        ActivityLog::record('room_accept', 'trade',
+            "پذیرش پیشنهاد اتاق معاملاتی #{$id} توسط {$acceptor->name}", $acceptor->id);
+
         return back()->with('success', 'معامله با موفقیت انجام شد.');
     }
 
@@ -179,6 +188,8 @@ class TradeRoomController extends Controller
         } catch (\RuntimeException $e) {
             return back()->withErrors(['offer' => $e->getMessage()]);
         }
+
+        ActivityLog::record('room_cancel', 'trade', "لغو پیشنهاد اتاق معاملاتی #{$id} توسط {$user->name}", $user->id);
 
         return back()->with('success', 'پیشنهاد لغو شد.');
     }

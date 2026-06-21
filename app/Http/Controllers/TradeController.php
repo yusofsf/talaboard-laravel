@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\Jalali;
+use App\Models\ActivityLog;
 use App\Models\GoldLedger;
 use App\Models\Notification;
 use App\Models\SilverLedger;
@@ -160,6 +161,9 @@ class TradeController extends Controller
                 ]);
             }
         });
+
+        ActivityLog::record('trade_' . $request->trade_type, 'trade',
+            "{$typeLabel} {$meta['label']} — مقدار: {$qty} — مبلغ: " . number_format($total) . " تومان — کاربر: {$user->name}", $user->id);
 
         try {
             $this->sms->sendTradeConfirm($user->phone, $user->name, $request->trade_type, $meta['label'], $qty, $total);

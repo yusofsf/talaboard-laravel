@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\Jalali;
+use App\Models\ActivityLog;
 use App\Models\GoldLedger;
 use App\Models\Notification;
 use App\Models\SilverDeliveryRequest;
@@ -133,7 +134,84 @@ class AdminController extends Controller
 
         $allTrades = $this->allTradesHistory();
 
-        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'stats', 'memberApplications', 'deliveryRequests', 'withdrawalRequests', 'allTrades'));
+        $activityLogs = ActivityLog::with('user')->orderByDesc('id')->limit(400)->get()
+            ->map(fn ($l) => [
+                'id'          => $l->id,
+                'action'      => $l->action,
+                'category'    => $l->category,
+                'description' => $l->description,
+                'ip'          => $l->ip,
+                'user_name'   => $l->user?->name,
+                'created_at'  => Jalali::format($l->created_at),
+                'date_raw'    => optional($l->created_at)->format('Y-m-d'),
+            ]);
+
+        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'stats', 'memberApplications', 'deliveryRequests', 'withdrawalRequests', 'allTrades', 'activityLogs'));
+    }
+
+    /** ریز معاملات یک کاربر خاص (فروشگاه + اتاق معاملاتی) برای مشاهده و خروجی PDF ادمین. */
+    public function userTrades(int $uid)
+    {
+        $user = User::findOrFail($uid);
+
+        $shop = Transaction::where('user_id', $uid)->orderByDesc('created_at')->get()
+            ->map(fn ($t) => [
+                'id'          => 'shop-' . $t->id,
+                'source'      => 'فروشگاه',
+                'side'        => $t->type,
+                'item_label'  => $t->item_label,
+                'quantity'    => (float) $t->quantity,
+                'price'       => $t->price_per_unit,
+                'total'       => $t->total,
+                'role'        => '—',
+                'status'      => $t->status ?? 'active',
+                'admin_note'  => $t->admin_note,
+                'created_at'  => Jalali::format($t->created_at),
+                'date_raw'    => $t->created_at->format('Y-m-d'),
+                'sort_at'     => $t->created_at,
+            ]);
+
+        // معاملات اتاق معاملاتی که این کاربر در آن‌ها پیشنهاددهنده یا طرف مقابل بوده
+        $room = TradeRoomOffer::with(['user', 'counterparty'])
+            ->where('status', 'completed')
+            ->where(fn ($q) => $q->where('user_id', $uid)->orWhere('counterparty_id', $uid))
+            ->orderByDesc('completed_at')->get()
+            ->map(function ($o) use ($uid) {
+                $isOfferer = $o->user_id === $uid;
+                // نقش واقعی این کاربر در معامله بسته به side پیشنهاد و اینکه پیشنهاددهنده بوده یا پذیرنده
+                $userIsSeller = ($o->side === 'sell') === $isOfferer;
+                return [
+                    'id'          => 'room-' . $o->id,
+                    'source'      => 'اتاق معاملاتی',
+                    'side'        => $userIsSeller ? 'sell' : 'buy',
+                    'item_label'  => $o->metal === 'gold' ? 'طلا (گرم)' : ('نقره ' . $o->purity . ' (گرم)'),
+                    'quantity'    => (float) $o->grams,
+                    'price'       => $o->price_per_gram,
+                    'total'       => $o->total(),
+                    'role'        => $isOfferer ? 'پیشنهاددهنده' : 'پذیرنده',
+                    'status'      => 'active',
+                    'admin_note'  => null,
+                    'created_at'  => Jalali::format($o->completed_at ?? $o->created_at),
+                    'date_raw'    => ($o->completed_at ?? $o->created_at)->format('Y-m-d'),
+                    'sort_at'     => $o->completed_at ?? $o->created_at,
+                ];
+            });
+
+        $trades = $shop->concat($room)->sortByDesc('sort_at')
+            ->map(function ($t) { unset($t['sort_at']); return $t; })
+            ->values()->all();
+
+        return Inertia::render('Admin/UserTrades', [
+            'subject' => [
+                'id'             => $user->id,
+                'name'           => $user->name,
+                'phone'          => $user->phone,
+                'wallet_balance' => $user->walletBalance(),
+                'gold_balance'   => $user->goldBalance(),
+                'silver_balance' => ['999' => $user->silverBalance('999'), '995' => $user->silverBalance('995')],
+            ],
+            'trades' => $trades,
+        ]);
     }
 
     /** تاریخچه‌ی کلی معاملات (فروشگاه + اتاق معاملاتی) برای ادمین — یک لیست واحد، جدیدترین اول. */
@@ -716,7 +794,11 @@ class AdminController extends Controller
         return back()->with('success', 'درخواست رد شد.');
     }
 
-    /** اطلاع به همه‌ی ادمین‌های دیگر (نه ادمینی که خودش این کار را انجام داده) از یک اقدام مدیریتی. */
+    /**
+     * اطلاع به همه‌ی ادمین‌های دیگر (نه ادمینی که خودش این کار را انجام داده) از یک اقدام مدیریتی،
+     * و ثبت همان اقدام در گزارش فعالیت (سیستم لاگ). چون همه‌ی متدهای ادمین این تابع را صدا می‌زنند،
+     * هر اقدام مدیریتی به‌صورت خودکار لاگ می‌شود.
+     */
     private function notifyOtherAdmins(Request $request, string $title, string $body): void
     {
         $actingId = $request->user()->id;
@@ -729,5 +811,7 @@ class AdminController extends Controller
                     'type'    => 'system',
                 ]);
             });
+
+        ActivityLog::record('admin_action', 'admin', "{$title} — {$body}", $actingId);
     }
 }

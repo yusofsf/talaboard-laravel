@@ -122,6 +122,18 @@ History.jsx, TradeRoom.jsx (`mine` tab), and Admin/Dashboard.jsx (`all_trades` t
 
 Both shop trades and trade-room deals can be reversed by an admin from the `all_trades` tab in `Admin/Dashboard.jsx` (`AdminController::transactionReject` / `tradeRoomReject`). Rejection is a full financial unwind via compensating ledger/wallet entries (type `trade_reject`), never a delete — same append-only convention as the escrow refunds. Shop transactions gain a `status` column (`active`/`rejected`) + `admin_note`; a rejected shop transaction is excluded from accounting summaries (`HistoryController::buildSummary`), admin stats, and — critically — coin holdings (`TradeController::coinHolding` filters `status = active`, since coin ownership is derived from transaction rows, not a ledger). Trade-room reversals reverse *both* parties' wallet and metal ledgers and set the offer back to `cancelled` with an `admin_note` (reusing the existing enum value to avoid a SQLite enum-check migration). The plain admin "delete transaction" action still exists but does **not** reverse balances — prefer reject.
 
+### Activity log (سیستم لاگ)
+
+`ActivityLog::record($action, $category, $description, $userId)` writes one row to `activity_logs` (categories: `auth`/`trade`/`wallet`/`admin`/`membership`/`other`). It swallows its own exceptions so logging can never break the main flow. Wired into auth events (login success/fail, register, logout, password reset), shop + trade-room trades, withdrawal requests, and membership applications. **Every admin action is logged automatically** because `AdminController::notifyOtherAdmins()` (already called by every admin method) also calls `ActivityLog::record(...)` — so to log a new admin action you don't add anything, just keep calling that helper. Viewed by admins in the `logs` tab of `Admin/Dashboard.jsx` with category/date filters + print-to-PDF.
+
+### Admin per-user trade detail
+
+`AdminController::userTrades($uid)` → `Admin/UserTrades.jsx` shows one user's shop transactions plus the trade-room deals they were on either side of (offerer or counterparty), with the user's role and a normalized buy/sell `side` from *that user's* perspective, date filter, totals, and print-to-PDF. Linked from the "ریز معاملات" button in the users table. Separate from the combined `all_trades` tab (which spans all users).
+
+### Calculator
+
+`/calculator` (public route, `Calculator.jsx`) is a self-contained standard arithmetic calculator (keypad + keyboard support), no backend. Linked in the nav menu for everyone. Persian digits in the display, Latin internally.
+
 ### Auth endpoints are rate-limited
 
 `login`, `verify-otp`, `forgot-password`, `reset-password`, and `register` carry `throttle:` middleware (see `routes/web.php`) — the 6-digit OTP/reset codes would otherwise be brute-forceable. Keep these limits when touching auth routes.

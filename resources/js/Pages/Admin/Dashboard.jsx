@@ -197,6 +197,20 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     const [memberMsg, setMemberMsg] = useState({});
     const [withdrawalReason, setWithdrawalReason] = useState({});
     const [tradeFilterDate, setTradeFilterDate] = useState('');
+    const [rejectingId, setRejectingId] = useState(null);
+    const [rejectReason, setRejectReason] = useState('');
+
+    function submitTradeReject(t) {
+        const reason = rejectReason.trim();
+        if (!reason) { alert('دلیل رد را وارد کنید.'); return; }
+        const url = t.source === 'shop'
+            ? `/admin/transactions/${t.ref_id}/reject`
+            : `/admin/trade-room/${t.ref_id}/reject`;
+        router.post(url, { reason }, {
+            preserveScroll: true,
+            onSuccess: () => { setRejectingId(null); setRejectReason(''); },
+        });
+    }
 
     const filteredAllTrades = useMemo(
         () => tradeFilterDate ? (allTrades || []).filter(t => t.date_raw === tradeFilterDate) : (allTrades || []),
@@ -315,20 +329,41 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                             <div className="table-wrap print-area">
                                 <div className="print-only" style={{ marginBottom: 14, fontWeight: 800, fontSize: 16 }}>تاریخچه کلی معاملات (فروشگاه + اتاق معاملاتی)</div>
                                 <table>
-                                    <thead><tr><th>تاریخ</th><th>منبع</th><th>کاربر</th><th>طرف معامله</th><th>نوع</th><th>کالا</th><th>مقدار</th><th>مبلغ کل</th></tr></thead>
+                                    <thead><tr><th>تاریخ</th><th>منبع</th><th>کاربر</th><th>طرف معامله</th><th>نوع</th><th>کالا</th><th>مقدار</th><th>مبلغ کل</th><th className="no-print"></th></tr></thead>
                                     <tbody>
-                                        {filteredAllTrades.map(t => (
-                                            <tr key={t.id}>
-                                                <td style={{ fontSize: 12, color: 'var(--muted)' }}>{t.created_at}</td>
-                                                <td><span className={`badge ${t.source === 'shop' ? 'gold' : 'silver'}`}>{t.source_label}</span></td>
-                                                <td><strong>{t.user_name}</strong></td>
-                                                <td style={{ color: 'var(--muted)', fontSize: 13 }}>{t.counterparty_name || '—'}</td>
-                                                <td><span className={`badge ${t.side === 'buy' ? 'buy-b' : 'sell-b'}`}>{t.side === 'buy' ? 'خرید' : 'فروش'}</span></td>
-                                                <td>{t.item_label}</td>
-                                                <td className="num">{t.quantity}</td>
-                                                <td className="num"><strong>{faNum(t.total)}</strong></td>
-                                            </tr>
-                                        ))}
+                                        {filteredAllTrades.map(t => {
+                                            const rejected = t.status === 'rejected';
+                                            return (
+                                                <tr key={t.id} style={rejected ? { opacity: .6 } : undefined}>
+                                                    <td style={{ fontSize: 12, color: 'var(--muted)' }}>{t.created_at}</td>
+                                                    <td><span className={`badge ${t.source === 'shop' ? 'gold' : 'silver'}`}>{t.source_label}</span></td>
+                                                    <td><strong>{t.user_name}</strong></td>
+                                                    <td style={{ color: 'var(--muted)', fontSize: 13 }}>{t.counterparty_name || '—'}</td>
+                                                    <td><span className={`badge ${t.side === 'buy' ? 'buy-b' : 'sell-b'}`}>{t.side === 'buy' ? 'خرید' : 'فروش'}</span></td>
+                                                    <td>
+                                                        <span style={rejected ? { textDecoration: 'line-through' } : undefined}>{t.item_label}</span>
+                                                        {rejected && <span className="badge sell-b" style={{ marginInlineStart: 6 }}>رد شد</span>}
+                                                        {rejected && t.admin_note && <div style={{ fontSize: 11, color: 'var(--down)', marginTop: 4 }}>دلیل: {t.admin_note}</div>}
+                                                    </td>
+                                                    <td className="num">{t.quantity}</td>
+                                                    <td className="num"><strong>{faNum(t.total)}</strong></td>
+                                                    <td className="no-print">
+                                                        {t.can_reject ? (
+                                                            rejectingId === t.id ? (
+                                                                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                                                    <input autoFocus placeholder="دلیل رد" value={rejectReason} onChange={e => setRejectReason(e.target.value)}
+                                                                        style={{ width: 150, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '5px 8px', fontFamily: 'inherit', fontSize: 12 }} />
+                                                                    <button className="btn-sm danger" onClick={() => submitTradeReject(t)}>ثبت رد</button>
+                                                                    <button className="btn-sm" onClick={() => { setRejectingId(null); setRejectReason(''); }}>لغو</button>
+                                                                </div>
+                                                            ) : (
+                                                                <button className="btn-sm danger" onClick={() => { setRejectingId(t.id); setRejectReason(''); }}>رد با دلیل</button>
+                                                            )
+                                                        ) : <span style={{ color: 'var(--muted)', fontSize: 12 }}>—</span>}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>

@@ -21,17 +21,19 @@ Route::get('/api/prices', [HomeController::class, 'prices'])->name('prices.api')
 // احراز هویت
 Route::middleware('guest')->group(function () {
     Route::get('/register', [AuthController::class, 'registerForm'])->name('register');
-    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
     Route::get('/login', [AuthController::class, 'loginForm'])->name('login');
-    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
     Route::get('/forgot-password', [AuthController::class, 'forgotForm'])->name('forgot-password');
-    Route::post('/forgot-password', [AuthController::class, 'forgot']);
+    Route::post('/forgot-password', [AuthController::class, 'forgot'])->middleware('throttle:5,1');
     Route::get('/reset-password', [AuthController::class, 'resetForm'])->name('reset-password');
-    Route::post('/reset-password', [AuthController::class, 'reset']);
+    // محدودسازی شدید: جلوگیری از حدس‌زدن کد ۶ رقمی بازنشانی رمز (account takeover)
+    Route::post('/reset-password', [AuthController::class, 'reset'])->middleware('throttle:8,1');
 });
 
 Route::get('/verify-otp', [AuthController::class, 'otpForm'])->name('verify-otp');
-Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
+// محدودسازی شدید: جلوگیری از brute-force کد ۶ رقمی ورود دو مرحله‌ای
+Route::post('/verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:8,1');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // صفحات احراز هویت‌شده
@@ -86,4 +88,6 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     Route::put('/transactions/{id}', [AdminController::class, 'transactionUpdate'])->name('transactions.update');
     Route::delete('/transactions/{id}', [AdminController::class, 'transactionDestroy'])->name('transactions.destroy');
+    Route::post('/transactions/{id}/reject', [AdminController::class, 'transactionReject'])->name('transactions.reject');
+    Route::post('/trade-room/{id}/reject', [AdminController::class, 'tradeRoomReject'])->name('trade-room.reject');
 });

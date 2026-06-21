@@ -217,6 +217,7 @@ class TradeRoomController extends Controller
             'total'          => $o->total(),
             'status'         => $o->status,
             'is_mine'        => $o->user_id === $viewer->id,
+            'admin_note'     => $o->admin_note,
             'created_at'     => Jalali::format($o->created_at),
             'completed_at'   => $o->completed_at ? Jalali::format($o->completed_at) : null,
             'date_raw'       => ($o->completed_at ?? $o->created_at)->format('Y-m-d'),

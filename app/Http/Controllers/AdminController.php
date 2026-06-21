@@ -14,6 +14,7 @@ use App\Models\WalletTransaction;
 use App\Models\WithdrawalRequest;
 use App\Services\SmsService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
@@ -79,9 +80,9 @@ class AdminController extends Controller
 
         $stats = [
             'user_count'  => User::count(),
-            'txn_count'   => Transaction::count(),
-            'buy_volume'  => Transaction::where('type', 'buy')->sum('total'),
-            'sell_volume' => Transaction::where('type', 'sell')->sum('total'),
+            'txn_count'   => Transaction::where('status', 'active')->count(),
+            'buy_volume'  => Transaction::where('status', 'active')->where('type', 'buy')->sum('total'),
+            'sell_volume' => Transaction::where('status', 'active')->where('type', 'sell')->sum('total'),
         ];
 
         $memberApplications = User::where('membership_status', 'pending')
@@ -140,6 +141,7 @@ class AdminController extends Controller
     {
         $shop = Transaction::with('user')->get()->map(fn ($t) => [
             'id'                 => 'shop-' . $t->id,
+            'ref_id'             => $t->id,
             'source'             => 'shop',
             'source_label'       => 'فروشگاه',
             'side'               => $t->type,
@@ -149,14 +151,20 @@ class AdminController extends Controller
             'total'              => $t->total,
             'user_name'          => $t->user?->name,
             'counterparty_name'  => null,
+            'status'             => $t->status ?? 'active',
+            'admin_note'         => $t->admin_note,
+            'can_reject'         => ($t->status ?? 'active') === 'active',
             'sort_at'            => $t->created_at,
         ]);
 
+        // معاملات تکمیل‌شده + معاملاتی که ادمین برگشت زده (cancelled با یادداشت ادمین)
         $room = TradeRoomOffer::with(['user', 'counterparty'])
-            ->where('status', 'completed')
+            ->where(fn ($q) => $q->where('status', 'completed')
+                ->orWhere(fn ($q2) => $q2->where('status', 'cancelled')->whereNotNull('admin_note')))
             ->get()
             ->map(fn ($o) => [
                 'id'                 => 'room-' . $o->id,
+                'ref_id'             => $o->id,
                 'source'             => 'room',
                 'source_label'       => 'اتاق معاملاتی',
                 'side'               => $o->side,
@@ -166,6 +174,9 @@ class AdminController extends Controller
                 'total'              => $o->total(),
                 'user_name'          => $o->user?->name,
                 'counterparty_name'  => $o->counterparty?->name,
+                'status'             => $o->status === 'completed' ? 'active' : 'rejected',
+                'admin_note'         => $o->admin_note,
+                'can_reject'         => $o->status === 'completed',
                 'sort_at'            => $o->completed_at ?? $o->created_at,
             ]);
 
@@ -495,6 +506,160 @@ class AdminController extends Controller
             "{$request->user()->name} معامله‌ی «{$label}» متعلق به «{$userName}» را حذف کرد. تاریخ: " . Jalali::now());
 
         return back()->with('success', 'معامله حذف شد.');
+    }
+
+    /**
+     * رد معامله‌ی فروشگاه با دلیل — اثر مالی و انباری معامله به‌طور کامل برگشت می‌خورد
+     * (کیف پول و دفترکل طلا/نقره) و وضعیت معامله «رد شده» می‌شود.
+     */
+    public function transactionReject(Request $request, int $id)
+    {
+        $request->validate(['reason' => 'required|string|max:300']);
+
+        $txn = Transaction::with('user')->findOrFail($id);
+        if (($txn->status ?? 'active') !== 'active') {
+            return back()->with('error', 'این معامله قبلاً رد شده است.');
+        }
+
+        $reason = trim($request->reason);
+
+        DB::transaction(function () use ($txn, $reason) {
+            // برگشت کیف پول: خرید مبلغ را کسر کرده بود → بازگشت؛ فروش مبلغ را اضافه کرده بود → کسر
+            WalletTransaction::create([
+                'user_id'     => $txn->user_id,
+                'amount'      => $txn->type === 'buy' ? $txn->total : -$txn->total,
+                'type'        => $txn->type === 'buy' ? 'deposit' : 'withdraw',
+                'description' => "برگشت — رد معامله #{$txn->id} ({$txn->item_label})",
+            ]);
+
+            // برگشت دفترکل طلا/نقره (سکه‌ها دفترکل ندارند؛ با فیلتر وضعیت در موجودی لحاظ می‌شوند)
+            $mithqalGrams = (float) env('MITHQAL_GRAMS', 4.3318);
+            if (in_array($txn->item, ['geram', 'mithqal'], true)) {
+                $grams = $txn->item === 'mithqal' ? (float) $txn->quantity * $mithqalGrams : (float) $txn->quantity;
+                GoldLedger::create([
+                    'user_id' => $txn->user_id,
+                    'grams'   => $txn->type === 'buy' ? -$grams : $grams,
+                    'type'    => 'trade_reject',
+                    'reference_type' => Transaction::class, 'reference_id' => $txn->id,
+                    'description' => "برگشت طلا — رد معامله #{$txn->id}",
+                ]);
+            } elseif (str_contains($txn->item, '999') || str_contains($txn->item, '995')) {
+                $purity = str_contains($txn->item, '995') ? '995' : '999';
+                $grams  = str_starts_with($txn->item, 'mithqal_') ? (float) $txn->quantity * $mithqalGrams : (float) $txn->quantity;
+                SilverLedger::create([
+                    'user_id' => $txn->user_id, 'purity' => $purity,
+                    'grams'   => $txn->type === 'buy' ? -$grams : $grams,
+                    'type'    => 'trade_reject',
+                    'reference_type' => Transaction::class, 'reference_id' => $txn->id,
+                    'description' => "برگشت نقره — رد معامله #{$txn->id}",
+                ]);
+            }
+
+            $txn->update(['status' => 'rejected', 'admin_note' => $reason]);
+
+            Notification::create([
+                'user_id' => $txn->user_id,
+                'title'   => 'رد معامله توسط مدیریت',
+                'body'    => "معامله‌ی «{$txn->item_label}» ({$txn->quantity}) رد شد و اثر آن برگشت داده شد.\nدلیل: {$reason}\nتاریخ: " . Jalali::now(),
+                'type'    => 'trade',
+            ]);
+        });
+
+        try {
+            if ($txn->user) {
+                $this->sms->send($txn->user->phone, "معامله‌ی شما ({$txn->item_label}) توسط مدیریت رد شد. دلیل: {$reason}");
+            }
+        } catch (\Exception) {}
+
+        $this->notifyOtherAdmins($request, 'رد معامله‌ی فروشگاه توسط ادمین',
+            "{$request->user()->name} معامله‌ی «{$txn->item_label}» متعلق به «{$txn->user?->name}» را رد کرد. دلیل: {$reason}. تاریخ: " . Jalali::now());
+
+        return back()->with('success', 'معامله رد و برگشت داده شد.');
+    }
+
+    /**
+     * رد/برگشت معامله‌ی اتاق معاملاتی با دلیل — تسویه‌ی بین دو طرف کاملاً معکوس می‌شود
+     * (کیف پول و دفترکل هر دو طرف) و وضعیت پیشنهاد «لغوشده» با یادداشت ادمین می‌شود.
+     */
+    public function tradeRoomReject(Request $request, int $id)
+    {
+        $request->validate(['reason' => 'required|string|max:300']);
+        $reason = trim($request->reason);
+
+        try {
+            DB::transaction(function () use ($id, $reason) {
+                $offer = TradeRoomOffer::with(['user', 'counterparty'])->where('id', $id)->lockForUpdate()->firstOrFail();
+                if ($offer->status !== 'completed') {
+                    throw new \RuntimeException('فقط معامله‌ی تکمیل‌شده قابل برگشت است.');
+                }
+
+                $metal   = $offer->metal;
+                $purity  = $offer->purity;
+                $grams   = (float) $offer->grams;
+                $total   = $offer->total();
+                $ownerId = $offer->user_id;
+                $cpId    = $offer->counterparty_id;
+                $label   = $metal === 'gold' ? 'طلا' : ('نقره ' . $purity);
+
+                if ($offer->side === 'sell') {
+                    // پیشنهاددهنده فروشنده بود؛ طرف مقابل خریدار
+                    $this->revertWallet($cpId, $total, "برگشت — رد معامله‌ی اتاق #{$offer->id}");      // پول به خریدار برمی‌گردد
+                    $this->revertWallet($ownerId, -$total, "برگشت — رد معامله‌ی اتاق #{$offer->id}");   // پول از فروشنده پس گرفته می‌شود
+                    $this->revertLedger($cpId, $metal, $purity, -$grams, $offer->id, "برگشت {$label} — رد معامله‌ی اتاق #{$offer->id}"); // فلز از خریدار پس گرفته می‌شود
+                    $this->revertLedger($ownerId, $metal, $purity, $grams, $offer->id, "برگشت {$label} — رد معامله‌ی اتاق #{$offer->id}"); // فلز رزروشده به فروشنده برمی‌گردد
+                } else {
+                    // پیشنهاددهنده خریدار بود (پول رزرو شده بود)؛ طرف مقابل فروشنده
+                    $this->revertLedger($cpId, $metal, $purity, $grams, $offer->id, "برگشت {$label} — رد معامله‌ی اتاق #{$offer->id}");  // فلز به فروشنده برمی‌گردد
+                    $this->revertWallet($cpId, -$total, "برگشت — رد معامله‌ی اتاق #{$offer->id}");      // پول از فروشنده پس گرفته می‌شود
+                    $this->revertLedger($ownerId, $metal, $purity, -$grams, $offer->id, "برگشت {$label} — رد معامله‌ی اتاق #{$offer->id}"); // فلز از خریدار پس گرفته می‌شود
+                    $this->revertWallet($ownerId, $total, "برگشت — رد معامله‌ی اتاق #{$offer->id}");     // پول رزروشده به خریدار برمی‌گردد
+                }
+
+                $offer->update(['status' => 'cancelled', 'admin_note' => $reason]);
+
+                foreach (array_filter([$ownerId, $cpId]) as $uid) {
+                    Notification::create([
+                        'user_id' => $uid,
+                        'title'   => 'برگشت معامله‌ی اتاق معاملاتی توسط مدیریت',
+                        'body'    => "معامله‌ی {$label} — {$grams} گرم برگشت داده شد.\nدلیل: {$reason}\nتاریخ: " . Jalali::now(),
+                        'type'    => 'trade',
+                    ]);
+                }
+            });
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        $offer = TradeRoomOffer::with(['user', 'counterparty'])->find($id);
+        $this->notifyOtherAdmins($request, 'برگشت معامله‌ی اتاق معاملاتی توسط ادمین',
+            "{$request->user()->name} معامله‌ی اتاق معاملاتی بین «{$offer?->user?->name}» و «{$offer?->counterparty?->name}» را برگشت زد. دلیل: {$reason}. تاریخ: " . Jalali::now());
+
+        return back()->with('success', 'معامله‌ی اتاق معاملاتی برگشت داده شد.');
+    }
+
+    private function revertWallet(int $userId, int $amount, string $desc): void
+    {
+        WalletTransaction::create([
+            'user_id'     => $userId,
+            'amount'      => $amount,
+            'type'        => $amount >= 0 ? 'deposit' : 'withdraw',
+            'description' => $desc,
+        ]);
+    }
+
+    private function revertLedger(int $userId, string $metal, ?string $purity, float $grams, int $offerId, string $desc): void
+    {
+        if ($metal === 'gold') {
+            GoldLedger::create([
+                'user_id' => $userId, 'grams' => $grams, 'type' => 'trade_reject',
+                'reference_type' => TradeRoomOffer::class, 'reference_id' => $offerId, 'description' => $desc,
+            ]);
+        } else {
+            SilverLedger::create([
+                'user_id' => $userId, 'purity' => $purity, 'grams' => $grams, 'type' => 'trade_reject',
+                'reference_type' => TradeRoomOffer::class, 'reference_id' => $offerId, 'description' => $desc,
+            ]);
+        }
     }
 
     public function withdrawalApprove(Request $request, int $id)

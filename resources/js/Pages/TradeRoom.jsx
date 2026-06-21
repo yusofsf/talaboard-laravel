@@ -215,7 +215,10 @@ export default function TradeRoom({ offers, myOffers, walletBalance, goldBalance
                                             <td className="num">{faNum(o.total)}</td>
                                             <td>
                                                 {o.status === 'completed' && <span className="badge buy-b">تکمیل‌شده</span>}
-                                                {o.status === 'cancelled' && <span className="badge silver">لغوشده</span>}
+                                                {o.status === 'cancelled' && (o.admin_note
+                                                    ? <span className="badge sell-b">برگشت داده شد</span>
+                                                    : <span className="badge silver">لغوشده</span>)}
+                                                {o.admin_note && <div style={{ fontSize: 11, color: 'var(--down)', marginTop: 4 }}>دلیل: {o.admin_note}</div>}
                                             </td>
                                             <td style={{ fontSize: 12, color: 'var(--muted)' }}>{o.completed_at || o.created_at}</td>
                                         </tr>

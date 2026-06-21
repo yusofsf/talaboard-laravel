@@ -178,8 +178,9 @@ class TradeController extends Controller
     /** موجودی فعلی کاربر از یک سکه (مجموع خریدها منهای فروش‌ها از تاریخچه‌ی معاملات). */
     private function coinHolding(int $userId, string $item): float
     {
-        $bought = (float) Transaction::where('user_id', $userId)->where('item', $item)->where('type', 'buy')->sum('quantity');
-        $sold   = (float) Transaction::where('user_id', $userId)->where('item', $item)->where('type', 'sell')->sum('quantity');
+        $base   = Transaction::where('user_id', $userId)->where('item', $item)->where('status', 'active');
+        $bought = (float) (clone $base)->where('type', 'buy')->sum('quantity');
+        $sold   = (float) (clone $base)->where('type', 'sell')->sum('quantity');
         return round($bought - $sold, 4);
     }
 

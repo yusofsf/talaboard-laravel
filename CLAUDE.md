@@ -104,7 +104,7 @@ Video is recorded in-browser via `VideoRecorder.jsx` (`getUserMedia` + `MediaRec
 
 Two unrelated trading mechanisms:
 - **Shop trades** (`/trade/{item}`): user buys from / sells to the shop itself, at `PriceService` prices. Requires VIP for nothing — open to all logged-in users. Minimum order size is **10 grams** for weight items (`geram`, `mithqal`, and all four silver items — converted via `goldGrams()`/`silverGrams()` before comparing), enforced in `TradeController::store()`. Coins (`bahar`/`nim`/`rob`) are exempt — they're priced per piece, not per gram, so a gram minimum doesn't translate.
-- **Trade room** (`/trade-room`): VIP-only P2P order board. One VIP posts a buy/sell offer (escrowing wallet or metal on creation per the convention above), another VIP accepts it, ledgers settle directly between the two users — the shop is not a counterparty. `TradeRoomOffer.metal` distinguishes gold (no purity) from silver (purity 999/995); gold offers store `purity = ''` rather than `null` to dodge a `doctrine/dbal` dependency that would otherwise be needed to alter the column nullable. Minimum order size here is **100 grams** (`TradeRoomController::store()` validation) — a separate, higher minimum than shop trades, since trade-room offers are between individual users rather than against the shop's own liquidity.
+- **Trade room** (`/trade-room`): VIP-only P2P order board. One VIP posts a buy/sell offer (escrowing wallet or metal on creation per the convention above), another VIP accepts it, ledgers settle directly between the two users — the shop is not a counterparty. `TradeRoomOffer.metal` distinguishes gold (no purity) from silver (purity 999/995); gold offers store `purity = ''` rather than `null` to dodge a `doctrine/dbal` dependency that would otherwise be needed to alter the column nullable. **`metal` must stay in `TradeRoomOffer::$fillable`** — it was missing once, and because the column defaults to `'silver'`, every gold offer was silently saved as silver (so accept-side settlement hit the wrong ledger). Regression-prone; don't drop it. Minimum order size here is **100 grams** (`TradeRoomController::store()` validation) — a separate, higher minimum than shop trades, since trade-room offers are between individual users rather than against the shop's own liquidity.
 
 Admin sees both at once: `AdminController::allTradesHistory()` merges shop `Transaction` rows and completed `TradeRoomOffer` rows into a single admin-only list (`all_trades` tab in `Admin/Dashboard.jsx`), sorted by whichever date is most relevant per row (`completed_at` for trade-room, `created_at` for shop) — this is a read-only reporting view assembled in the controller, not a new table.
 
@@ -117,6 +117,14 @@ History.jsx, TradeRoom.jsx (`mine` tab), and Admin/Dashboard.jsx (`all_trades` t
 ### Admin actions notify every *other* admin, not just the affected user
 
 `AdminController::notifyOtherAdmins()` is called at the end of every admin action (level changes, wallet credits, inventory adjustments, membership approve/reject, delivery status updates, user/transaction edits and deletes, withdrawal approve/reject, manual notifications) to create a `Notification` row for each admin except the one who performed the action, naming the acting admin in the body. This is so admins can see what other admins are doing without a separate audit log table. When adding a new admin action, call this helper rather than only notifying the affected user — that's the established convention now, not a one-off.
+
+### Admin can reject/reverse a completed trade with a reason
+
+Both shop trades and trade-room deals can be reversed by an admin from the `all_trades` tab in `Admin/Dashboard.jsx` (`AdminController::transactionReject` / `tradeRoomReject`). Rejection is a full financial unwind via compensating ledger/wallet entries (type `trade_reject`), never a delete — same append-only convention as the escrow refunds. Shop transactions gain a `status` column (`active`/`rejected`) + `admin_note`; a rejected shop transaction is excluded from accounting summaries (`HistoryController::buildSummary`), admin stats, and — critically — coin holdings (`TradeController::coinHolding` filters `status = active`, since coin ownership is derived from transaction rows, not a ledger). Trade-room reversals reverse *both* parties' wallet and metal ledgers and set the offer back to `cancelled` with an `admin_note` (reusing the existing enum value to avoid a SQLite enum-check migration). The plain admin "delete transaction" action still exists but does **not** reverse balances — prefer reject.
+
+### Auth endpoints are rate-limited
+
+`login`, `verify-otp`, `forgot-password`, `reset-password`, and `register` carry `throttle:` middleware (see `routes/web.php`) — the 6-digit OTP/reset codes would otherwise be brute-forceable. Keep these limits when touching auth routes.
 
 ### Physical delivery & cash-out requests live on the Inventory/Wallet pages, not standalone pages
 
@@ -131,7 +139,7 @@ Production's `public_html` (the actual web server document root) is a **separate
 | Var | Purpose |
 |---|---|
 | `ADMIN_PHONE` | Phone number that auto-promotes to admin on first login |
-| `MASTER_OTP` | Universal OTP fallback (default `000000`) for when SMS delivery fails — blank disables it. This is an intentional backdoor for ops, not a bug. |
+| `MASTER_OTP` | Universal OTP fallback for when SMS delivery fails. **Now defaults to empty (disabled).** When set, this code resets/logs into ANY account including admin via the forgot-password flow — so it must be a long random string, never `000000`. Was previously defaulting to `000000`, which was an account-takeover hole; the default was removed. Compared with `hash_equals()`. |
 | `GOLD_FACTOR` | Buy/sell spread fraction around the gold mid-price (e.g. `0.01` = 1%) |
 | `TALALAND_API_BASE`/`USERNAME`/`TOKEN` | Gold price source |
 | `SILVER_DB_PATH` | Path to the *other* project's (sachmebot_laravel) SQLite DB — read-only |

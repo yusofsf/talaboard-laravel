@@ -70,10 +70,17 @@ nav {
 .field input, .field select, .field textarea {
   width: 100%; padding: 11px 14px; border-radius: 12px; font-family: inherit;
   background: rgba(255,255,255,.06); border: 1px solid var(--line);
-  color: var(--txt); font-size: 15px; outline: none; transition: border-color .2s;
+  color: var(--txt); font-size: 15px; outline: none; transition: border-color .2s, box-shadow .2s;
 }
-.field input:focus, .field select:focus { border-color: var(--gold-2); }
-.field input::placeholder { color: var(--muted); }
+.field input:focus, .field select:focus, .field textarea:focus {
+  border-color: var(--gold-2); box-shadow: 0 0 0 3px var(--gold-glow);
+}
+.field input::placeholder, .field textarea::placeholder { color: var(--muted); }
+
+/* همه‌ی input/select/textarea خارج از .field هم هنگام فوکوس حلقه‌ی طلایی بگیرند */
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: none; border-color: var(--gold-2); box-shadow: 0 0 0 3px var(--gold-glow);
+}
 
 /* لیست بازشوی select در بیشتر مرورگرها پس‌زمینه‌ی روشن پیش‌فرض دارد؛
    بدون این قانون، متن (که از تم تاریک رنگ روشن گرفته) روی آن نامرئی می‌شود. */
@@ -86,8 +93,27 @@ select option { color: #15192b; background: #fff; }
 }
 .btn:hover { filter: brightness(1.1); }
 .btn:active { transform: scale(.98); }
+.btn:disabled { opacity: .55; cursor: not-allowed; filter: none; }
 .btn.btn-outline { background: rgba(255,255,255,.04); border: 1px solid var(--line); color: var(--txt); }
 .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* دکمه‌ی کوچک (اکشن‌های جدولی و فرم‌های درون‌خطی) */
+.btn-sm {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 6px 14px; border-radius: 9px; font-family: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+  background: rgba(255,255,255,.06); border: 1px solid var(--line); color: var(--txt);
+  transition: background .15s, border-color .15s, filter .15s, transform .1s;
+}
+.btn-sm:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.2); }
+.btn-sm:active { transform: scale(.97); }
+.btn-sm:disabled { opacity: .5; cursor: not-allowed; }
+.btn-sm.danger { color: var(--down); border-color: rgba(255,107,120,.4); background: rgba(255,107,120,.08); }
+.btn-sm.danger:hover { background: rgba(255,107,120,.16); border-color: rgba(255,107,120,.6); }
+.btn-sm.ok { color: var(--up); border-color: rgba(65,225,166,.4); background: rgba(65,225,166,.08); }
+.btn-sm.ok:hover { background: rgba(65,225,166,.16); border-color: rgba(65,225,166,.6); }
+.btn-sm.gold { color: #1a1200; border: none; background: linear-gradient(135deg,var(--gold-1),var(--gold-2)); font-weight: 700; }
+.btn-sm.gold:hover { filter: brightness(1.1); background: linear-gradient(135deg,var(--gold-1),var(--gold-2)); }
 
 /* پیام */
 .alert { padding: 12px 16px; border-radius: 12px; font-size: 14px; margin-bottom: 18px; line-height: 1.6; }

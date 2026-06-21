@@ -205,9 +205,12 @@ class AuthController extends Controller
     {
         $otp = $this->normDigits($otp);
 
-        // کد اصلی پشتیبان — برای وقتی پیامک نمی‌رسد (قابل تغییر با MASTER_OTP در .env)
-        $master = (string) env('MASTER_OTP', '000000');
-        if ($master !== '' && $otp === $master) {
+        // کد اصلی پشتیبان — فقط وقتی صریحاً در .env تنظیم شده باشد فعال است.
+        // هشدار امنیتی: اگر مقدار داشته باشد، با همین کد می‌توان رمز هر حساب (از جمله ادمین)
+        // را از مسیر «فراموشی رمز» بازنشانی کرد. پیش‌فرض خالی = غیرفعال. اگر تنظیمش می‌کنید،
+        // یک رشته‌ی بلند و تصادفی بگذارید، نه چیزی مثل 000000.
+        $master = trim((string) env('MASTER_OTP', ''));
+        if ($master !== '' && hash_equals($master, $otp)) {
             return true;
         }
 

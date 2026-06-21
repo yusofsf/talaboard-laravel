@@ -18,11 +18,14 @@ class HistoryController extends Controller
             'quantity'       => (float) $t->quantity,
             'price_per_unit' => $t->price_per_unit,
             'total'          => $t->total,
+            'status'         => $t->status ?? 'active',
+            'admin_note'     => $t->admin_note,
             'created_at'     => Jalali::format($t->created_at),
             'date_raw'       => $t->created_at->format('Y-m-d'),
         ]);
 
-        $summary = $this->buildSummary($user->transactions()->get());
+        // معاملات رد شده در محاسبه‌ی حسابداری/موجودی لحاظ نمی‌شوند
+        $summary = $this->buildSummary($user->transactions()->where('status', 'active')->get());
 
         return Inertia::render('History', [
             'transactions' => $txns,

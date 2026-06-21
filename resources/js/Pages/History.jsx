@@ -47,17 +47,28 @@ export default function History({ transactions, summary }) {
                                             <th>قیمت واحد</th><th>مبلغ کل</th><th>تاریخ</th>
                                         </tr></thead>
                                         <tbody>
-                                            {filteredTxns.map((t, i) => (
-                                                <tr key={t.id}>
-                                                    <td className="num" style={{ color: 'var(--muted)' }}>{i + 1}</td>
-                                                    <td>{t.item_label}</td>
-                                                    <td><span className={`badge ${t.type === 'buy' ? 'buy-b' : 'sell-b'}`}>{t.type === 'buy' ? 'خرید' : 'فروش'}</span></td>
-                                                    <td className="num">{t.quantity}</td>
-                                                    <td className="num">{faNum(t.price_per_unit)}</td>
-                                                    <td className="num" style={{ color: 'var(--gold-1)', fontWeight: 700 }}>{faNum(t.total)}</td>
-                                                    <td style={{ color: 'var(--muted)', fontSize: 12 }}>{t.created_at}</td>
-                                                </tr>
-                                            ))}
+                                            {filteredTxns.map((t, i) => {
+                                                const rejected = t.status === 'rejected';
+                                                return (
+                                                    <tr key={t.id} style={rejected ? { opacity: .6 } : undefined}>
+                                                        <td className="num" style={{ color: 'var(--muted)' }}>{i + 1}</td>
+                                                        <td>
+                                                            <span style={rejected ? { textDecoration: 'line-through' } : undefined}>{t.item_label}</span>
+                                                            {rejected && (
+                                                                <>
+                                                                    <span className="badge sell-b" style={{ marginInlineStart: 6 }}>رد شد</span>
+                                                                    {t.admin_note && <div style={{ fontSize: 11, color: 'var(--down)', marginTop: 4 }}>دلیل: {t.admin_note}</div>}
+                                                                </>
+                                                            )}
+                                                        </td>
+                                                        <td><span className={`badge ${t.type === 'buy' ? 'buy-b' : 'sell-b'}`}>{t.type === 'buy' ? 'خرید' : 'فروش'}</span></td>
+                                                        <td className="num">{t.quantity}</td>
+                                                        <td className="num">{faNum(t.price_per_unit)}</td>
+                                                        <td className="num" style={{ color: 'var(--gold-1)', fontWeight: 700, ...(rejected ? { textDecoration: 'line-through' } : {}) }}>{faNum(t.total)}</td>
+                                                        <td style={{ color: 'var(--muted)', fontSize: 12 }}>{t.created_at}</td>
+                                                    </tr>
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>

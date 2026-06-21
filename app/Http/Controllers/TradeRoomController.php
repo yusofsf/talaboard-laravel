@@ -203,6 +203,7 @@ class TradeRoomController extends Controller
         }
     }
 
+    /** هویت طرف‌های معامله در اتاق معاملاتی نمایش داده نمی‌شود — نه در UI و نه در پاسخ سرور (برای ادمین جدا و کامل در allTradesHistory موجود است). */
     private function present(TradeRoomOffer $o, User $viewer): array
     {
         return [
@@ -216,8 +217,6 @@ class TradeRoomController extends Controller
             'total'          => $o->total(),
             'status'         => $o->status,
             'is_mine'        => $o->user_id === $viewer->id,
-            'user_name'      => $o->user?->name,
-            'counterparty_name' => $o->counterparty?->name,
             'created_at'     => Jalali::format($o->created_at),
             'completed_at'   => $o->completed_at ? Jalali::format($o->completed_at) : null,
             'date_raw'       => ($o->completed_at ?? $o->created_at)->format('Y-m-d'),

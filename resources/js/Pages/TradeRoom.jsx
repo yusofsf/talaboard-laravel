@@ -167,16 +167,18 @@ export default function TradeRoom({ offers, myOffers, walletBalance, goldBalance
                     offers.length ? (
                         <div className="table-wrap">
                             <table>
-                                <thead><tr><th>نوع</th><th>مورد</th><th>مقدار (گرم)</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>کاربر</th><th>تاریخ</th><th></th></tr></thead>
+                                <thead><tr><th>نوع</th><th>مورد</th><th>مقدار (گرم)</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>تاریخ</th><th></th></tr></thead>
                                 <tbody>
                                     {offers.map(o => (
                                         <tr key={o.id}>
-                                            <td><span className={`badge ${o.side === 'sell' ? 'sell-b' : 'buy-b'}`}>{o.side === 'sell' ? 'فروش' : 'خرید'}</span></td>
+                                            <td>
+                                                <span className={`badge ${o.side === 'sell' ? 'sell-b' : 'buy-b'}`}>{o.side === 'sell' ? 'فروش' : 'خرید'}</span>
+                                                {o.is_mine && <span className="badge gold" style={{ marginInlineStart: 6 }}>شما</span>}
+                                            </td>
                                             <td>{o.item_label}</td>
                                             <td className="num">{o.grams}</td>
                                             <td className="num">{faNum(o.price_per_gram)}</td>
                                             <td className="num" style={{ color: 'var(--gold-1)', fontWeight: 700 }}>{faNum(o.total)}</td>
-                                            <td>{o.is_mine ? <span className="badge gold">شما</span> : o.user_name}</td>
                                             <td style={{ fontSize: 12, color: 'var(--muted)' }}>{o.created_at}</td>
                                             <td>
                                                 {o.is_mine ? (
@@ -202,7 +204,7 @@ export default function TradeRoom({ offers, myOffers, walletBalance, goldBalance
                         <div className="table-wrap print-area">
                             <div className="print-only" style={{ marginBottom: 14, fontWeight: 800, fontSize: 16 }}>تاریخچه‌ی اتاق معاملاتی</div>
                             <table>
-                                <thead><tr><th>نوع</th><th>مورد</th><th>مقدار</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>طرف معامله</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
+                                <thead><tr><th>نوع</th><th>مورد</th><th>مقدار</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
                                 <tbody>
                                     {filteredMyOffers.map(o => (
                                         <tr key={o.id}>
@@ -211,7 +213,6 @@ export default function TradeRoom({ offers, myOffers, walletBalance, goldBalance
                                             <td className="num">{o.grams}</td>
                                             <td className="num">{faNum(o.price_per_gram)}</td>
                                             <td className="num">{faNum(o.total)}</td>
-                                            <td>{o.counterparty_name || '—'}</td>
                                             <td>
                                                 {o.status === 'completed' && <span className="badge buy-b">تکمیل‌شده</span>}
                                                 {o.status === 'cancelled' && <span className="badge silver">لغوشده</span>}

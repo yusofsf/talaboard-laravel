@@ -64,6 +64,12 @@ class SmsService
         return $this->sendText($phone, $msg);
     }
 
+    /** ارسال پیامک متنی دلخواه. */
+    public function send(string $phone, string $message): bool
+    {
+        return $this->sendText($phone, $message);
+    }
+
     private function sendLookup(string $phone, string $token, string $template): bool
     {
         if (!$this->enabled()) return false;

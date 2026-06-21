@@ -96,21 +96,40 @@ export default function Membership({ user }) {
                     <form onSubmit={submitApply}>
                         <div className="field">
                             <label>تصویر کارت ملی (jpg، png یا pdf — حداکثر ۵ مگابایت)</label>
-                            <input type="file" accept=".jpg,.jpeg,.png,.pdf"
+                            <input type="file" accept=".jpg,.jpeg,.png,.pdf" disabled={apply.processing}
                                 onChange={e => apply.setData('national_id_doc', e.target.files[0])} required />
                         </div>
                         <div className="field">
                             <label>تصویر مدرک شناسایی (jpg، png یا pdf — حداکثر ۵ مگابایت)</label>
-                            <input type="file" accept=".jpg,.jpeg,.png,.pdf"
+                            <input type="file" accept=".jpg,.jpeg,.png,.pdf" disabled={apply.processing}
                                 onChange={e => apply.setData('identity_doc', e.target.files[0])} required />
                         </div>
                         <div className="field">
                             <label>فیلم اعتبارسنجی (mp4، mov، avi یا webm — حداکثر ۵۰ مگابایت)</label>
-                            <input type="file" accept=".mp4,.mov,.avi,.webm"
+                            <input type="file" accept=".mp4,.mov,.avi,.webm" disabled={apply.processing}
                                 onChange={e => apply.setData('verification_video', e.target.files[0])} required />
                         </div>
+
+                        {apply.progress && (
+                            <div style={{ marginBottom: 18 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--muted)', marginBottom: 6 }}>
+                                    <span>در حال آپلود فایل‌ها...</span>
+                                    <span>{Math.round(apply.progress.percentage).toLocaleString('fa-IR')}٪</span>
+                                </div>
+                                <div style={{ height: 10, background: 'rgba(255,255,255,.08)', borderRadius: 999, overflow: 'hidden' }}>
+                                    <div style={{
+                                        height: '100%', width: `${apply.progress.percentage}%`,
+                                        background: 'linear-gradient(90deg,var(--gold-1),var(--gold-2))',
+                                        transition: 'width .15s', borderRadius: 999,
+                                    }} />
+                                </div>
+                            </div>
+                        )}
+
                         <button className="btn" type="submit" disabled={apply.processing}>
-                            {apply.processing ? 'در حال ارسال...' : 'ارسال درخواست'}
+                            {apply.processing
+                                ? (apply.progress ? `در حال آپلود... ${Math.round(apply.progress.percentage).toLocaleString('fa-IR')}٪` : 'در حال ارسال...')
+                                : 'ارسال درخواست'}
                         </button>
                     </form>
                 </div>

@@ -10,6 +10,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, invites, stats, 
 
     const wallet = useForm({ user_id: '', amount: '', description: '' });
     const notify = useForm({ title: '', body: '', type: 'info', target: 'all' });
+    const [memberMsg, setMemberMsg] = useState({}); // پیام ادمین برای هر درخواست عضویت
 
     function setLevel(uid, level) {
         router.post(`/admin/set-level/${uid}`, { level }, { preserveScroll: true });
@@ -21,12 +22,12 @@ export default function Dashboard({ users, txns, wTxns, notifs, invites, stats, 
     }
 
     function approveMembership(uid) {
-        router.post(`/admin/membership/approve/${uid}`, {}, { preserveScroll: true });
+        router.post(`/admin/membership/approve/${uid}`, { message: memberMsg[uid] || '' }, { preserveScroll: true });
     }
 
     function rejectMembership(uid) {
         if (!confirm('درخواست رد شود؟')) return;
-        router.post(`/admin/membership/reject/${uid}`, {}, { preserveScroll: true });
+        router.post(`/admin/membership/reject/${uid}`, { message: memberMsg[uid] || '' }, { preserveScroll: true });
     }
 
     function updateDelivery(id, status) {
@@ -283,6 +284,12 @@ export default function Dashboard({ users, txns, wTxns, notifs, invites, stats, 
                                         </div>
                                     </div>
 
+                                    <div className="field" style={{ marginBottom: 12 }}>
+                                        <label>پیام برای کاربر (اختیاری — همراه تأیید یا رد ارسال می‌شود)</label>
+                                        <input value={memberMsg[m.id] || ''}
+                                            onChange={e => setMemberMsg(s => ({ ...s, [m.id]: e.target.value }))}
+                                            placeholder="مثلاً: مدارک ناخوانا بود، لطفاً دوباره ارسال کنید" />
+                                    </div>
                                     <div style={{ display: 'flex', gap: 10 }}>
                                         <button onClick={() => approveMembership(m.id)} className="btn"
                                             style={{ width: 'auto', padding: '9px 22px', background: 'linear-gradient(135deg,var(--up),#1f9d72)' }}>

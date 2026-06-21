@@ -205,7 +205,7 @@ class AdminController extends Controller
         return back()->with('success', 'کد جدید ایجاد شد.');
     }
 
-    public function membershipApprove(int $uid)
+    public function membershipApprove(Request $request, int $uid)
     {
         $user = User::findOrFail($uid);
         $user->update([
@@ -214,27 +214,43 @@ class AdminController extends Controller
             'membership_status' => 'approved',
         ]);
 
+        $msg  = trim((string) $request->input('message', ''));
+        $body = 'درخواست عضویت ویژه‌ی شما در تاریخ ' . Jalali::now() . ' تأیید شد.';
+        if ($msg !== '') $body .= "\nپیام ادمین: {$msg}";
+
         Notification::create([
             'user_id' => $user->id,
             'title'   => '👑 عضویت ویژه تأیید شد',
-            'body'    => 'درخواست عضویت ویژه‌ی شما در تاریخ ' . Jalali::now() . ' تأیید شد.',
+            'body'    => $body,
             'type'    => 'promo',
         ]);
+
+        try {
+            $this->sms->send($user->phone, "عضویت ویژه‌ی شما در آبشده صفرپور تأیید شد." . ($msg !== '' ? " {$msg}" : ''));
+        } catch (\Exception) {}
 
         return back()->with('success', 'عضویت ویژه تأیید شد.');
     }
 
-    public function membershipReject(int $uid)
+    public function membershipReject(Request $request, int $uid)
     {
         $user = User::findOrFail($uid);
         $user->update(['membership_status' => 'rejected']);
 
+        $msg  = trim((string) $request->input('message', ''));
+        $body = 'درخواست عضویت ویژه‌ی شما در تاریخ ' . Jalali::now() . ' رد شد. می‌توانید دوباره درخواست دهید.';
+        if ($msg !== '') $body .= "\nپیام ادمین: {$msg}";
+
         Notification::create([
             'user_id' => $user->id,
             'title'   => 'درخواست عضویت ویژه رد شد',
-            'body'    => 'درخواست عضویت ویژه‌ی شما در تاریخ ' . Jalali::now() . ' رد شد. می‌توانید دوباره درخواست دهید.',
+            'body'    => $body,
             'type'    => 'system',
         ]);
+
+        try {
+            $this->sms->send($user->phone, "درخواست عضویت ویژه‌ی شما رد شد." . ($msg !== '' ? " {$msg}" : ''));
+        } catch (\Exception) {}
 
         return back()->with('success', 'درخواست رد شد.');
     }

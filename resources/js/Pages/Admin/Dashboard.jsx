@@ -187,13 +187,14 @@ function TxnRow({ t }) {
     );
 }
 
-export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApplications, deliveryRequests }) {
+export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApplications, deliveryRequests, withdrawalRequests }) {
     const { auth } = usePage().props;
     const [tab, setTab] = useState('users');
 
     const wallet = useForm({ user_id: '', amount: '', description: '' });
     const notify = useForm({ title: '', body: '', type: 'info', target: 'all' });
     const [memberMsg, setMemberMsg] = useState({});
+    const [withdrawalReason, setWithdrawalReason] = useState({});
 
     function deleteNotif(id) {
         if (!confirm('حذف شود؟')) return;
@@ -210,8 +211,19 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     }
 
     function updateDelivery(id, status) {
-        if (status === 'rejected' && !confirm('رد شود؟ نقره به موجودی کاربر برمی‌گردد.')) return;
+        if (status === 'rejected' && !confirm('رد شود؟ طلا/نقره به موجودی کاربر برمی‌گردد.')) return;
         router.post(`/admin/delivery/${id}/update`, { status }, { preserveScroll: true });
+    }
+
+    function approveWithdrawal(id) {
+        if (!confirm('تسویه حساب تأیید شود؟')) return;
+        router.post(`/admin/withdrawals/${id}/approve`, {}, { preserveScroll: true });
+    }
+
+    function rejectWithdrawal(id) {
+        const reason = withdrawalReason[id];
+        if (!reason || !reason.trim()) { alert('دلیل رد را وارد کنید.'); return; }
+        router.post(`/admin/withdrawals/${id}/reject`, { reason }, { preserveScroll: true });
     }
 
     const TABS = [
@@ -220,7 +232,8 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
         ['wallet', 'کیف پول'],
         ['notifs', 'اعلان‌ها'],
         ['membership', `درخواست‌های عضویت${memberApplications?.length ? ` (${memberApplications.length})` : ''}`],
-        ['delivery', `تحویل فیزیکی نقره${deliveryRequests?.length ? ` (${deliveryRequests.length})` : ''}`],
+        ['delivery', `تحویل فیزیکی${deliveryRequests?.length ? ` (${deliveryRequests.length})` : ''}`],
+        ['withdrawals', `تسویه حساب${withdrawalRequests?.length ? ` (${withdrawalRequests.length})` : ''}`],
     ];
 
     return (
@@ -433,18 +446,18 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                     )
                 )}
 
-                {/* تحویل فیزیکی نقره */}
+                {/* تحویل فیزیکی */}
                 {tab === 'delivery' && (
                     deliveryRequests?.length ? (
                         <div className="table-wrap">
                             <table>
-                                <thead><tr><th>کاربر</th><th>موبایل</th><th>عیار</th><th>مقدار</th><th>گیرنده</th><th>آدرس</th><th>وضعیت</th><th>تاریخ</th><th></th></tr></thead>
+                                <thead><tr><th>کاربر</th><th>موبایل</th><th>مورد</th><th>مقدار</th><th>گیرنده</th><th>آدرس</th><th>وضعیت</th><th>تاریخ</th><th></th></tr></thead>
                                 <tbody>
                                     {deliveryRequests.map(r => (
                                         <tr key={r.id}>
                                             <td><strong>{r.user_name}</strong></td>
                                             <td className="num" dir="ltr" style={{ fontSize: 13 }}>{r.user_phone}</td>
-                                            <td>{r.purity}</td>
+                                            <td>{r.metal === 'gold' ? 'طلا' : `نقره ${r.purity}`}</td>
                                             <td className="num">{r.grams} گرم</td>
                                             <td>{r.recipient_name}<br /><span dir="ltr" style={{ fontSize: 12, color: 'var(--muted)' }}>{r.phone}</span></td>
                                             <td style={{ fontSize: 12, color: 'var(--muted)', maxWidth: 220 }}>{r.address}</td>
@@ -477,6 +490,40 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                         </div>
                     ) : (
                         <div className="empty"><div className="ico">🚚</div>درخواست تحویل فیزیکی‌ای ثبت نشده.</div>
+                    )
+                )}
+
+                {/* تسویه حساب */}
+                {tab === 'withdrawals' && (
+                    withdrawalRequests?.length ? (
+                        <div className="table-wrap">
+                            <table>
+                                <thead><tr><th>کاربر</th><th>موبایل</th><th>مبلغ</th><th>شماره کارت</th><th>شماره شبا</th><th>تاریخ</th><th></th></tr></thead>
+                                <tbody>
+                                    {withdrawalRequests.map(w => (
+                                        <tr key={w.id}>
+                                            <td><strong>{w.user_name}</strong></td>
+                                            <td className="num" dir="ltr" style={{ fontSize: 13 }}>{w.user_phone}</td>
+                                            <td className="num" style={{ color: 'var(--gold-1)', fontWeight: 700 }}>{faNum(w.amount)}</td>
+                                            <td className="num" dir="ltr" style={{ fontSize: 13 }}>{w.card_number}</td>
+                                            <td className="num" dir="ltr" style={{ fontSize: 13 }}>{w.shaba}</td>
+                                            <td style={{ fontSize: 12, color: 'var(--muted)' }}>{w.created_at}</td>
+                                            <td>
+                                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                                                    <button onClick={() => approveWithdrawal(w.id)} className="btn-sm" style={{ borderColor: 'rgba(65,225,166,.4)', color: 'var(--up)', background: 'rgba(65,225,166,.08)' }}>تأیید</button>
+                                                    <input placeholder="دلیل رد" value={withdrawalReason[w.id] || ''}
+                                                        onChange={e => setWithdrawalReason(s => ({ ...s, [w.id]: e.target.value }))}
+                                                        style={{ width: 120, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '5px 8px', fontFamily: 'inherit', fontSize: 12 }} />
+                                                    <button onClick={() => rejectWithdrawal(w.id)} className="btn-sm danger">رد</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="empty"><div className="ico">🏦</div>درخواست تسویه حساب در انتظار بررسی نیست.</div>
                     )
                 )}
 

@@ -46,6 +46,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/trade/{item}', [TradeController::class, 'store']);
 
     Route::get('/wallet', [WalletController::class, 'index'])->name('wallet');
+    Route::post('/wallet/withdraw', [WalletController::class, 'requestWithdrawal'])->name('wallet.withdraw');
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory');
     Route::get('/chart', fn () => \Inertia\Inertia::render('Chart'))->name('chart');
 
@@ -63,7 +64,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/trade-room/{id}/accept', [TradeRoomController::class, 'accept'])->name('trade-room.accept');
     Route::post('/trade-room/{id}/cancel', [TradeRoomController::class, 'cancel'])->name('trade-room.cancel');
 
-    Route::get('/silver-delivery', [SilverDeliveryController::class, 'index'])->name('silver-delivery');
     Route::post('/silver-delivery', [SilverDeliveryController::class, 'store'])->name('silver-delivery.store');
 });
 
@@ -78,6 +78,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/membership/approve/{uid}', [AdminController::class, 'membershipApprove'])->name('membership.approve');
     Route::post('/membership/reject/{uid}', [AdminController::class, 'membershipReject'])->name('membership.reject');
     Route::post('/delivery/{id}/update', [AdminController::class, 'deliveryUpdate'])->name('delivery.update');
+    Route::post('/withdrawals/{id}/approve', [AdminController::class, 'withdrawalApprove'])->name('withdrawals.approve');
+    Route::post('/withdrawals/{id}/reject', [AdminController::class, 'withdrawalReject'])->name('withdrawals.reject');
 
     Route::put('/users/{uid}', [AdminController::class, 'userUpdate'])->name('users.update');
     Route::delete('/users/{uid}', [AdminController::class, 'userDestroy'])->name('users.destroy');

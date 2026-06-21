@@ -3,7 +3,7 @@ import AppLayout from '../Layouts/AppLayout';
 import VideoRecorder from '../Components/VideoRecorder';
 import JalaliDatePicker from '../Components/JalaliDatePicker';
 
-const DECLARATION = `اینجانب [نام و نام خانوادگی] فرزند [نام پدر] با کد ملی [کد ملی]، در تاریخ [تاریخ روز]، درخواست احراز هویت در سایت metalsp.ir (http://metalsp.ir/) را ثبت می‌کنم و تأیید می‌نمایم که این حساب کاربری متعلق به شخص اینجانب بوده و مسئولیت تمامی فعالیت‌های انجام‌شده با آن را می‌پذیرم.`;
+const DECLARATION = `اینجانب [نام و نام خانوادگی] فرزند [نام پدر] با کد ملی [کد ملی]، در تاریخ [تاریخ روز]، درخواست احراز هویت در سایت metalsp.ir را ثبت می‌کنم و تأیید می‌نمایم که این حساب کاربری متعلق به شخص اینجانب بوده و مسئولیت تمامی فعالیت‌های انجام‌شده با آن را می‌پذیرم.`;
 
 export default function Membership({ user }) {
     const { errors } = usePage().props;

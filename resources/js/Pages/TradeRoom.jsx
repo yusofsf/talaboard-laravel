@@ -53,13 +53,13 @@ export default function TradeRoom({ offers, myOffers, goldBalance, silverBalance
                             </div>
                         </div>
                     ))}
-                    <a href="/silver-delivery" className="fcard" style={{
+                    <a href="/inventory" className="fcard" style={{
                         flex: '1', minWidth: 180, display: 'flex', flexDirection: 'column',
                         justifyContent: 'center', alignItems: 'center', textAlign: 'center',
                         padding: '16px 18px', textDecoration: 'none',
                     }}>
                         <div style={{ fontSize: 24, marginBottom: 4 }}>🚚</div>
-                        <div style={{ fontSize: 13, fontWeight: 700 }}>درخواست تحویل فیزیکی نقره</div>
+                        <div style={{ fontSize: 13, fontWeight: 700 }}>درخواست تحویل فیزیکی (در موجودی انبار)</div>
                     </a>
                 </div>
 

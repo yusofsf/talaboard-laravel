@@ -10,6 +10,7 @@ use App\Models\SilverLedger;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\WalletTransaction;
+use App\Models\WithdrawalRequest;
 use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -104,6 +105,7 @@ class AdminController extends Controller
                 'id'             => $r->id,
                 'user_name'      => $r->user?->name,
                 'user_phone'     => $r->user?->phone,
+                'metal'          => $r->metal,
                 'purity'         => $r->purity,
                 'grams'          => (float) $r->grams,
                 'recipient_name' => $r->recipient_name,
@@ -113,7 +115,21 @@ class AdminController extends Controller
                 'created_at'     => Jalali::format($r->created_at),
             ]);
 
-        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'stats', 'memberApplications', 'deliveryRequests'));
+        $withdrawalRequests = WithdrawalRequest::with('user')
+            ->where('status', 'pending')
+            ->orderByDesc('created_at')->get()
+            ->map(fn ($w) => [
+                'id'          => $w->id,
+                'user_name'   => $w->user?->name,
+                'user_phone'  => $w->user?->phone,
+                'amount'      => $w->amount,
+                'card_number' => $w->card_number,
+                'shaba'       => $w->shaba,
+                'status'      => $w->status,
+                'created_at'  => Jalali::format($w->created_at),
+            ]);
+
+        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'stats', 'memberApplications', 'deliveryRequests', 'withdrawalRequests'));
     }
 
     public function setLevel(Request $request, int $uid)
@@ -291,13 +307,21 @@ class AdminController extends Controller
 
         $delivery = SilverDeliveryRequest::with('user')->findOrFail($id);
 
-        // در صورت رد درخواست، نقره‌ی رزرو‌شده به موجودی کاربر برمی‌گردد
+        // در صورت رد درخواست، طلا/نقره‌ی رزرو‌شده به موجودی کاربر برمی‌گردد
         if ($request->status === 'rejected' && $delivery->status !== 'rejected') {
-            SilverLedger::create([
-                'user_id' => $delivery->user_id, 'purity' => $delivery->purity, 'grams' => $delivery->grams,
-                'type' => 'delivery_refund', 'reference_type' => SilverDeliveryRequest::class, 'reference_id' => $delivery->id,
-                'description' => "بازگشت نقره — رد درخواست تحویل #{$delivery->id}",
-            ]);
+            if ($delivery->metal === 'gold') {
+                GoldLedger::create([
+                    'user_id' => $delivery->user_id, 'grams' => $delivery->grams,
+                    'type' => 'delivery_refund', 'reference_type' => SilverDeliveryRequest::class, 'reference_id' => $delivery->id,
+                    'description' => "بازگشت طلا — رد درخواست تحویل #{$delivery->id}",
+                ]);
+            } else {
+                SilverLedger::create([
+                    'user_id' => $delivery->user_id, 'purity' => $delivery->purity, 'grams' => $delivery->grams,
+                    'type' => 'delivery_refund', 'reference_type' => SilverDeliveryRequest::class, 'reference_id' => $delivery->id,
+                    'description' => "بازگشت نقره — رد درخواست تحویل #{$delivery->id}",
+                ]);
+            }
         }
 
         $delivery->update(['status' => $request->status]);
@@ -311,7 +335,7 @@ class AdminController extends Controller
 
         Notification::create([
             'user_id' => $delivery->user_id,
-            'title'   => 'وضعیت درخواست تحویل فیزیکی نقره',
+            'title'   => 'وضعیت درخواست تحویل فیزیکی',
             'body'    => "درخواست شما «{$statusLabel}». تاریخ: " . Jalali::now(),
             'type'    => 'system',
         ]);
@@ -375,5 +399,53 @@ class AdminController extends Controller
     {
         Transaction::findOrFail($id)->delete();
         return back()->with('success', 'معامله حذف شد.');
+    }
+
+    public function withdrawalApprove(int $id)
+    {
+        $withdrawal = WithdrawalRequest::with('user')->findOrFail($id);
+        $withdrawal->update(['status' => 'approved']);
+
+        Notification::create([
+            'user_id' => $withdrawal->user_id,
+            'title'   => 'تسویه حساب انجام شد',
+            'body'    => number_format($withdrawal->amount) . ' تومان به حساب شما واریز شد. تاریخ: ' . Jalali::now(),
+            'type'    => 'wallet',
+        ]);
+
+        try {
+            $this->sms->send($withdrawal->user->phone, 'تسویه حساب ' . number_format($withdrawal->amount) . ' تومانی شما انجام شد.');
+        } catch (\Exception) {}
+
+        return back()->with('success', 'تسویه حساب تأیید شد.');
+    }
+
+    public function withdrawalReject(Request $request, int $id)
+    {
+        $request->validate(['reason' => 'required|string|max:300']);
+
+        $withdrawal = WithdrawalRequest::with('user')->findOrFail($id);
+        $withdrawal->update(['status' => 'rejected', 'admin_note' => $request->reason]);
+
+        // مبلغ به کیف پول کاربر برمی‌گردد
+        WalletTransaction::create([
+            'user_id'     => $withdrawal->user_id,
+            'amount'      => $withdrawal->amount,
+            'type'        => 'deposit',
+            'description' => "بازگشت — رد درخواست تسویه حساب #{$withdrawal->id}",
+        ]);
+
+        Notification::create([
+            'user_id' => $withdrawal->user_id,
+            'title'   => 'درخواست تسویه حساب رد شد',
+            'body'    => "دلیل: {$request->reason}\nمبلغ به کیف پول شما بازگشت داده شد. تاریخ: " . Jalali::now(),
+            'type'    => 'wallet',
+        ]);
+
+        try {
+            $this->sms->send($withdrawal->user->phone, "درخواست تسویه حساب شما رد شد. دلیل: {$request->reason}");
+        } catch (\Exception) {}
+
+        return back()->with('success', 'درخواست رد شد.');
     }
 }

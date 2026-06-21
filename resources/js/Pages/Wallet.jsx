@@ -1,6 +1,23 @@
+import { useState } from 'react';
+import { useForm, usePage } from '@inertiajs/react';
 import AppLayout, { faNum } from '../Layouts/AppLayout';
 
-export default function Wallet({ balance, txns }) {
+const STATUS = {
+    pending: ['در انتظار بررسی', 'silver'],
+    approved: ['تأییدشده', 'buy-b'],
+    rejected: ['رد‌شده', 'sell-b'],
+};
+
+export default function Wallet({ balance, txns, withdrawals }) {
+    const { errors } = usePage().props;
+    const [showForm, setShowForm] = useState(false);
+    const form = useForm({ amount: '', card_number: '', shaba: '' });
+
+    function submit(e) {
+        e.preventDefault();
+        form.post('/wallet/withdraw', { onSuccess: () => { form.reset(); setShowForm(false); } });
+    }
+
     return (
         <AppLayout>
             <div className="page-wide">
@@ -8,7 +25,7 @@ export default function Wallet({ balance, txns }) {
 
                 <div style={{
                     background: 'linear-gradient(135deg,var(--gold-1),var(--gold-2))',
-                    borderRadius: 22, padding: '32px 28px', marginBottom: 28,
+                    borderRadius: 22, padding: '32px 28px', marginBottom: 20,
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16,
                 }}>
                     <div>
@@ -18,6 +35,64 @@ export default function Wallet({ balance, txns }) {
                     </div>
                     <div style={{ fontSize: 52, opacity: .35 }}>💰</div>
                 </div>
+
+                <div style={{ marginBottom: 28 }}>
+                    <button onClick={() => setShowForm(s => !s)} className="btn" style={{ width: 'auto', padding: '10px 24px' }} disabled={balance <= 0}>
+                        🏦 {showForm ? 'بستن فرم' : 'درخواست تسویه حساب'}
+                    </button>
+                    {balance <= 0 && <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>موجودی کیف پول شما صفر است.</div>}
+
+                    {showForm && (
+                        <div className="fcard" style={{ marginTop: 16, maxWidth: 480 }}>
+                            {Object.values(errors).map((e, i) => <div key={i} className="alert err">{e}</div>)}
+                            <form onSubmit={submit}>
+                                <div className="field">
+                                    <label>مبلغ (تومان) — حداکثر {faNum(balance)}</label>
+                                    <input type="number" min="1000" max={balance} value={form.data.amount}
+                                        onChange={e => form.setData('amount', e.target.value)} required />
+                                </div>
+                                <div className="field">
+                                    <label>شماره کارت</label>
+                                    <input value={form.data.card_number} dir="ltr" placeholder="xxxx-xxxx-xxxx-xxxx"
+                                        onChange={e => form.setData('card_number', e.target.value)} required />
+                                </div>
+                                <div className="field">
+                                    <label>شماره شبا</label>
+                                    <input value={form.data.shaba} dir="ltr" placeholder="IRxxxxxxxxxxxxxxxxxxxxxxxx"
+                                        onChange={e => form.setData('shaba', e.target.value)} required />
+                                </div>
+                                <button className="btn" type="submit" disabled={form.processing}>
+                                    {form.processing ? 'در حال ارسال...' : 'ثبت درخواست'}
+                                </button>
+                            </form>
+                        </div>
+                    )}
+                </div>
+
+                {withdrawals.length > 0 && (
+                    <>
+                        <div className="section-title">درخواست‌های تسویه حساب</div>
+                        <div className="table-wrap" style={{ marginBottom: 28 }}>
+                            <table>
+                                <thead><tr><th>تاریخ</th><th>مبلغ</th><th>شماره کارت</th><th>وضعیت</th><th>یادداشت ادمین</th></tr></thead>
+                                <tbody>
+                                    {withdrawals.map(w => {
+                                        const [label, cls] = STATUS[w.status] || [w.status, 'silver'];
+                                        return (
+                                            <tr key={w.id}>
+                                                <td style={{ fontSize: 12, color: 'var(--muted)' }}>{w.created_at}</td>
+                                                <td className="num">{faNum(w.amount)}</td>
+                                                <td className="num" dir="ltr" style={{ fontSize: 13 }}>{w.card_number}</td>
+                                                <td><span className={`badge ${cls}`}>{label}</span></td>
+                                                <td style={{ color: 'var(--muted)', fontSize: 13 }}>{w.admin_note || '—'}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
+                )}
 
                 <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 14, paddingBottom: 10, borderBottom: '1px solid var(--line)' }}>
                     تاریخچه تراکنش‌ها

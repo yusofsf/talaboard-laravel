@@ -13,11 +13,10 @@ class PriceService
 
     // key داخلی ما → (stockId در طلالند، حالت: direct | gram)
     private const STOCK_MAP = [
-        'mithqal' => ['ABSHODE',   'direct'],  // مثقال طلا (آبشده)
-        'geram'   => ['ABSHODE',   'gram'],    // گرم طلا = مثقال ÷ وزن مثقال
-        'bahar'   => ['SEKKE',     'direct'],  // سکه تمام / بهار آزادی
-        'nim'     => ['SEKKE-NIM', 'direct'],  // نیم سکه
-        'rob'     => ['SEKKE-ROB', 'direct'],  // ربع سکه
+        'geram' => ['ABSHODE',   'gram'],    // گرم طلا = مثقال ÷ وزن مثقال
+        'bahar' => ['SEKKE',     'direct'],  // سکه تمام / بهار آزادی
+        'nim'   => ['SEKKE-NIM', 'direct'],  // نیم سکه
+        'rob'   => ['SEKKE-ROB', 'direct'],  // ربع سکه
     ];
 
     private int   $cacheTtl;
@@ -136,7 +135,7 @@ class PriceService
      */
     private function fetchSilver(array &$errors): array
     {
-        $nullSide = ['mithqal_999' => null, 'gram_999' => null, 'mithqal_995' => null, 'gram_995' => null];
+        $nullSide = ['gram_999' => null, 'gram_995' => null];
         $null = ['sell' => $nullSide, 'buy' => $nullSide, 'ounce' => null];
 
         return Cache::remember('prices.silver', $this->cacheTtl, function () use (&$errors, $null) {
@@ -148,16 +147,12 @@ class PriceService
                 }
                 return [
                     'sell' => [
-                        'mithqal_999' => (int) round($row->mithqal_price),
-                        'gram_999'    => (float) $row->gram_price,
-                        'mithqal_995' => isset($row->mithqal_995_price) ? (int) round($row->mithqal_995_price) : null,
-                        'gram_995'    => isset($row->gram_995) ? (float) $row->gram_995 : null,
+                        'gram_999' => (float) $row->gram_price,
+                        'gram_995' => isset($row->gram_995) ? (float) $row->gram_995 : null,
                     ],
                     'buy' => [
-                        'mithqal_999' => isset($row->mithqal_price_buy) ? (int) round($row->mithqal_price_buy) : null,
-                        'gram_999'    => isset($row->gram_price_buy) ? (float) $row->gram_price_buy : null,
-                        'mithqal_995' => isset($row->mithqal_995_price_buy) ? (int) round($row->mithqal_995_price_buy) : null,
-                        'gram_995'    => isset($row->gram_995_buy) ? (float) $row->gram_995_buy : null,
+                        'gram_999' => isset($row->gram_price_buy) ? (float) $row->gram_price_buy : null,
+                        'gram_995' => isset($row->gram_995_buy) ? (float) $row->gram_995_buy : null,
                     ],
                     'ounce' => isset($row->silver_ounce) ? (float) $row->silver_ounce : null,
                 ];
@@ -187,13 +182,13 @@ class PriceService
         });
     }
 
-    /** انس طلا (دلار) — اول Yahoo Finance (فیوچرز کوماکس GC=F)، در صورت خطا alanchand.com/gold-price. */
+    /**
+     * انس طلا (دلار) — اول alanchand.com/gold-price (Yahoo Finance از ایران معمولاً مسدود/timeout
+     * می‌شود و فقط تأخیر بی‌فایده ایجاد می‌کند)، در صورت خطا Yahoo را هم امتحان می‌کند.
+     */
     private function fetchGoldOunce(array &$errors): ?float
     {
         return Cache::remember('prices.ounce_gold', $this->cacheTtl, function () use (&$errors) {
-            $v = $this->fetchGoldOunceYahoo();
-            if ($v !== null) return $v;
-
             try {
                 $url = env('DOLLAR_GOLD_URL', 'https://alanchand.com/gold-price');
                 $res = Http::timeout(15)->withHeaders(['User-Agent' => self::UA])->get($url);
@@ -202,6 +197,9 @@ class PriceService
             } catch (\Throwable $e) {
                 Log::warning('PriceService gold ounce (alanchand) fetch failed: ' . $e->getMessage());
             }
+
+            $v = $this->fetchGoldOunceYahoo();
+            if ($v !== null) return $v;
 
             $errors[] = 'انس طلا: دریافت نشد';
             return null;
@@ -212,7 +210,7 @@ class PriceService
     {
         try {
             $symbol = env('GOLD_OUNCE_SYMBOL', 'GC=F');
-            $res = Http::timeout(10)
+            $res = Http::timeout(5)
                 ->withHeaders(['User-Agent' => self::UA])
                 ->get("https://query1.finance.yahoo.com/v8/finance/chart/{$symbol}");
 

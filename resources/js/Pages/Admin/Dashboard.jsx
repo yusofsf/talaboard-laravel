@@ -4,17 +4,196 @@ import AppLayout, { faNum } from '../../Layouts/AppLayout';
 
 const TYPE_ICON = { trade: '📊', wallet: '💰', system: '⚙️', promo: '🎁', info: '🔔' };
 
-export default function Dashboard({ users, txns, wTxns, notifs, invites, stats, memberApplications, deliveryRequests }) {
+function levelOf(u) {
+    if (u.is_admin && (u.is_vip || u.membership_level === 2)) return 'vip_admin';
+    if (u.is_admin) return 'admin';
+    if (u.is_vip || u.membership_level === 2) return 'vip';
+    return 'regular';
+}
+
+function UserRow({ u, isSelf }) {
+    const [expand, setExpand] = useState(null); // null | 'inventory' | 'edit'
+
+    const inv = useForm({ metal: 'gold', purity: '999', grams: '', description: '' });
+    const edit = useForm({ name: u.name, phone: u.phone, email: u.email || '', national_id: u.national_id || '' });
+
+    function setLevel(level) {
+        router.post(`/admin/set-level/${u.id}`, { level }, { preserveScroll: true });
+    }
+
+    function submitInventory(e) {
+        e.preventDefault();
+        router.post(`/admin/inventory-adjust/${u.id}`, inv.data, {
+            preserveScroll: true,
+            onSuccess: () => { inv.reset('grams', 'description'); setExpand(null); },
+        });
+    }
+
+    function submitEdit(e) {
+        e.preventDefault();
+        router.put(`/admin/users/${u.id}`, edit.data, { preserveScroll: true, onSuccess: () => setExpand(null) });
+    }
+
+    function destroyUser() {
+        if (!confirm(`کاربر «${u.name}» حذف شود؟ این عمل قابل بازگشت نیست.`)) return;
+        router.delete(`/admin/users/${u.id}`, { preserveScroll: true });
+    }
+
+    return (
+        <>
+            <tr>
+                <td className="num" style={{ color: 'var(--muted)' }}>{u.id}</td>
+                <td><strong>{u.name}</strong></td>
+                <td className="num" dir="ltr">{u.phone}</td>
+                <td className="num">{u.txn_count}</td>
+                <td className="num" style={{ fontSize: 13 }}>{faNum(u.wallet_balance)}</td>
+                <td className="num" style={{ fontSize: 13 }}>{faNum(u.gold_balance)} گ</td>
+                <td className="num" style={{ fontSize: 13 }}>{faNum(u.silver_balance['999'])}/{faNum(u.silver_balance['995'])} گ</td>
+                <td style={{ fontSize: 12, color: 'var(--muted)' }}>{u.created_at}</td>
+                <td>
+                    {isSelf ? (
+                        <span className="badge gold">شما</span>
+                    ) : (
+                        <select value={levelOf(u)} onChange={e => setLevel(e.target.value)}
+                            style={{ background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '4px 10px', fontFamily: 'inherit', fontSize: 13 }}>
+                            <option value="regular">عادی</option>
+                            <option value="vip">👑 ویژه</option>
+                            <option value="admin">⚙️ ادمین</option>
+                            <option value="vip_admin">👑⚙️ ویژه و ادمین</option>
+                        </select>
+                    )}
+                </td>
+                <td>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                        <button onClick={() => setExpand(expand === 'inventory' ? null : 'inventory')} className="btn-sm">موجودی</button>
+                        <button onClick={() => setExpand(expand === 'edit' ? null : 'edit')} className="btn-sm">ویرایش</button>
+                        {!isSelf && <button onClick={destroyUser} className="btn-sm danger">حذف</button>}
+                    </div>
+                </td>
+            </tr>
+
+            {expand === 'inventory' && (
+                <tr>
+                    <td colSpan={10} style={{ background: 'rgba(255,255,255,.02)' }}>
+                        <form onSubmit={submitInventory} style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', padding: '14px 6px' }}>
+                            <div>
+                                <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>نوع</label>
+                                <select value={inv.data.metal} onChange={e => inv.setData('metal', e.target.value)}
+                                    style={{ background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 13 }}>
+                                    <option value="gold">طلا</option>
+                                    <option value="silver">نقره</option>
+                                </select>
+                            </div>
+                            {inv.data.metal === 'silver' && (
+                                <div>
+                                    <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>عیار</label>
+                                    <select value={inv.data.purity} onChange={e => inv.setData('purity', e.target.value)}
+                                        style={{ background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 13 }}>
+                                        <option value="999">۹۹۹/۹</option>
+                                        <option value="995">۹۹۵</option>
+                                    </select>
+                                </div>
+                            )}
+                            <div>
+                                <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>گرم (منفی = کاهش)</label>
+                                <input type="number" step="any" value={inv.data.grams} onChange={e => inv.setData('grams', e.target.value)}
+                                    placeholder="مثلاً 10 یا -5" required
+                                    style={{ width: 140, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 13 }} />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 160 }}>
+                                <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>شرح</label>
+                                <input value={inv.data.description} onChange={e => inv.setData('description', e.target.value)}
+                                    placeholder="توضیحات"
+                                    style={{ width: '100%', background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 13 }} />
+                            </div>
+                            <button type="submit" className="btn-sm" style={{ background: 'linear-gradient(135deg,var(--gold-1),var(--gold-2))', color: '#1a1200', fontWeight: 700, border: 'none' }}>ثبت</button>
+                        </form>
+                    </td>
+                </tr>
+            )}
+
+            {expand === 'edit' && (
+                <tr>
+                    <td colSpan={10} style={{ background: 'rgba(255,255,255,.02)' }}>
+                        <form onSubmit={submitEdit} style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', padding: '14px 6px' }}>
+                            {[['name', 'نام'], ['phone', 'موبایل'], ['email', 'ایمیل'], ['national_id', 'کد ملی']].map(([key, label]) => (
+                                <div key={key}>
+                                    <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>{label}</label>
+                                    <input value={edit.data[key]} onChange={e => edit.setData(key, e.target.value)}
+                                        style={{ width: 160, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 13 }} />
+                                </div>
+                            ))}
+                            <button type="submit" className="btn-sm" style={{ background: 'linear-gradient(135deg,var(--gold-1),var(--gold-2))', color: '#1a1200', fontWeight: 700, border: 'none' }}>ذخیره</button>
+                        </form>
+                    </td>
+                </tr>
+            )}
+        </>
+    );
+}
+
+function TxnRow({ t }) {
+    const [editing, setEditing] = useState(false);
+    const edit = useForm({ type: t.type, quantity: t.quantity, price_per_unit: t.price_per_unit });
+
+    function submit(e) {
+        e.preventDefault();
+        router.put(`/admin/transactions/${t.id}`, edit.data, { preserveScroll: true, onSuccess: () => setEditing(false) });
+    }
+
+    function destroy() {
+        if (!confirm('این معامله حذف شود؟')) return;
+        router.delete(`/admin/transactions/${t.id}`, { preserveScroll: true });
+    }
+
+    if (editing) {
+        return (
+            <tr>
+                <td colSpan={8}>
+                    <form onSubmit={submit} style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', padding: '10px 0' }}>
+                        <select value={edit.data.type} onChange={e => edit.setData('type', e.target.value)}
+                            style={{ background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 13 }}>
+                            <option value="buy">خرید</option>
+                            <option value="sell">فروش</option>
+                        </select>
+                        <input type="number" step="any" value={edit.data.quantity} onChange={e => edit.setData('quantity', e.target.value)}
+                            placeholder="مقدار" style={{ width: 110, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 13 }} />
+                        <input type="number" value={edit.data.price_per_unit} onChange={e => edit.setData('price_per_unit', e.target.value)}
+                            placeholder="قیمت واحد" style={{ width: 140, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 13 }} />
+                        <button type="submit" className="btn-sm" style={{ background: 'linear-gradient(135deg,var(--gold-1),var(--gold-2))', color: '#1a1200', fontWeight: 700, border: 'none' }}>ذخیره</button>
+                        <button type="button" onClick={() => setEditing(false)} className="btn-sm">لغو</button>
+                    </form>
+                </td>
+            </tr>
+        );
+    }
+
+    return (
+        <tr>
+            <td style={{ fontSize: 12, color: 'var(--muted)' }}>{t.created_at}</td>
+            <td><strong>{t.user_name}</strong></td>
+            <td className="num" dir="ltr" style={{ fontSize: 13 }}>{t.user_phone}</td>
+            <td><span className={`badge ${t.type === 'buy' ? 'buy-b' : 'sell-b'}`}>{t.type === 'buy' ? 'خرید' : 'فروش'}</span></td>
+            <td>{t.item_label}</td>
+            <td className="num">{t.quantity}</td>
+            <td className="num"><strong>{faNum(t.total)}</strong></td>
+            <td>
+                <div style={{ display: 'flex', gap: 6 }}>
+                    <button onClick={() => setEditing(true)} className="btn-sm">ویرایش</button>
+                    <button onClick={destroy} className="btn-sm danger">حذف</button>
+                </div>
+            </td>
+        </tr>
+    );
+}
+
+export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApplications, deliveryRequests }) {
     const { auth } = usePage().props;
     const [tab, setTab] = useState('users');
 
     const wallet = useForm({ user_id: '', amount: '', description: '' });
     const notify = useForm({ title: '', body: '', type: 'info', target: 'all' });
-    const [memberMsg, setMemberMsg] = useState({}); // پیام ادمین برای هر درخواست عضویت
-
-    function setLevel(uid, level) {
-        router.post(`/admin/set-level/${uid}`, { level }, { preserveScroll: true });
-    }
+    const [memberMsg, setMemberMsg] = useState({});
 
     function deleteNotif(id) {
         if (!confirm('حذف شود؟')) return;
@@ -40,7 +219,6 @@ export default function Dashboard({ users, txns, wTxns, notifs, invites, stats, 
         ['txns', 'معاملات'],
         ['wallet', 'کیف پول'],
         ['notifs', 'اعلان‌ها'],
-        ['codes', 'کدهای دعوت'],
         ['membership', `درخواست‌های عضویت${memberApplications?.length ? ` (${memberApplications.length})` : ''}`],
         ['delivery', `تحویل فیزیکی نقره${deliveryRequests?.length ? ` (${deliveryRequests.length})` : ''}`],
     ];
@@ -76,30 +254,11 @@ export default function Dashboard({ users, txns, wTxns, notifs, invites, stats, 
                 {tab === 'users' && (
                     <div className="table-wrap">
                         <table>
-                            <thead><tr><th>#</th><th>نام</th><th>موبایل</th><th>معاملات</th><th>عضویت از</th><th>سطح</th></tr></thead>
+                            <thead><tr>
+                                <th>#</th><th>نام</th><th>موبایل</th><th>معاملات</th><th>کیف پول</th><th>طلا</th><th>نقره (۹۹۹/۹۹۵)</th><th>عضویت از</th><th>سطح</th><th></th>
+                            </tr></thead>
                             <tbody>
-                                {users.map(u => (
-                                    <tr key={u.id}>
-                                        <td className="num" style={{ color: 'var(--muted)' }}>{u.id}</td>
-                                        <td><strong>{u.name}</strong></td>
-                                        <td className="num" dir="ltr">{u.phone}</td>
-                                        <td className="num">{u.txn_count}</td>
-                                        <td style={{ fontSize: 12, color: 'var(--muted)' }}>{u.created_at}</td>
-                                        <td>
-                                            {u.id === auth.user.id ? (
-                                                <span className="badge gold">ادمین (شما)</span>
-                                            ) : (
-                                                <select value={u.is_admin ? 'admin' : u.is_vip ? 'vip' : 'regular'}
-                                                    onChange={e => setLevel(u.id, e.target.value)}
-                                                    style={{ background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '4px 10px', fontFamily: 'inherit', fontSize: 13 }}>
-                                                    <option value="regular">عادی</option>
-                                                    <option value="vip">👑 ویژه</option>
-                                                    <option value="admin">⚙️ ادمین</option>
-                                                </select>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
+                                {users.map(u => <UserRow key={u.id} u={u} isSelf={u.id === auth.user.id} />)}
                             </tbody>
                         </table>
                     </div>
@@ -109,19 +268,9 @@ export default function Dashboard({ users, txns, wTxns, notifs, invites, stats, 
                 {tab === 'txns' && (
                     <div className="table-wrap">
                         <table>
-                            <thead><tr><th>تاریخ</th><th>کاربر</th><th>موبایل</th><th>نوع</th><th>کالا</th><th>مقدار</th><th>مبلغ کل</th></tr></thead>
+                            <thead><tr><th>تاریخ</th><th>کاربر</th><th>موبایل</th><th>نوع</th><th>کالا</th><th>مقدار</th><th>مبلغ کل</th><th></th></tr></thead>
                             <tbody>
-                                {txns.map(t => (
-                                    <tr key={t.id}>
-                                        <td style={{ fontSize: 12, color: 'var(--muted)' }}>{t.created_at}</td>
-                                        <td><strong>{t.user_name}</strong></td>
-                                        <td className="num" dir="ltr" style={{ fontSize: 13 }}>{t.user_phone}</td>
-                                        <td><span className={`badge ${t.type === 'buy' ? 'buy-b' : 'sell-b'}`}>{t.type === 'buy' ? 'خرید' : 'فروش'}</span></td>
-                                        <td>{t.item_label}</td>
-                                        <td className="num">{t.quantity}</td>
-                                        <td className="num"><strong>{faNum(t.total)}</strong></td>
-                                    </tr>
-                                ))}
+                                {txns.map(t => <TxnRow key={t.id} t={t} />)}
                             </tbody>
                         </table>
                     </div>
@@ -133,6 +282,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, invites, stats, 
                         <div className="fcard" style={{ maxWidth: 520, marginBottom: 20 }}>
                             <h2 style={{ fontSize: 16 }}>شارژ / برداشت کیف پول</h2>
                             <div style={{ height: 16 }} />
+                            <div className="alert info" style={{ fontSize: 13 }}>واریز دستی فعلاً توسط ادمین ثبت می‌شود؛ بعداً به درگاه پرداخت آنلاین وصل خواهد شد.</div>
                             <form onSubmit={e => { e.preventDefault(); wallet.post('/admin/wallet-credit', { preserveScroll: true, onSuccess: () => wallet.reset() }); }}>
                                 <div className="field"><label>کاربر</label>
                                     <select value={wallet.data.user_id} onChange={e => wallet.setData('user_id', e.target.value)} required style={{ background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 12, padding: '11px 14px', fontFamily: 'inherit', fontSize: 14, width: '100%' }}>
@@ -215,35 +365,6 @@ export default function Dashboard({ users, txns, wTxns, notifs, invites, stats, 
                     </>
                 )}
 
-                {/* کدهای دعوت */}
-                {tab === 'codes' && (
-                    <>
-                        <div style={{ marginBottom: 16 }}>
-                            <button onClick={() => router.post('/admin/generate-code', {}, { preserveScroll: true })}
-                                className="btn" style={{ width: 'auto', padding: '10px 24px', display: 'inline-block' }}>
-                                + تولید کد جدید
-                            </button>
-                        </div>
-                        <div className="table-wrap">
-                            <table>
-                                <thead><tr><th>کد</th><th>وضعیت</th><th>استفاده‌کننده</th><th>موبایل</th><th>تاریخ استفاده</th><th>تاریخ ایجاد</th></tr></thead>
-                                <tbody>
-                                    {invites.map(c => (
-                                        <tr key={c.id}>
-                                            <td><code style={{ fontSize: 15, letterSpacing: 3, color: 'var(--gold-1)' }}>{c.code}</code></td>
-                                            <td><span className={`badge ${c.used_by_name ? 'sell-b' : 'silver'}`}>{c.used_by_name ? 'استفاده‌شده' : 'آزاد'}</span></td>
-                                            <td>{c.used_by_name || '—'}</td>
-                                            <td dir="ltr" className="num">{c.used_by_phone || '—'}</td>
-                                            <td style={{ fontSize: 12, color: 'var(--muted)' }}>{c.used_at || '—'}</td>
-                                            <td style={{ fontSize: 12, color: 'var(--muted)' }}>{c.created_at}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </>
-                )}
-
                 {/* درخواست‌های عضویت ویژه */}
                 {tab === 'membership' && (
                     memberApplications?.length ? (
@@ -259,6 +380,11 @@ export default function Dashboard({ users, txns, wTxns, notifs, invites, stats, 
                                         <span style={{ fontSize: 12, color: 'var(--muted)' }}>ارسال: {m.submitted_at}</span>
                                     </div>
 
+                                    <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginBottom: 14, fontSize: 13, color: 'var(--muted)' }}>
+                                        {m.birth_date && <span>تاریخ تولد: <strong style={{ color: 'var(--txt)' }}>{m.birth_date}</strong></span>}
+                                        {m.residence_address && <span>آدرس: <strong style={{ color: 'var(--txt)' }}>{m.residence_address}</strong></span>}
+                                    </div>
+
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 14, marginBottom: 16 }}>
                                         <div>
                                             <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>تصویر کارت ملی</div>
@@ -269,10 +395,10 @@ export default function Dashboard({ users, txns, wTxns, notifs, invites, stats, 
                                                 : <div style={{ color: 'var(--muted)' }}>—</div>}
                                         </div>
                                         <div>
-                                            <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>تصویر مدرک شناسایی</div>
+                                            <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>جواز صنفی</div>
                                             {m.identity_doc
                                                 ? <a href={m.identity_doc} target="_blank" rel="noopener noreferrer">
-                                                    <img src={m.identity_doc} alt="مدرک شناسایی" style={{ width: '100%', borderRadius: 10, border: '1px solid var(--line)' }} />
+                                                    <img src={m.identity_doc} alt="جواز صنفی" style={{ width: '100%', borderRadius: 10, border: '1px solid var(--line)' }} />
                                                   </a>
                                                 : <div style={{ color: 'var(--muted)' }}>—</div>}
                                         </div>

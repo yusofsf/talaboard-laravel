@@ -141,7 +141,11 @@ return [
         'address'            => 'آدرس',
         'user_id'            => 'کاربر',
         'national_id_doc'    => 'تصویر کارت ملی',
-        'identity_doc'       => 'تصویر مدرک شناسایی',
+        'identity_doc'       => 'جواز صنفی',
         'verification_video' => 'فیلم اعتبارسنجی',
+        'birth_date'         => 'تاریخ تولد',
+        'residence_address'  => 'آدرس محل سکونت',
+        'metal'              => 'نوع فلز',
+        'price_per_unit'     => 'قیمت واحد',
     ],
 ];

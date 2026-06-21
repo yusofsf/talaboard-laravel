@@ -1,19 +1,18 @@
 import { useForm, usePage } from '@inertiajs/react';
 import AppLayout from '../Layouts/AppLayout';
+import VideoRecorder from '../Components/VideoRecorder';
+
+const DECLARATION = `اینجانب [نام و نام خانوادگی] فرزند [نام پدر] با کد ملی [کد ملی]، در تاریخ [تاریخ روز]، درخواست احراز هویت در سایت metalsp.ir (http://metalsp.ir/) را ثبت می‌کنم و تأیید می‌نمایم که این حساب کاربری متعلق به شخص اینجانب بوده و مسئولیت تمامی فعالیت‌های انجام‌شده با آن را می‌پذیرم.`;
 
 export default function Membership({ user }) {
-    const { errors, flash } = usePage().props;
-    const code = useForm({ code: '' });
+    const { errors } = usePage().props;
     const apply = useForm({
         national_id_doc: null,
         identity_doc: null,
         verification_video: null,
+        birth_date: '',
+        residence_address: '',
     });
-
-    function submitCode(e) {
-        e.preventDefault();
-        code.post('/membership');
-    }
 
     function submitApply(e) {
         e.preventDefault();
@@ -45,9 +44,9 @@ export default function Membership({ user }) {
                 <div className="page">
                     <div className="fcard" style={{ textAlign: 'center' }}>
                         <div style={{ fontSize: 56, marginBottom: 16 }}>⏳</div>
-                        <h2 style={{ justifyContent: 'center' }}>درخواست شما در حال بررسی است</h2>
+                        <h2 style={{ justifyContent: 'center' }}>درخواست شما در حال بررسی می‌باشد</h2>
                         <p style={{ color: 'var(--muted)', marginTop: 12 }}>
-                            کارشناسان ما مستندات شما را بررسی می‌کنند. نتیجه از طریق اعلانات به شما اطلاع‌رسانی می‌شود.
+                            کارشناسان ما مستندات شما را بررسی می‌کنند. نتیجه از طریق اعلانات و پیامک به شما اطلاع‌رسانی می‌شود.
                         </p>
                     </div>
                 </div>
@@ -65,49 +64,47 @@ export default function Membership({ user }) {
                     </div>
                 )}
 
-                {/* کد دعوت — فعال‌سازی فوری */}
-                <div className="fcard" style={{ marginBottom: 24 }}>
-                    <h2>عضویت ویژه با کد دعوت 👑</h2>
-                    <div style={{ height: 20 }} />
-                    <div className="alert info">اگر کد دعوت دارید، همین‌جا وارد کنید — فعال‌سازی آن.</div>
-                    {errors.code && <div className="alert err">{errors.code}</div>}
-                    <form onSubmit={submitCode}>
-                        <div className="field">
-                            <label>کد دعوت</label>
-                            <input value={code.data.code} onChange={e => code.setData('code', e.target.value.toUpperCase())}
-                                placeholder="مثال: ABCD1234" style={{ letterSpacing: 4, textAlign: 'center' }} required />
-                        </div>
-                        <button className="btn" type="submit" disabled={code.processing}>فعال‌سازی</button>
-                    </form>
-                </div>
-
-                {/* درخواست احراز هویت */}
                 <div className="fcard">
-                    <h2>درخواست عضویت ویژه با احراز هویت</h2>
+                    <h2>درخواست عضویت ویژه با احراز هویت 👑</h2>
                     <div style={{ height: 20 }} />
                     <div className="alert info">
-                        برای عضویت ویژه از این روش، تصویر کارت ملی، تصویر مدرک شناسایی و یک فیلم کوتاه اعتبارسنجی ارسال کنید.
+                        برای عضویت ویژه، تصویر کارت ملی، جواز صنفی، آدرس محل سکونت، تاریخ تولد و یک فیلم کوتاه اعتبارسنجی ارسال کنید.
                         پس از بررسی توسط ادمین، سطح حساب شما به‌روزرسانی می‌شود.
                     </div>
-                    {errors.national_id_doc && <div className="alert err">{errors.national_id_doc}</div>}
-                    {errors.identity_doc && <div className="alert err">{errors.identity_doc}</div>}
-                    {errors.verification_video && <div className="alert err">{errors.verification_video}</div>}
+                    {Object.values(errors).map((e, i) => <div key={i} className="alert err">{e}</div>)}
 
                     <form onSubmit={submitApply}>
                         <div className="field">
-                            <label>تصویر کارت ملی (jpg، png یا pdf — حداکثر ۵ مگابایت)</label>
-                            <input type="file" accept=".jpg,.jpeg,.png,.pdf" disabled={apply.processing}
+                            <label>تاریخ تولد</label>
+                            <input type="date" value={apply.data.birth_date}
+                                onChange={e => apply.setData('birth_date', e.target.value)} required />
+                        </div>
+                        <div className="field">
+                            <label>آدرس محل سکونت</label>
+                            <input value={apply.data.residence_address}
+                                onChange={e => apply.setData('residence_address', e.target.value)}
+                                placeholder="استان، شهر، خیابان، پلاک..." required />
+                        </div>
+                        <div className="field">
+                            <label>تصویر کارت ملی (jpg یا png — حداکثر ۲۰۰ کیلوبایت)</label>
+                            <input type="file" accept=".jpg,.jpeg,.png" disabled={apply.processing}
                                 onChange={e => apply.setData('national_id_doc', e.target.files[0])} required />
                         </div>
                         <div className="field">
-                            <label>تصویر مدرک شناسایی (jpg، png یا pdf — حداکثر ۵ مگابایت)</label>
-                            <input type="file" accept=".jpg,.jpeg,.png,.pdf" disabled={apply.processing}
+                            <label>تصویر جواز صنفی (jpg یا png — حداکثر ۲۰۰ کیلوبایت)</label>
+                            <input type="file" accept=".jpg,.jpeg,.png" disabled={apply.processing}
                                 onChange={e => apply.setData('identity_doc', e.target.files[0])} required />
                         </div>
+
                         <div className="field">
-                            <label>فیلم اعتبارسنجی (mp4، mov، avi یا webm — حداکثر ۵۰ مگابایت)</label>
-                            <input type="file" accept=".mp4,.mov,.avi,.webm" disabled={apply.processing}
-                                onChange={e => apply.setData('verification_video', e.target.files[0])} required />
+                            <label>فیلم اعتبارسنجی (حداکثر ۵ مگابایت)</label>
+                            <div className="alert info" style={{ fontSize: 13, lineHeight: 2 }}>
+                                یک فیلم کوتاه از خودتان بگیرید (با رعایت موارد شرعی) و دقیقاً متن زیر را با صدای خودتان بخوانید:
+                                <div style={{ marginTop: 8, padding: 12, background: 'rgba(255,255,255,.05)', borderRadius: 10, color: 'var(--txt)' }}>
+                                    {DECLARATION}
+                                </div>
+                            </div>
+                            <VideoRecorder maxSeconds={30} onRecorded={file => apply.setData('verification_video', file)} />
                         </div>
 
                         {apply.progress && (
@@ -126,7 +123,7 @@ export default function Membership({ user }) {
                             </div>
                         )}
 
-                        <button className="btn" type="submit" disabled={apply.processing}>
+                        <button className="btn" type="submit" disabled={apply.processing || !apply.data.verification_video}>
                             {apply.processing
                                 ? (apply.progress ? `در حال آپلود... ${Math.round(apply.progress.percentage).toLocaleString('fa-IR')}٪` : 'در حال ارسال...')
                                 : 'ارسال درخواست'}

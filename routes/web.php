@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
@@ -45,13 +46,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/trade/{item}', [TradeController::class, 'store']);
 
     Route::get('/wallet', [WalletController::class, 'index'])->name('wallet');
+    Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory');
+    Route::get('/chart', fn () => \Inertia\Inertia::render('Chart'))->name('chart');
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications');
     Route::post('/notifications/read/all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
     Route::post('/notifications/read/{id}', [NotificationController::class, 'markRead'])->name('notifications.read');
 
     Route::get('/membership', [MembershipController::class, 'show'])->name('membership');
-    Route::post('/membership', [MembershipController::class, 'activate']);
     Route::post('/membership/apply', [MembershipController::class, 'apply'])->name('membership.apply');
 
     Route::get('/speed-test', fn () => \Inertia\Inertia::render('SpeedTest'))->name('speed-test');
@@ -70,10 +72,16 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::post('/set-level/{uid}', [AdminController::class, 'setLevel'])->name('set-level');
     Route::post('/wallet-credit', [AdminController::class, 'walletCredit'])->name('wallet-credit');
+    Route::post('/inventory-adjust/{uid}', [AdminController::class, 'inventoryAdjust'])->name('inventory-adjust');
     Route::post('/notify', [AdminController::class, 'notify'])->name('notify');
     Route::delete('/notify/{id}', [AdminController::class, 'deleteNotification'])->name('notify.delete');
-    Route::post('/generate-code', [AdminController::class, 'generateCode'])->name('generate-code');
     Route::post('/membership/approve/{uid}', [AdminController::class, 'membershipApprove'])->name('membership.approve');
     Route::post('/membership/reject/{uid}', [AdminController::class, 'membershipReject'])->name('membership.reject');
     Route::post('/delivery/{id}/update', [AdminController::class, 'deliveryUpdate'])->name('delivery.update');
+
+    Route::put('/users/{uid}', [AdminController::class, 'userUpdate'])->name('users.update');
+    Route::delete('/users/{uid}', [AdminController::class, 'userDestroy'])->name('users.destroy');
+
+    Route::put('/transactions/{id}', [AdminController::class, 'transactionUpdate'])->name('transactions.update');
+    Route::delete('/transactions/{id}', [AdminController::class, 'transactionDestroy'])->name('transactions.destroy');
 });

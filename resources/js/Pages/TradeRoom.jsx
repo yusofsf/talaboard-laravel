@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { router, useForm, usePage } from '@inertiajs/react';
 import AppLayout, { faNum } from '../Layouts/AppLayout';
 
-export default function TradeRoom({ offers, myOffers, silverBalance }) {
-    const { errors, auth } = usePage().props;
+export default function TradeRoom({ offers, myOffers, goldBalance, silverBalance }) {
+    const { errors } = usePage().props;
     const [tab, setTab] = useState('open');
-    const form = useForm({ side: 'sell', purity: '999', grams: '', price_per_gram: '' });
+    const form = useForm({ metal: 'silver', side: 'sell', purity: '999', grams: '', price_per_gram: '' });
 
     const total = form.data.grams && form.data.price_per_gram
         ? Math.round(parseFloat(form.data.grams) * parseInt(form.data.price_per_gram, 10))
@@ -31,11 +31,17 @@ export default function TradeRoom({ offers, myOffers, silverBalance }) {
             <div className="page-wide">
                 <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>🤝 اتاق معاملاتی</h2>
                 <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 20 }}>
-                    خرید و فروش نقره بین اعضای ویژه — مستقیماً با یکدیگر، بدون واسطه‌ی فروشگاه.
+                    خرید و فروش طلا و نقره بین اعضای ویژه — مستقیماً با یکدیگر، بدون واسطه‌ی فروشگاه. هر دو طرف معامله باید عضو ویژه باشند.
                 </p>
 
-                {/* موجودی نقره */}
+                {/* موجودی */}
                 <div style={{ display: 'flex', gap: 14, marginBottom: 24, flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1', minWidth: 180, background: 'linear-gradient(160deg,var(--card),var(--card-2))', border: '1px solid var(--line)', borderRadius: 16, padding: '16px 18px' }}>
+                        <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>موجودی طلا</div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gold-1)' }}>
+                            {faNum(goldBalance)} <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--muted)' }}>گرم</span>
+                        </div>
+                    </div>
                     {['999', '995'].map(p => (
                         <div key={p} style={{
                             flex: '1', minWidth: 180, background: 'linear-gradient(160deg,var(--card),var(--card-2))',
@@ -64,6 +70,20 @@ export default function TradeRoom({ offers, myOffers, silverBalance }) {
                     {errors.grams && <div className="alert err">{errors.grams}</div>}
                     {errors.offer && <div className="alert err">{errors.offer}</div>}
                     <form onSubmit={submit}>
+                        <div className="btn-row" style={{ marginBottom: 12 }}>
+                            {[['gold', 'طلا'], ['silver', 'نقره']].map(([m, label]) => (
+                                <button key={m} type="button" onClick={() => form.setData('metal', m)}
+                                    style={{
+                                        padding: '10px', borderRadius: 12, fontFamily: 'inherit', fontSize: 14, fontWeight: 700,
+                                        cursor: 'pointer', border: 'none',
+                                        background: form.data.metal === m ? 'rgba(246,207,99,.2)' : 'rgba(255,255,255,.06)',
+                                        color: form.data.metal === m ? 'var(--gold-1)' : 'var(--muted)',
+                                        outline: form.data.metal === m ? '2px solid var(--gold-1)' : '2px solid transparent',
+                                    }}>
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
                         <div className="btn-row" style={{ marginBottom: 16 }}>
                             {['sell', 'buy'].map(s => (
                                 <button key={s} type="button" onClick={() => form.setData('side', s)}
@@ -78,15 +98,17 @@ export default function TradeRoom({ offers, myOffers, silverBalance }) {
                                 </button>
                             ))}
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                            <div className="field">
-                                <label>عیار</label>
-                                <select value={form.data.purity} onChange={e => form.setData('purity', e.target.value)}
-                                    style={{ background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 12, padding: '11px 14px', fontFamily: 'inherit', fontSize: 15, width: '100%' }}>
-                                    <option value="999">نقره ۹۹۹/۹</option>
-                                    <option value="995">نقره ۹۹۵</option>
-                                </select>
-                            </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: form.data.metal === 'silver' ? '1fr 1fr' : '1fr', gap: 12 }}>
+                            {form.data.metal === 'silver' && (
+                                <div className="field">
+                                    <label>عیار</label>
+                                    <select value={form.data.purity} onChange={e => form.setData('purity', e.target.value)}
+                                        style={{ background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 12, padding: '11px 14px', fontFamily: 'inherit', fontSize: 15, width: '100%' }}>
+                                        <option value="999">نقره ۹۹۹/۹</option>
+                                        <option value="995">نقره ۹۹۵</option>
+                                    </select>
+                                </div>
+                            )}
                             <div className="field">
                                 <label>مقدار (گرم)</label>
                                 <input type="number" step="any" min="0.1" value={form.data.grams}
@@ -119,12 +141,12 @@ export default function TradeRoom({ offers, myOffers, silverBalance }) {
                     offers.length ? (
                         <div className="table-wrap">
                             <table>
-                                <thead><tr><th>نوع</th><th>عیار</th><th>مقدار (گرم)</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>کاربر</th><th>تاریخ</th><th></th></tr></thead>
+                                <thead><tr><th>نوع</th><th>مورد</th><th>مقدار (گرم)</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>کاربر</th><th>تاریخ</th><th></th></tr></thead>
                                 <tbody>
                                     {offers.map(o => (
                                         <tr key={o.id}>
                                             <td><span className={`badge ${o.side === 'sell' ? 'sell-b' : 'buy-b'}`}>{o.side === 'sell' ? 'فروش' : 'خرید'}</span></td>
-                                            <td>{o.purity_label}</td>
+                                            <td>{o.item_label}</td>
                                             <td className="num">{o.grams}</td>
                                             <td className="num">{faNum(o.price_per_gram)}</td>
                                             <td className="num" style={{ color: 'var(--gold-1)', fontWeight: 700 }}>{faNum(o.total)}</td>
@@ -153,12 +175,12 @@ export default function TradeRoom({ offers, myOffers, silverBalance }) {
                     myOffers.length ? (
                         <div className="table-wrap">
                             <table>
-                                <thead><tr><th>نوع</th><th>عیار</th><th>مقدار</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>طرف معامله</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
+                                <thead><tr><th>نوع</th><th>مورد</th><th>مقدار</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>طرف معامله</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
                                 <tbody>
                                     {myOffers.map(o => (
                                         <tr key={o.id}>
                                             <td><span className={`badge ${o.side === 'sell' ? 'sell-b' : 'buy-b'}`}>{o.side === 'sell' ? 'فروش' : 'خرید'}</span></td>
-                                            <td>{o.purity_label}</td>
+                                            <td>{o.item_label}</td>
                                             <td className="num">{o.grams}</td>
                                             <td className="num">{faNum(o.price_per_gram)}</td>
                                             <td className="num">{faNum(o.total)}</td>

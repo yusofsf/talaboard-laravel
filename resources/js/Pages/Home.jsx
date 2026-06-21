@@ -100,17 +100,14 @@ function OunceDisplay({ value, label, cls }) {
 }
 
 const SILVER = [
-    { key: 'mithqal_999', name: 'مثقال نقره ۹۹۹/۹', sub: 'هر مثقال' },
-    { key: 'gram_999',    name: 'گرم نقره ۹۹۹/۹',   sub: 'هر گرم' },
-    { key: 'mithqal_995', name: 'مثقال نقره ۹۹۵',   sub: 'هر مثقال' },
-    { key: 'gram_995',    name: 'گرم نقره ۹۹۵',     sub: 'هر گرم' },
+    { key: 'gram_999', name: 'گرم نقره ۹۹۹/۹', sub: 'هر گرم' },
+    { key: 'gram_995', name: 'گرم نقره ۹۹۵',   sub: 'هر گرم' },
 ];
 const GOLD = [
-    { key: 'bahar',   name: 'سکه تمام', sub: 'طرح جدید' },
-    { key: 'nim',     name: 'نیم‌سکه',   sub: '' },
-    { key: 'rob',     name: 'ربع‌سکه',   sub: '' },
-    { key: 'mithqal', name: 'مثقال طلا', sub: '' },
-    { key: 'geram',   name: 'گرم طلا',   sub: '' },
+    { key: 'bahar', name: 'سکه تمام', sub: 'طرح جدید' },
+    { key: 'nim',   name: 'نیم‌سکه',   sub: '' },
+    { key: 'rob',   name: 'ربع‌سکه',   sub: '' },
+    { key: 'geram', name: 'گرم طلا',   sub: '' },
 ];
 
 export default function Home({ prices: initial, refreshSeconds }) {
@@ -197,7 +194,7 @@ export default function Home({ prices: initial, refreshSeconds }) {
                   background:rgba(255,107,120,.12); border:1px solid rgba(255,107,120,.3);
                   color:#ffd0d4; font-size:clamp(11px,.9vw,14px); text-align:center}
 
-                .tv-main{flex:1; display:flex; flex-direction:column; gap:clamp(10px,1.1vw,20px); margin-top:clamp(10px,1.1vw,20px); min-height:0}
+                .tv-main{flex:1; display:flex; flex-direction:column; gap:clamp(4px,0.5vw,10px); margin-top:clamp(10px,1.1vw,20px); min-height:0}
                 .tv-block{display:flex; flex-direction:column; gap:clamp(8px,.8vw,14px); flex:1; min-height:0}
                 .tv-section-title{display:flex; align-items:center; justify-content:space-between; gap:10px;
                   font-size:clamp(14px,1.15vw,20px); font-weight:700; color:var(--txt); margin:2px 4px}
@@ -280,7 +277,8 @@ export default function Home({ prices: initial, refreshSeconds }) {
 
                 .tv-ratio-bar{
                   display:flex; align-items:center; justify-content:center; gap:clamp(10px,1.4vw,22px);
-                  align-self:center; padding:clamp(4px,.5vw,10px) clamp(10px,1.3vw,28px); border-radius:999px;
+                  align-self:center; margin-top:clamp(6px,0.7vw,14px);
+                  padding:clamp(4px,.5vw,10px) clamp(10px,1.3vw,28px); border-radius:999px;
                   background:rgba(255,255,255,.04); border:1px solid var(--line);
                   font-size:clamp(9px,0.9vw,15px); font-weight:600; color:var(--muted);
                 }

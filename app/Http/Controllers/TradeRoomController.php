@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\Jalali;
+use App\Models\GoldLedger;
 use App\Models\Notification;
 use App\Models\SilverLedger;
 use App\Models\TradeRoomOffer;
@@ -37,6 +38,7 @@ class TradeRoomController extends Controller
         return Inertia::render('TradeRoom', [
             'offers'        => $offers,
             'myOffers'      => $myOffers,
+            'goldBalance'   => $request->user()->goldBalance(),
             'silverBalance' => [
                 '999' => $request->user()->silverBalance('999'),
                 '995' => $request->user()->silverBalance('995'),
@@ -50,27 +52,31 @@ class TradeRoomController extends Controller
         $this->ensureVip($user);
 
         $request->validate([
+            'metal'          => 'required|in:gold,silver',
             'side'           => 'required|in:buy,sell',
-            'purity'         => 'required|in:999,995',
+            'purity'         => 'required_if:metal,silver|in:999,995',
             'grams'          => 'required|numeric|min:0.1',
             'price_per_gram' => 'required|integer|min:1',
         ]);
 
-        $grams = (float) $request->grams;
-        $total = (int) round($grams * $request->price_per_gram);
+        $metal  = $request->metal;
+        $purity = $metal === 'silver' ? $request->purity : '';
+        $grams  = (float) $request->grams;
+        $total  = (int) round($grams * $request->price_per_gram);
 
-        if ($request->side === 'sell' && $user->silverBalance($request->purity) < $grams) {
-            return back()->withErrors(['grams' => 'موجودی نقره‌ی شما برای این عیار کافی نیست.']);
+        if ($request->side === 'sell' && $this->balance($user, $metal, $purity) < $grams) {
+            return back()->withErrors(['grams' => 'موجودی شما برای این مورد کافی نیست.']);
         }
         if ($request->side === 'buy' && $user->walletBalance() < $total) {
             return back()->withErrors(['grams' => 'موجودی کیف پول شما برای این مبلغ کافی نیست.']);
         }
 
-        DB::transaction(function () use ($user, $request, $grams, $total) {
+        DB::transaction(function () use ($user, $request, $metal, $purity, $grams, $total) {
             $offer = TradeRoomOffer::create([
                 'user_id'        => $user->id,
+                'metal'          => $metal,
                 'side'           => $request->side,
-                'purity'         => $request->purity,
+                'purity'         => $purity,
                 'grams'          => $grams,
                 'price_per_gram' => $request->price_per_gram,
                 'status'         => 'open',
@@ -78,11 +84,7 @@ class TradeRoomController extends Controller
 
             // رزرو (escrow) دارایی پیشنهاددهنده تا زمان تطبیق یا لغو
             if ($request->side === 'sell') {
-                SilverLedger::create([
-                    'user_id' => $user->id, 'purity' => $request->purity, 'grams' => -$grams,
-                    'type' => 'offer_escrow', 'reference_type' => TradeRoomOffer::class, 'reference_id' => $offer->id,
-                    'description' => "رزرو برای پیشنهاد فروش #{$offer->id}",
-                ]);
+                $this->createLedger($user->id, $metal, $purity, -$grams, 'offer_escrow', $offer->id, "رزرو برای پیشنهاد فروش #{$offer->id}");
             } else {
                 WalletTransaction::create([
                     'user_id' => $user->id, 'amount' => -$total, 'type' => 'withdraw',
@@ -110,35 +112,37 @@ class TradeRoomController extends Controller
                     throw new \RuntimeException('نمی‌توانید پیشنهاد خودتان را بپذیرید.');
                 }
 
-                $grams = (float) $offer->grams;
-                $total = $offer->total();
+                $metal  = $offer->metal;
+                $purity = $offer->purity;
+                $grams  = (float) $offer->grams;
+                $total  = $offer->total();
+                $itemLabel = $metal === 'gold' ? 'طلا' : self::PURITY_LABEL[$purity];
 
                 if ($offer->side === 'sell') {
                     // پیشنهاددهنده فروشنده است؛ acceptor خریدار است
                     if ($acceptor->walletBalance() < $total) {
                         throw new \RuntimeException('موجودی کیف پول شما کافی نیست.');
                     }
-                    WalletTransaction::create(['user_id' => $acceptor->id, 'amount' => -$total, 'type' => 'withdraw', 'description' => "خرید نقره از اتاق معاملاتی #{$offer->id}"]);
-                    WalletTransaction::create(['user_id' => $offer->user_id, 'amount' => $total, 'type' => 'deposit', 'description' => "فروش نقره در اتاق معاملاتی #{$offer->id}"]);
-                    SilverLedger::create(['user_id' => $acceptor->id, 'purity' => $offer->purity, 'grams' => $grams, 'type' => 'p2p_buy', 'reference_type' => TradeRoomOffer::class, 'reference_id' => $offer->id, 'description' => "خرید از اتاق معاملاتی #{$offer->id}"]);
+                    WalletTransaction::create(['user_id' => $acceptor->id, 'amount' => -$total, 'type' => 'withdraw', 'description' => "خرید {$itemLabel} از اتاق معاملاتی #{$offer->id}"]);
+                    WalletTransaction::create(['user_id' => $offer->user_id, 'amount' => $total, 'type' => 'deposit', 'description' => "فروش {$itemLabel} در اتاق معاملاتی #{$offer->id}"]);
+                    $this->createLedger($acceptor->id, $metal, $purity, $grams, 'p2p_buy', $offer->id, "خرید از اتاق معاملاتی #{$offer->id}");
                 } else {
                     // پیشنهاددهنده خریدار است (پول قبلاً رزرو شده)؛ acceptor فروشنده است
-                    if ($acceptor->silverBalance($offer->purity) < $grams) {
-                        throw new \RuntimeException('موجودی نقره‌ی شما کافی نیست.');
+                    if ($this->balance($acceptor, $metal, $purity) < $grams) {
+                        throw new \RuntimeException('موجودی شما کافی نیست.');
                     }
-                    SilverLedger::create(['user_id' => $acceptor->id, 'purity' => $offer->purity, 'grams' => -$grams, 'type' => 'p2p_sell', 'reference_type' => TradeRoomOffer::class, 'reference_id' => $offer->id, 'description' => "فروش به اتاق معاملاتی #{$offer->id}"]);
-                    WalletTransaction::create(['user_id' => $acceptor->id, 'amount' => $total, 'type' => 'deposit', 'description' => "فروش نقره در اتاق معاملاتی #{$offer->id}"]);
-                    SilverLedger::create(['user_id' => $offer->user_id, 'purity' => $offer->purity, 'grams' => $grams, 'type' => 'p2p_buy', 'reference_type' => TradeRoomOffer::class, 'reference_id' => $offer->id, 'description' => "خرید از اتاق معاملاتی #{$offer->id}"]);
+                    $this->createLedger($acceptor->id, $metal, $purity, -$grams, 'p2p_sell', $offer->id, "فروش به اتاق معاملاتی #{$offer->id}");
+                    WalletTransaction::create(['user_id' => $acceptor->id, 'amount' => $total, 'type' => 'deposit', 'description' => "فروش {$itemLabel} در اتاق معاملاتی #{$offer->id}"]);
+                    $this->createLedger($offer->user_id, $metal, $purity, $grams, 'p2p_buy', $offer->id, "خرید از اتاق معاملاتی #{$offer->id}");
                 }
 
                 $offer->update(['status' => 'completed', 'counterparty_id' => $acceptor->id, 'completed_at' => now()]);
 
-                $label = self::PURITY_LABEL[$offer->purity];
                 foreach ([$offer->user_id, $acceptor->id] as $uid) {
                     Notification::create([
                         'user_id' => $uid,
                         'title'   => 'معامله‌ی اتاق معاملاتی تکمیل شد',
-                        'body'    => "{$label} — {$grams} گرم — " . number_format($total) . ' تومان — ' . Jalali::now(),
+                        'body'    => "{$itemLabel} — {$grams} گرم — " . number_format($total) . ' تومان — ' . Jalali::now(),
                         'type'    => 'trade',
                     ]);
                 }
@@ -162,7 +166,7 @@ class TradeRoomController extends Controller
                 }
 
                 if ($offer->side === 'sell') {
-                    SilverLedger::create(['user_id' => $user->id, 'purity' => $offer->purity, 'grams' => $offer->grams, 'type' => 'offer_refund', 'reference_type' => TradeRoomOffer::class, 'reference_id' => $offer->id, 'description' => "بازگشت رزرو پیشنهاد لغوشده #{$offer->id}"]);
+                    $this->createLedger($user->id, $offer->metal, $offer->purity, (float) $offer->grams, 'offer_refund', $offer->id, "بازگشت رزرو پیشنهاد لغوشده #{$offer->id}");
                 } else {
                     WalletTransaction::create(['user_id' => $user->id, 'amount' => $offer->total(), 'type' => 'deposit', 'description' => "بازگشت رزرو پیشنهاد لغوشده #{$offer->id}"]);
                 }
@@ -176,13 +180,34 @@ class TradeRoomController extends Controller
         return back()->with('success', 'پیشنهاد لغو شد.');
     }
 
+    private function balance(User $user, string $metal, ?string $purity): float
+    {
+        return $metal === 'gold' ? $user->goldBalance() : $user->silverBalance($purity);
+    }
+
+    private function createLedger(int $userId, string $metal, ?string $purity, float $grams, string $type, int $offerId, string $description): void
+    {
+        if ($metal === 'gold') {
+            GoldLedger::create([
+                'user_id' => $userId, 'grams' => $grams, 'type' => $type,
+                'reference_type' => TradeRoomOffer::class, 'reference_id' => $offerId, 'description' => $description,
+            ]);
+        } else {
+            SilverLedger::create([
+                'user_id' => $userId, 'purity' => $purity, 'grams' => $grams, 'type' => $type,
+                'reference_type' => TradeRoomOffer::class, 'reference_id' => $offerId, 'description' => $description,
+            ]);
+        }
+    }
+
     private function present(TradeRoomOffer $o, User $viewer): array
     {
         return [
             'id'             => $o->id,
+            'metal'          => $o->metal,
             'side'           => $o->side,
             'purity'         => $o->purity,
-            'purity_label'   => self::PURITY_LABEL[$o->purity],
+            'item_label'     => $o->metal === 'gold' ? 'طلا (گرم)' : self::PURITY_LABEL[$o->purity],
             'grams'          => (float) $o->grams,
             'price_per_gram' => $o->price_per_gram,
             'total'          => $o->total(),

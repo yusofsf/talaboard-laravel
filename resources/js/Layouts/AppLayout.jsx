@@ -1,63 +1,111 @@
+import { useState } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
 
 const FA = s => String(s ?? '').replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]).replace(/,/g, '٬');
 export const faNum = n => n == null ? '—' : FA(Number(n).toLocaleString('en'));
 
-export default function AppLayout({ children, title }) {
+function levelLabel(user) {
+    if (user.is_admin && (user.is_vip || user.membership_level === 2)) return '👑 ویژه و ادمین';
+    if (user.is_admin) return '⚙️ ادمین';
+    if (user.is_vip || user.membership_level === 2) return '👑 ویژه';
+    return 'عادی';
+}
+
+export default function AppLayout({ children }) {
     const { auth, flash } = usePage().props;
     const user = auth?.user;
+    const [open, setOpen] = useState(false);
 
     function logout(e) {
         e.preventDefault();
         router.post('/logout');
     }
 
+    const showMembershipLink = user && !user.is_vip && user.membership_level !== 2 && user.membership_status !== 'pending';
+
     return (
         <>
             <nav>
-                <Link href="/" className="nav-brand">
-                    <div className="ico">←</div>
-                    <span>آبشده صفرپور</span>
-                </Link>
-                <div className="nav-links">
-                    <Link href="/">تابلوی قیمت</Link>
-                    {user ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, position: 'relative' }}>
+                    {user && (
+                        <span style={{
+                            fontSize: 12, fontWeight: 700, color: 'var(--gold-1)',
+                            padding: '4px 12px', borderRadius: 999,
+                            border: '1px solid rgba(246,207,99,.3)', background: 'rgba(246,207,99,.08)',
+                            whiteSpace: 'nowrap',
+                        }}>
+                            {levelLabel(user)}
+                        </span>
+                    )}
+
+                    <button onClick={() => setOpen(o => !o)} aria-label="منو" style={{
+                        width: 40, height: 40, borderRadius: 10, border: '1px solid var(--line)',
+                        background: 'rgba(255,255,255,.04)', color: 'var(--txt)', fontSize: 20,
+                        cursor: 'pointer', display: 'grid', placeItems: 'center',
+                    }}>
+                        ☰
+                    </button>
+
+                    {open && (
                         <>
-                            <Link href="/history">سوابق</Link>
-                            <Link href="/wallet" title="کیف پول" style={{ position: 'relative' }}>
-                                💰{' '}
-                                {user.wallet_balance > 0 && (
-                                    <span style={{ fontSize: 11, color: 'var(--gold-1)' }}>
-                                        {faNum(user.wallet_balance)}
-                                    </span>
+                            <div onClick={() => setOpen(false)} style={{
+                                position: 'fixed', inset: 0, zIndex: 40, background: 'transparent',
+                            }} />
+                            <div style={{
+                                position: 'absolute', top: 48, insetInlineStart: 0, zIndex: 50,
+                                background: 'linear-gradient(160deg,var(--card),var(--card-2))',
+                                border: '1px solid var(--line)', borderRadius: 14,
+                                minWidth: 220, padding: 10, boxShadow: '0 14px 40px rgba(0,0,0,.4)',
+                                display: 'flex', flexDirection: 'column', gap: 2,
+                            }}>
+                                <MenuLink href="/" onClick={() => setOpen(false)}>تابلوی قیمت</MenuLink>
+                                <MenuLink href="/chart" onClick={() => setOpen(false)}>📈 چارت</MenuLink>
+
+                                {user ? (
+                                    <>
+                                        <MenuLink href="/history" onClick={() => setOpen(false)}>سوابق</MenuLink>
+                                        <MenuLink href="/wallet" onClick={() => setOpen(false)}>
+                                            💰 کیف پول {user.wallet_balance > 0 && <span style={{ color: 'var(--gold-1)' }}> — {faNum(user.wallet_balance)}</span>}
+                                        </MenuLink>
+                                        <MenuLink href="/inventory" onClick={() => setOpen(false)}>📦 موجودی انبار</MenuLink>
+                                        <MenuLink href="/notifications" onClick={() => setOpen(false)}>
+                                            🔔 اعلان‌ها {user.unread_count > 0 && <span className="nav-badge" style={{ position: 'static', marginInlineStart: 6 }}>{user.unread_count}</span>}
+                                        </MenuLink>
+                                        {showMembershipLink && (
+                                            <MenuLink href="/membership" onClick={() => setOpen(false)}>عضویت ویژه</MenuLink>
+                                        )}
+                                        {(user.is_vip || user.membership_level === 2) && (
+                                            <MenuLink href="/trade-room" onClick={() => setOpen(false)}>🤝 اتاق معاملاتی</MenuLink>
+                                        )}
+                                        <MenuLink href="/speed-test" onClick={() => setOpen(false)}>⚡ تست سرعت</MenuLink>
+                                        {user.is_admin && (
+                                            <MenuLink href="/admin" onClick={() => setOpen(false)} gold>مدیریت</MenuLink>
+                                        )}
+                                        <div style={{ height: 1, background: 'var(--line)', margin: '6px 0' }} />
+                                        <MenuLink href="/profile" onClick={() => setOpen(false)}>{user.name}</MenuLink>
+                                        <button onClick={logout} style={{
+                                            textAlign: 'right', padding: '10px 12px', borderRadius: 8,
+                                            background: 'none', border: 'none', color: 'var(--down)',
+                                            fontFamily: 'inherit', fontSize: 14, cursor: 'pointer',
+                                        }}>
+                                            خروج
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <MenuLink href="/login" onClick={() => setOpen(false)}>ورود</MenuLink>
+                                        <MenuLink href="/register" onClick={() => setOpen(false)} gold>ثبت‌نام</MenuLink>
+                                    </>
                                 )}
-                            </Link>
-                            <Link href="/notifications" style={{ position: 'relative' }}>
-                                🔔
-                                {user.unread_count > 0 && (
-                                    <span className="nav-badge">{user.unread_count}</span>
-                                )}
-                            </Link>
-                            <Link href="/membership">
-                                {user.is_vip ? '👑 ویژه' : 'عضویت ویژه'}
-                            </Link>
-                            {(user.is_vip || user.membership_level === 2) && (
-                                <Link href="/trade-room" title="اتاق معاملاتی">🤝 اتاق معاملاتی</Link>
-                            )}
-                            <Link href="/speed-test" title="تست سرعت اینترنت">⚡ تست سرعت</Link>
-                            {user.is_admin && (
-                                <Link href="/admin" className="btn-gold">مدیریت</Link>
-                            )}
-                            <Link href="/profile" className="nav-user">{user.name}</Link>
-                            <button onClick={logout}>خروج</button>
-                        </>
-                    ) : (
-                        <>
-                            <Link href="/login">ورود</Link>
-                            <Link href="/register" className="btn-gold">ثبت‌نام</Link>
+                            </div>
                         </>
                     )}
                 </div>
+
+                <Link href="/" className="nav-brand">
+                    <img src="/logo.jpg" alt="آبشده صفرپور" style={{ width: 34, height: 34, borderRadius: 10, objectFit: 'cover' }} />
+                    <span>آبشده صفرپور</span>
+                </Link>
             </nav>
 
             {flash?.success && <div className="alert ok" style={{ margin: '16px auto', maxWidth: 700 }}>{flash.success}</div>}
@@ -109,5 +157,18 @@ export default function AppLayout({ children, title }) {
                 </div>
             </footer>
         </>
+    );
+}
+
+function MenuLink({ href, children, onClick, gold }) {
+    return (
+        <Link href={href} onClick={onClick} style={{
+            display: 'block', padding: '10px 12px', borderRadius: 8,
+            fontSize: 14, color: gold ? '#1a1200' : 'var(--txt)',
+            background: gold ? 'linear-gradient(135deg,var(--gold-1),var(--gold-2))' : 'transparent',
+            fontWeight: gold ? 700 : 400,
+        }}>
+            {children}
+        </Link>
     );
 }

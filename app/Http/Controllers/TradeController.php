@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\Jalali;
+use App\Models\GoldLedger;
 use App\Models\Notification;
 use App\Models\SilverLedger;
 use App\Models\Transaction;
@@ -16,15 +17,12 @@ use Inertia\Inertia;
 class TradeController extends Controller
 {
     private const ITEMS = [
-        'mithqal'     => ['label' => 'مثقال طلا',       'group' => 'gold'],
-        'geram'       => ['label' => 'گرم طلا',          'group' => 'gold'],
-        'bahar'       => ['label' => 'سکه تمام',         'group' => 'gold'],
-        'nim'         => ['label' => 'نیم سکه',           'group' => 'gold'],
-        'rob'         => ['label' => 'ربع سکه',           'group' => 'gold'],
-        'mithqal_999' => ['label' => 'مثقال نقره ۹۹۹/۹', 'group' => 'silver'],
-        'gram_999'    => ['label' => 'گرم نقره ۹۹۹/۹',   'group' => 'silver'],
-        'mithqal_995' => ['label' => 'مثقال نقره ۹۹۵',   'group' => 'silver'],
-        'gram_995'    => ['label' => 'گرم نقره ۹۹۵',     'group' => 'silver'],
+        'geram'    => ['label' => 'گرم طلا',          'group' => 'gold'],
+        'bahar'    => ['label' => 'سکه تمام',         'group' => 'gold'],
+        'nim'      => ['label' => 'نیم سکه',           'group' => 'gold'],
+        'rob'      => ['label' => 'ربع سکه',           'group' => 'gold'],
+        'gram_999' => ['label' => 'گرم نقره ۹۹۹/۹',   'group' => 'silver'],
+        'gram_995' => ['label' => 'گرم نقره ۹۹۵',     'group' => 'silver'],
     ];
 
     public function __construct(
@@ -72,9 +70,28 @@ class TradeController extends Controller
         $user  = $request->user();
 
         // خرید: باید موجودی کیف پول کافی باشد (به همان مبلغ کسر می‌شود)
-        // فروش: مبلغ به کیف پول کاربر واریز می‌شود
+        // فروش: کاربر باید همان مقدار طلا/نقره را در حساب خود داشته باشد
         if ($request->trade_type === 'buy' && $user->walletBalance() < $total) {
             return back()->withErrors(['quantity' => 'موجودی کیف پول شما کافی نیست. لطفاً ابتدا کیف پول خود را شارژ کنید.']);
+        }
+
+        if ($request->trade_type === 'sell') {
+            if ($item === 'geram') {
+                if ($user->goldBalance() < $qty) {
+                    return back()->withErrors(['quantity' => 'موجودی طلای شما کافی نیست.']);
+                }
+            } elseif ($meta['group'] === 'gold') {
+                // سکه‌ها (بهار/نیم/ربع) — موجودی بر اساس تاریخچه‌ی معاملات همان سکه
+                $holding = $this->coinHolding($user->id, $item);
+                if ($holding < $qty) {
+                    return back()->withErrors(['quantity' => "موجودی شما از «{$meta['label']}» کافی نیست. موجودی فعلی: {$holding}"]);
+                }
+            } else {
+                $purity = $this->silverPurity($item);
+                if ($user->silverBalance($purity) < $qty) {
+                    return back()->withErrors(['quantity' => 'موجودی نقره‌ی شما برای این عیار کافی نیست.']);
+                }
+            }
         }
 
         $typeLabel = $request->trade_type === 'buy' ? 'خرید' : 'فروش';
@@ -104,16 +121,24 @@ class TradeController extends Controller
                 'type'    => 'trade',
             ]);
 
-            // خرید نقره از مغازه → به موجودی نقره‌ی فیزیکی (دیجیتال) کاربر اضافه می‌شود
-            // تا بتواند در اتاق معاملاتی به‌فروش برساند یا تحویل فیزیکی بگیرد.
-            if ($meta['group'] === 'silver' && $request->trade_type === 'buy') {
-                [$purity, $grams] = $this->silverGrams($item, $qty);
+            // خرید/فروش گرم طلا → موجودی انبار طلای کاربر تغییر می‌کند
+            if ($item === 'geram') {
+                GoldLedger::create([
+                    'user_id' => $user->id,
+                    'grams'   => $request->trade_type === 'buy' ? $qty : -$qty,
+                    'type'    => $request->trade_type === 'buy' ? 'purchase' : 'sale',
+                    'description' => "{$typeLabel} از فروشگاه — {$meta['label']} ({$qty})",
+                ]);
+            }
+
+            // خرید/فروش گرم نقره → موجودی انبار نقره‌ی کاربر تغییر می‌کند
+            if ($meta['group'] === 'silver') {
                 SilverLedger::create([
                     'user_id' => $user->id,
-                    'purity'  => $purity,
-                    'grams'   => $grams,
-                    'type'    => 'purchase',
-                    'description' => "خرید از فروشگاه — {$meta['label']} ({$qty})",
+                    'purity'  => $this->silverPurity($item),
+                    'grams'   => $request->trade_type === 'buy' ? $qty : -$qty,
+                    'type'    => $request->trade_type === 'buy' ? 'purchase' : 'sale',
+                    'description' => "{$typeLabel} از فروشگاه — {$meta['label']} ({$qty})",
                 ]);
             }
         });
@@ -132,13 +157,16 @@ class TradeController extends Controller
             : ($data[$silverKey][$item] ?? null);
     }
 
-    /** تبدیل آیتم نقره + مقدار خریداری‌شده به [عیار, گرم]. */
-    private function silverGrams(string $item, float $qty): array
+    /** موجودی فعلی کاربر از یک سکه (مجموع خریدها منهای فروش‌ها از تاریخچه‌ی معاملات). */
+    private function coinHolding(int $userId, string $item): float
     {
-        $purity = str_contains($item, '995') ? '995' : '999';
-        $grams  = str_starts_with($item, 'mithqal_')
-            ? $qty * (float) env('MITHQAL_GRAMS', 4.3318)
-            : $qty;
-        return [$purity, round($grams, 4)];
+        $bought = (float) Transaction::where('user_id', $userId)->where('item', $item)->where('type', 'buy')->sum('quantity');
+        $sold   = (float) Transaction::where('user_id', $userId)->where('item', $item)->where('type', 'sell')->sum('quantity');
+        return round($bought - $sold, 4);
+    }
+
+    private function silverPurity(string $item): string
+    {
+        return str_contains($item, '995') ? '995' : '999';
     }
 }

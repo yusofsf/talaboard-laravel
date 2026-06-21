@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\Jalali;
-use App\Models\InviteCode;
+use App\Models\GoldLedger;
 use App\Models\Notification;
 use App\Models\SilverDeliveryRequest;
 use App\Models\SilverLedger;
@@ -13,7 +13,6 @@ use App\Models\WalletTransaction;
 use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class AdminController extends Controller
@@ -34,15 +33,20 @@ class AdminController extends Controller
                 'is_admin'    => $u->is_admin,
                 'membership_level' => $u->membership_level,
                 'txn_count'   => $u->transactions_count,
+                'wallet_balance' => $u->walletBalance(),
+                'gold_balance'   => $u->goldBalance(),
+                'silver_balance' => ['999' => $u->silverBalance('999'), '995' => $u->silverBalance('995')],
                 'created_at'  => Jalali::format($u->created_at, false),
             ]);
 
         $txns = Transaction::with('user')->orderByDesc('created_at')->limit(200)->get()
             ->map(fn($t) => [
                 'id'             => $t->id,
+                'user_id'        => $t->user_id,
                 'user_name'      => $t->user?->name,
                 'user_phone'     => $t->user?->phone,
                 'type'           => $t->type,
+                'item'           => $t->item,
                 'item_label'     => $t->item_label,
                 'quantity'       => (float) $t->quantity,
                 'price_per_unit' => $t->price_per_unit,
@@ -71,16 +75,6 @@ class AdminController extends Controller
                 'created_at' => Jalali::format($n->created_at),
             ]);
 
-        $invites = InviteCode::with('usedByUser')->orderByDesc('created_at')->get()
-            ->map(fn($c) => [
-                'id'            => $c->id,
-                'code'          => $c->code,
-                'used_by_name'  => $c->usedByUser?->name,
-                'used_by_phone' => $c->usedByUser?->phone,
-                'used_at'       => $c->used_at ? Jalali::format($c->used_at) : null,
-                'created_at'    => Jalali::format($c->created_at),
-            ]);
-
         $stats = [
             'user_count'  => User::count(),
             'txn_count'   => Transaction::count(),
@@ -92,13 +86,15 @@ class AdminController extends Controller
             ->orderByDesc('updated_at')->get()
             ->map(fn($u) => [
                 'id'                  => $u->id,
-                'name'                 => $u->name,
-                'phone'                => $u->phone,
-                'national_id'          => $u->national_id,
-                'national_id_doc'      => $u->national_id_doc ? Storage::url($u->national_id_doc) : null,
-                'identity_doc'         => $u->identity_doc ? Storage::url($u->identity_doc) : null,
-                'verification_video'   => $u->verification_video ? Storage::url($u->verification_video) : null,
-                'submitted_at'         => Jalali::format($u->updated_at),
+                'name'                => $u->name,
+                'phone'               => $u->phone,
+                'national_id'         => $u->national_id,
+                'birth_date'          => $u->birth_date?->format('Y-m-d'),
+                'residence_address'   => $u->residence_address,
+                'national_id_doc'     => $u->national_id_doc ? Storage::url($u->national_id_doc) : null,
+                'identity_doc'        => $u->identity_doc ? Storage::url($u->identity_doc) : null,
+                'verification_video'  => $u->verification_video ? Storage::url($u->verification_video) : null,
+                'submitted_at'        => Jalali::format($u->updated_at),
             ]);
 
         $deliveryRequests = SilverDeliveryRequest::with('user')
@@ -117,7 +113,7 @@ class AdminController extends Controller
                 'created_at'     => Jalali::format($r->created_at),
             ]);
 
-        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'invites', 'stats', 'memberApplications', 'deliveryRequests'));
+        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'stats', 'memberApplications', 'deliveryRequests'));
     }
 
     public function setLevel(Request $request, int $uid)
@@ -127,13 +123,17 @@ class AdminController extends Controller
 
         $level = $request->input('level', 'regular');
         match ($level) {
-            'admin'   => $user->update(['is_vip' => true,  'is_admin' => true,  'membership_level' => 2]),
-            'vip'     => $user->update(['is_vip' => true,  'is_admin' => false, 'membership_level' => 2]),
-            default   => $user->update(['is_vip' => false, 'is_admin' => false, 'membership_level' => 1]),
+            'vip_admin' => $user->update(['is_vip' => true,  'is_admin' => true,  'membership_level' => 2]),
+            'admin'     => $user->update(['is_vip' => false, 'is_admin' => true]),
+            'vip'       => $user->update(['is_vip' => true,  'is_admin' => false, 'membership_level' => 2]),
+            default     => $user->update(['is_vip' => false, 'is_admin' => false, 'membership_level' => 1]),
         };
 
         $levelLabel = match ($level) {
-            'admin' => 'ادمین', 'vip' => 'ویژه', default => 'عادی',
+            'vip_admin' => 'ویژه و ادمین',
+            'admin'     => 'ادمین',
+            'vip'       => 'ویژه',
+            default     => 'عادی',
         };
 
         Notification::create([
@@ -172,6 +172,42 @@ class AdminController extends Controller
         return back()->with('success', 'تراکنش ثبت شد.');
     }
 
+    /** ادمین موجودی انبار طلا یا نقره‌ی یک کاربر را افزایش/کاهش می‌دهد. */
+    public function inventoryAdjust(Request $request, int $uid)
+    {
+        $request->validate([
+            'metal'       => 'required|in:gold,silver',
+            'purity'      => 'required_if:metal,silver|in:999,995',
+            'grams'       => 'required|numeric|not_in:0',
+            'description' => 'nullable|string|max:200',
+        ]);
+
+        $user = User::findOrFail($uid);
+        $grams = (float) $request->grams;
+        $desc  = $request->description ?: 'اصلاح موجودی توسط ادمین';
+
+        if ($request->metal === 'gold') {
+            GoldLedger::create([
+                'user_id' => $user->id, 'grams' => $grams, 'type' => 'admin_adjust', 'description' => $desc,
+            ]);
+        } else {
+            SilverLedger::create([
+                'user_id' => $user->id, 'purity' => $request->purity, 'grams' => $grams,
+                'type' => 'admin_adjust', 'description' => $desc,
+            ]);
+        }
+
+        $metalLabel = $request->metal === 'gold' ? 'طلا' : ('نقره ' . $request->purity);
+        Notification::create([
+            'user_id' => $user->id,
+            'title'   => 'تغییر موجودی انبار',
+            'body'    => ($grams > 0 ? 'افزایش' : 'کاهش') . " {$metalLabel}: " . abs($grams) . ' گرم — ' . Jalali::now(),
+            'type'    => 'system',
+        ]);
+
+        return back()->with('success', 'موجودی انبار به‌روزرسانی شد.');
+    }
+
     public function notify(Request $request)
     {
         $request->validate([
@@ -197,12 +233,6 @@ class AdminController extends Controller
     {
         Notification::findOrFail($id)->delete();
         return back()->with('success', 'اعلان حذف شد.');
-    }
-
-    public function generateCode()
-    {
-        InviteCode::create(['code' => strtoupper(Str::random(8))]);
-        return back()->with('success', 'کد جدید ایجاد شد.');
     }
 
     public function membershipApprove(Request $request, int $uid)
@@ -291,5 +321,59 @@ class AdminController extends Controller
         } catch (\Exception) {}
 
         return back()->with('success', 'وضعیت به‌روزرسانی شد.');
+    }
+
+    public function userUpdate(Request $request, int $uid)
+    {
+        $user = User::findOrFail($uid);
+
+        $request->validate([
+            'name'        => 'required|string|max:100',
+            'phone'       => 'required|string|unique:users,phone,' . $user->id,
+            'email'       => 'nullable|email',
+            'national_id' => 'nullable|string|max:10',
+        ]);
+
+        $user->update($request->only('name', 'phone', 'email', 'national_id'));
+
+        return back()->with('success', 'اطلاعات کاربر به‌روزرسانی شد.');
+    }
+
+    public function userDestroy(int $uid)
+    {
+        $user = User::findOrFail($uid);
+        if ($user->is_admin) {
+            return back()->with('error', 'حذف حساب ادمین مجاز نیست.');
+        }
+        $user->delete();
+        return back()->with('success', 'کاربر حذف شد.');
+    }
+
+    public function transactionUpdate(Request $request, int $id)
+    {
+        $txn = Transaction::findOrFail($id);
+
+        $request->validate([
+            'type'           => 'required|in:buy,sell',
+            'quantity'       => 'required|numeric|min:0.001',
+            'price_per_unit' => 'required|integer|min:1',
+        ]);
+
+        $total = (int) round($request->quantity * $request->price_per_unit);
+
+        $txn->update([
+            'type'           => $request->type,
+            'quantity'       => $request->quantity,
+            'price_per_unit' => $request->price_per_unit,
+            'total'          => $total,
+        ]);
+
+        return back()->with('success', 'معامله ویرایش شد.');
+    }
+
+    public function transactionDestroy(int $id)
+    {
+        Transaction::findOrFail($id)->delete();
+        return back()->with('success', 'معامله حذف شد.');
     }
 }

@@ -89,7 +89,7 @@ class AdminController extends Controller
                 'name'                => $u->name,
                 'phone'               => $u->phone,
                 'national_id'         => $u->national_id,
-                'birth_date'          => $u->birth_date?->format('Y-m-d'),
+                'birth_date'          => $u->birth_date ? Jalali::format($u->birth_date, false) : null,
                 'residence_address'   => $u->residence_address,
                 'national_id_doc'     => $u->national_id_doc ? Storage::url($u->national_id_doc) : null,
                 'identity_doc'        => $u->identity_doc ? Storage::url($u->identity_doc) : null,

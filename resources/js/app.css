@@ -74,6 +74,10 @@ nav {
 }
 .field input:focus, .field select:focus { border-color: var(--gold-2); }
 .field input::placeholder { color: var(--muted); }
+
+/* لیست بازشوی select در بیشتر مرورگرها پس‌زمینه‌ی روشن پیش‌فرض دارد؛
+   بدون این قانون، متن (که از تم تاریک رنگ روشن گرفته) روی آن نامرئی می‌شود. */
+select option { color: #15192b; background: #fff; }
 .btn {
   display: block; width: 100%; padding: 13px; border-radius: 12px;
   font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer; border: none; margin-top: 4px;

@@ -1,6 +1,7 @@
 import { useForm, usePage } from '@inertiajs/react';
 import AppLayout from '../Layouts/AppLayout';
 import VideoRecorder from '../Components/VideoRecorder';
+import JalaliDatePicker from '../Components/JalaliDatePicker';
 
 const DECLARATION = `اینجانب [نام و نام خانوادگی] فرزند [نام پدر] با کد ملی [کد ملی]، در تاریخ [تاریخ روز]، درخواست احراز هویت در سایت metalsp.ir (http://metalsp.ir/) را ثبت می‌کنم و تأیید می‌نمایم که این حساب کاربری متعلق به شخص اینجانب بوده و مسئولیت تمامی فعالیت‌های انجام‌شده با آن را می‌پذیرم.`;
 
@@ -75,9 +76,8 @@ export default function Membership({ user }) {
 
                     <form onSubmit={submitApply}>
                         <div className="field">
-                            <label>تاریخ تولد</label>
-                            <input type="date" value={apply.data.birth_date}
-                                onChange={e => apply.setData('birth_date', e.target.value)} required />
+                            <label>تاریخ تولد (شمسی)</label>
+                            <JalaliDatePicker value={apply.data.birth_date} onChange={v => apply.setData('birth_date', v)} />
                         </div>
                         <div className="field">
                             <label>آدرس محل سکونت</label>

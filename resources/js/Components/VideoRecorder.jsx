@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 
+// محدودیت‌های پایین‌تر برای ضبط، تا حجم فایل خام از همان ابتدا کوچک بماند
+const VIDEO_CONSTRAINTS = { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24 } };
+const RECORDER_OPTIONS = { mimeType: 'video/webm;codecs=vp8,opus', videoBitsPerSecond: 600_000, audioBitsPerSecond: 64_000 };
+
 export default function VideoRecorder({ onRecorded, maxSeconds = 30 }) {
     const videoRef = useRef(null);
     const mediaRecorderRef = useRef(null);
@@ -14,6 +18,15 @@ export default function VideoRecorder({ onRecorded, maxSeconds = 30 }) {
 
     useEffect(() => () => stopStream(), []);
 
+    // المنت <video> فقط وقتی phase به live برسد رندر می‌شود، پس اتصال استریم باید
+    // *بعد* از آن رندر انجام شود، نه داخل openCamera (وگرنه ref هنوز null است و صفحه سیاه می‌ماند).
+    useEffect(() => {
+        if (phase === 'live' && videoRef.current && streamRef.current) {
+            videoRef.current.srcObject = streamRef.current;
+            videoRef.current.play().catch(() => {});
+        }
+    }, [phase]);
+
     function stopStream() {
         streamRef.current?.getTracks().forEach(t => t.stop());
         streamRef.current = null;
@@ -23,12 +36,8 @@ export default function VideoRecorder({ onRecorded, maxSeconds = 30 }) {
     async function openCamera() {
         setError('');
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            const stream = await navigator.mediaDevices.getUserMedia({ video: VIDEO_CONSTRAINTS, audio: true });
             streamRef.current = stream;
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                videoRef.current.play();
-            }
             setPhase('live');
         } catch (e) {
             setError('دسترسی به دوربین ممکن نشد. مرورگر یا دستگاه شما اجازه‌ی دسترسی به دوربین/میکروفون را نداد.');
@@ -39,7 +48,12 @@ export default function VideoRecorder({ onRecorded, maxSeconds = 30 }) {
     function startRecording() {
         if (!streamRef.current) return;
         chunksRef.current = [];
-        const mr = new MediaRecorder(streamRef.current, { mimeType: 'video/webm' });
+        let mr;
+        try {
+            mr = new MediaRecorder(streamRef.current, RECORDER_OPTIONS);
+        } catch {
+            mr = new MediaRecorder(streamRef.current); // اگر مرورگر این codec/bitrate را نپذیرفت
+        }
         mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
         mr.onstop = () => {
             const blob = new Blob(chunksRef.current, { type: 'video/webm' });
@@ -78,6 +92,11 @@ export default function VideoRecorder({ onRecorded, maxSeconds = 30 }) {
 
     return (
         <div style={{ border: '1px solid var(--line)', borderRadius: 14, padding: 16, background: 'rgba(255,255,255,.03)' }}>
+            <div className="alert info" style={{ fontSize: 13, marginBottom: 12 }}>
+                لطفاً <strong>صورت خود را به‌طور کامل و واضح</strong> در کادر دوربین قرار دهید، در محیطی با نور کافی،
+                و در صورت امکان با <strong>پس‌زمینه‌ی ساده و سفید</strong> (مثلاً دیوار سفید) فیلم بگیرید.
+            </div>
+
             {error && <div className="alert err" style={{ marginBottom: 12 }}>{error}</div>}
 
             {phase === 'idle' && (
@@ -88,7 +107,7 @@ export default function VideoRecorder({ onRecorded, maxSeconds = 30 }) {
 
             {(phase === 'live' || phase === 'recording') && (
                 <div>
-                    <video ref={videoRef} muted playsInline
+                    <video ref={videoRef} muted autoPlay playsInline
                         style={{ width: '100%', maxHeight: 360, borderRadius: 10, background: '#000', transform: 'scaleX(-1)' }} />
                     <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
                         {phase === 'live' && (

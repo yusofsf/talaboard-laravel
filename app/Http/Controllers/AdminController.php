@@ -159,6 +159,9 @@ class AdminController extends Controller
             'type'    => 'system',
         ]);
 
+        $this->notifyOtherAdmins($request, 'تغییر سطح کاربری توسط ادمین',
+            "{$request->user()->name} سطح کاربر «{$user->name}» را به «{$levelLabel}» تغییر داد. تاریخ: " . Jalali::now());
+
         return back()->with('success', 'سطح کاربری به‌روز شد.');
     }
 
@@ -184,6 +187,10 @@ class AdminController extends Controller
             'body'    => number_format(abs($request->amount)) . " تومان در تاریخ " . Jalali::now(),
             'type'    => 'wallet',
         ]);
+
+        $action = $request->amount > 0 ? 'واریز به' : 'برداشت از';
+        $this->notifyOtherAdmins($request, 'تغییر کیف پول توسط ادمین',
+            "{$request->user()->name} مبلغ " . number_format(abs($request->amount)) . " تومان {$action} کیف پول «{$user->name}» را ثبت کرد. تاریخ: " . Jalali::now());
 
         return back()->with('success', 'تراکنش ثبت شد.');
     }
@@ -221,6 +228,9 @@ class AdminController extends Controller
             'type'    => 'system',
         ]);
 
+        $this->notifyOtherAdmins($request, 'تغییر موجودی انبار توسط ادمین',
+            "{$request->user()->name} " . ($grams > 0 ? 'افزایش' : 'کاهش') . " {$metalLabel} به‌مقدار " . abs($grams) . " گرم برای «{$user->name}» ثبت کرد. تاریخ: " . Jalali::now());
+
         return back()->with('success', 'موجودی انبار به‌روزرسانی شد.');
     }
 
@@ -242,12 +252,21 @@ class AdminController extends Controller
             'user_id' => $uid,
         ]);
 
+        $this->notifyOtherAdmins($request, 'ارسال اعلان توسط ادمین',
+            "{$request->user()->name} اعلانی با عنوان «{$request->title}» ارسال کرد. تاریخ: " . Jalali::now());
+
         return back()->with('success', 'اعلان ارسال شد.');
     }
 
-    public function deleteNotification(int $id)
+    public function deleteNotification(Request $request, int $id)
     {
-        Notification::findOrFail($id)->delete();
+        $notif = Notification::findOrFail($id);
+        $title = $notif->title;
+        $notif->delete();
+
+        $this->notifyOtherAdmins($request, 'حذف اعلان توسط ادمین',
+            "{$request->user()->name} اعلان «{$title}» را حذف کرد. تاریخ: " . Jalali::now());
+
         return back()->with('success', 'اعلان حذف شد.');
     }
 
@@ -271,6 +290,9 @@ class AdminController extends Controller
             'type'    => 'promo',
         ]);
 
+        $this->notifyOtherAdmins($request, 'تأیید عضویت ویژه توسط ادمین',
+            "{$request->user()->name} درخواست عضویت ویژه‌ی «{$user->name}» را تأیید کرد. تاریخ: " . Jalali::now());
+
         try {
             $this->sms->send($user->phone, "عضویت ویژه‌ی شما در آبشده صفرپور تأیید شد." . ($msg !== '' ? " {$msg}" : ''));
         } catch (\Exception) {}
@@ -293,6 +315,9 @@ class AdminController extends Controller
             'body'    => $body,
             'type'    => 'system',
         ]);
+
+        $this->notifyOtherAdmins($request, 'رد عضویت ویژه توسط ادمین',
+            "{$request->user()->name} درخواست عضویت ویژه‌ی «{$user->name}» را رد کرد. تاریخ: " . Jalali::now());
 
         try {
             $this->sms->send($user->phone, "درخواست عضویت ویژه‌ی شما رد شد." . ($msg !== '' ? " {$msg}" : ''));
@@ -340,6 +365,9 @@ class AdminController extends Controller
             'type'    => 'system',
         ]);
 
+        $this->notifyOtherAdmins($request, 'به‌روزرسانی تحویل فیزیکی توسط ادمین',
+            "{$request->user()->name} درخواست تحویل فیزیکی «{$delivery->user?->name}» را «{$statusLabel}» کرد. تاریخ: " . Jalali::now());
+
         try {
             $this->sms->sendDeliveryStatusUpdate($delivery->user->phone, $delivery->user->name, $statusLabel);
         } catch (\Exception) {}
@@ -358,24 +386,33 @@ class AdminController extends Controller
             'national_id' => 'nullable|string|max:10',
         ]);
 
+        $oldName = $user->name;
         $user->update($request->only('name', 'phone', 'email', 'national_id'));
+
+        $this->notifyOtherAdmins($request, 'ویرایش کاربر توسط ادمین',
+            "{$request->user()->name} اطلاعات کاربر «{$oldName}» را ویرایش کرد. تاریخ: " . Jalali::now());
 
         return back()->with('success', 'اطلاعات کاربر به‌روزرسانی شد.');
     }
 
-    public function userDestroy(int $uid)
+    public function userDestroy(Request $request, int $uid)
     {
         $user = User::findOrFail($uid);
         if ($user->is_admin) {
             return back()->with('error', 'حذف حساب ادمین مجاز نیست.');
         }
+        $name = $user->name;
         $user->delete();
+
+        $this->notifyOtherAdmins($request, 'حذف کاربر توسط ادمین',
+            "{$request->user()->name} کاربر «{$name}» را حذف کرد. تاریخ: " . Jalali::now());
+
         return back()->with('success', 'کاربر حذف شد.');
     }
 
     public function transactionUpdate(Request $request, int $id)
     {
-        $txn = Transaction::findOrFail($id);
+        $txn = Transaction::with('user')->findOrFail($id);
 
         $request->validate([
             'type'           => 'required|in:buy,sell',
@@ -392,16 +429,26 @@ class AdminController extends Controller
             'total'          => $total,
         ]);
 
+        $this->notifyOtherAdmins($request, 'ویرایش معامله توسط ادمین',
+            "{$request->user()->name} معامله‌ی «{$txn->item_label}» متعلق به «{$txn->user?->name}» را ویرایش کرد. تاریخ: " . Jalali::now());
+
         return back()->with('success', 'معامله ویرایش شد.');
     }
 
-    public function transactionDestroy(int $id)
+    public function transactionDestroy(Request $request, int $id)
     {
-        Transaction::findOrFail($id)->delete();
+        $txn = Transaction::with('user')->findOrFail($id);
+        $label = $txn->item_label;
+        $userName = $txn->user?->name;
+        $txn->delete();
+
+        $this->notifyOtherAdmins($request, 'حذف معامله توسط ادمین',
+            "{$request->user()->name} معامله‌ی «{$label}» متعلق به «{$userName}» را حذف کرد. تاریخ: " . Jalali::now());
+
         return back()->with('success', 'معامله حذف شد.');
     }
 
-    public function withdrawalApprove(int $id)
+    public function withdrawalApprove(Request $request, int $id)
     {
         $withdrawal = WithdrawalRequest::with('user')->findOrFail($id);
         $withdrawal->update(['status' => 'approved']);
@@ -412,6 +459,9 @@ class AdminController extends Controller
             'body'    => number_format($withdrawal->amount) . ' تومان به حساب شما واریز شد. تاریخ: ' . Jalali::now(),
             'type'    => 'wallet',
         ]);
+
+        $this->notifyOtherAdmins($request, 'تأیید تسویه حساب توسط ادمین',
+            "{$request->user()->name} تسویه حساب " . number_format($withdrawal->amount) . " تومانی «{$withdrawal->user?->name}» را تأیید کرد. تاریخ: " . Jalali::now());
 
         try {
             $this->sms->send($withdrawal->user->phone, 'تسویه حساب ' . number_format($withdrawal->amount) . ' تومانی شما انجام شد.');
@@ -442,10 +492,28 @@ class AdminController extends Controller
             'type'    => 'wallet',
         ]);
 
+        $this->notifyOtherAdmins($request, 'رد تسویه حساب توسط ادمین',
+            "{$request->user()->name} تسویه حساب «{$withdrawal->user?->name}» را رد کرد. دلیل: {$request->reason}. تاریخ: " . Jalali::now());
+
         try {
             $this->sms->send($withdrawal->user->phone, "درخواست تسویه حساب شما رد شد. دلیل: {$request->reason}");
         } catch (\Exception) {}
 
         return back()->with('success', 'درخواست رد شد.');
+    }
+
+    /** اطلاع به همه‌ی ادمین‌های دیگر (نه ادمینی که خودش این کار را انجام داده) از یک اقدام مدیریتی. */
+    private function notifyOtherAdmins(Request $request, string $title, string $body): void
+    {
+        $actingId = $request->user()->id;
+        User::where('is_admin', true)->where('id', '!=', $actingId)->get()
+            ->each(function ($admin) use ($title, $body) {
+                Notification::create([
+                    'user_id' => $admin->id,
+                    'title'   => $title,
+                    'body'    => $body,
+                    'type'    => 'system',
+                ]);
+            });
     }
 }

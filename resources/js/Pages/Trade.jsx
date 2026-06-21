@@ -8,6 +8,11 @@ export default function Trade({ item, meta, sellPrice, buyPrice }) {
     const price = data.trade_type === 'buy' ? sellPrice : buyPrice;
     const total = data.quantity && price ? Math.round(parseFloat(data.quantity) * price) : null;
 
+    // حداقل معامله ۱۰ گرم — فقط برای آیتم‌های وزنی (گرم/مثقال طلا و نقره)، نه سکه‌ها
+    const isMesghal = item.startsWith('mithqal');
+    const isWeightItem = item === 'geram' || isMesghal || meta.group === 'silver';
+    const minQty = isMesghal ? +(10 / 4.3318).toFixed(4) : (isWeightItem ? 10 : 0.001);
+
     function submit(e) {
         e.preventDefault();
         post(`/trade/${item}`);
@@ -64,8 +69,8 @@ export default function Trade({ item, meta, sellPrice, buyPrice }) {
                             ))}
                         </div>
                         <div className="field">
-                            <label>مقدار</label>
-                            <input type="number" step="any" min="0.001"
+                            <label>مقدار{isWeightItem && <span style={{ color: 'var(--muted)', fontWeight: 400 }}> — حداقل {faNum(minQty)}</span>}</label>
+                            <input type="number" step="any" min={minQty}
                                 value={data.quantity} onChange={e => setData('quantity', e.target.value)}
                                 placeholder="مثال: ۱ یا ۰.۵" required />
                         </div>

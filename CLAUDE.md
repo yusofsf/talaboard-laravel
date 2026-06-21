@@ -103,8 +103,12 @@ Video is recorded in-browser via `VideoRecorder.jsx` (`getUserMedia` + `MediaRec
 ### Trade room (`TradeRoomController`) vs. shop trades (`TradeController`)
 
 Two unrelated trading mechanisms:
-- **Shop trades** (`/trade/{item}`): user buys from / sells to the shop itself, at `PriceService` prices. Requires VIP for nothing — open to all logged-in users.
-- **Trade room** (`/trade-room`): VIP-only P2P order board. One VIP posts a buy/sell offer (escrowing wallet or metal on creation per the convention above), another VIP accepts it, ledgers settle directly between the two users — the shop is not a counterparty. `TradeRoomOffer.metal` distinguishes gold (no purity) from silver (purity 999/995); gold offers store `purity = ''` rather than `null` to dodge a `doctrine/dbal` dependency that would otherwise be needed to alter the column nullable.
+- **Shop trades** (`/trade/{item}`): user buys from / sells to the shop itself, at `PriceService` prices. Requires VIP for nothing — open to all logged-in users. Minimum order size is **10 grams** for weight items (`geram`, `mithqal`, and all four silver items — converted via `goldGrams()`/`silverGrams()` before comparing), enforced in `TradeController::store()`. Coins (`bahar`/`nim`/`rob`) are exempt — they're priced per piece, not per gram, so a gram minimum doesn't translate.
+- **Trade room** (`/trade-room`): VIP-only P2P order board. One VIP posts a buy/sell offer (escrowing wallet or metal on creation per the convention above), another VIP accepts it, ledgers settle directly between the two users — the shop is not a counterparty. `TradeRoomOffer.metal` distinguishes gold (no purity) from silver (purity 999/995); gold offers store `purity = ''` rather than `null` to dodge a `doctrine/dbal` dependency that would otherwise be needed to alter the column nullable. Minimum order size here is **100 grams** (`TradeRoomController::store()` validation) — a separate, higher minimum than shop trades, since trade-room offers are between individual users rather than against the shop's own liquidity.
+
+### Admin actions notify every *other* admin, not just the affected user
+
+`AdminController::notifyOtherAdmins()` is called at the end of every admin action (level changes, wallet credits, inventory adjustments, membership approve/reject, delivery status updates, user/transaction edits and deletes, withdrawal approve/reject, manual notifications) to create a `Notification` row for each admin except the one who performed the action, naming the acting admin in the body. This is so admins can see what other admins are doing without a separate audit log table. When adding a new admin action, call this helper rather than only notifying the affected user — that's the established convention now, not a one-off.
 
 ### Physical delivery & cash-out requests live on the Inventory/Wallet pages, not standalone pages
 

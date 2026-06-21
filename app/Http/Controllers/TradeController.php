@@ -28,6 +28,9 @@ class TradeController extends Controller
         'gram_995'    => ['label' => 'گرم نقره ۹۹۵',     'group' => 'silver'],
     ];
 
+    /** حداقل معامله برای آیتم‌های وزنی (گرم/مثقال طلا و نقره) — سکه‌ها شامل نمی‌شوند. */
+    private const MIN_GRAMS = 10.0;
+
     public function __construct(
         private PriceService $prices,
         private SmsService   $sms,
@@ -71,6 +74,15 @@ class TradeController extends Controller
         $qty   = (float) $request->quantity;
         $total = (int) round($qty * $price);
         $user  = $request->user();
+
+        // حداقل معامله برای آیتم‌های وزنی (گرم/مثقال) — سکه‌ها (بهار/نیم/ربع) شامل نمی‌شوند
+        $isWeightItem = $item === 'geram' || $item === 'mithqal' || $meta['group'] === 'silver';
+        if ($isWeightItem) {
+            $grams = $meta['group'] === 'gold' ? $this->goldGrams($item, $qty) : $this->silverGrams($item, $qty)[1];
+            if ($grams < self::MIN_GRAMS) {
+                return back()->withErrors(['quantity' => 'حداقل مقدار معامله ۱۰ گرم است.']);
+            }
+        }
 
         // خرید: باید موجودی کیف پول کافی باشد (به همان مبلغ کسر می‌شود)
         // فروش: کاربر باید همان مقدار طلا/نقره را در حساب خود داشته باشد

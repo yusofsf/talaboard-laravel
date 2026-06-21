@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { router, useForm, usePage } from '@inertiajs/react';
 import AppLayout, { faNum } from '../Layouts/AppLayout';
 
-export default function TradeRoom({ offers, myOffers, goldBalance, silverBalance }) {
+export default function TradeRoom({ offers, myOffers, walletBalance, goldBalance, silverBalance }) {
     const { errors } = usePage().props;
     const [tab, setTab] = useState('open');
     const form = useForm({ metal: 'silver', side: 'sell', purity: '999', grams: '', price_per_gram: '' });
@@ -36,6 +36,12 @@ export default function TradeRoom({ offers, myOffers, goldBalance, silverBalance
 
                 {/* موجودی */}
                 <div style={{ display: 'flex', gap: 14, marginBottom: 24, flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1', minWidth: 180, background: 'linear-gradient(160deg,var(--card),var(--card-2))', border: '1px solid var(--line)', borderRadius: 16, padding: '16px 18px' }}>
+                        <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>موجودی کیف پول</div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--up)' }}>
+                            {faNum(walletBalance)} <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--muted)' }}>تومان</span>
+                        </div>
+                    </div>
                     <div style={{ flex: '1', minWidth: 180, background: 'linear-gradient(160deg,var(--card),var(--card-2))', border: '1px solid var(--line)', borderRadius: 16, padding: '16px 18px' }}>
                         <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>موجودی طلا</div>
                         <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gold-1)' }}>
@@ -110,8 +116,8 @@ export default function TradeRoom({ offers, myOffers, goldBalance, silverBalance
                                 </div>
                             )}
                             <div className="field">
-                                <label>مقدار (گرم)</label>
-                                <input type="number" step="any" min="0.1" value={form.data.grams}
+                                <label>مقدار (گرم) — حداقل ۱۰۰</label>
+                                <input type="number" step="any" min="100" value={form.data.grams}
                                     onChange={e => form.setData('grams', e.target.value)} required />
                             </div>
                         </div>

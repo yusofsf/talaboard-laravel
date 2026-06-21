@@ -38,6 +38,7 @@ class TradeRoomController extends Controller
         return Inertia::render('TradeRoom', [
             'offers'        => $offers,
             'myOffers'      => $myOffers,
+            'walletBalance' => $request->user()->walletBalance(),
             'goldBalance'   => $request->user()->goldBalance(),
             'silverBalance' => [
                 '999' => $request->user()->silverBalance('999'),
@@ -55,8 +56,10 @@ class TradeRoomController extends Controller
             'metal'          => 'required|in:gold,silver',
             'side'           => 'required|in:buy,sell',
             'purity'         => 'required_if:metal,silver|in:999,995',
-            'grams'          => 'required|numeric|min:0.1',
+            'grams'          => 'required|numeric|min:100',
             'price_per_gram' => 'required|integer|min:1',
+        ], [
+            'grams.min' => 'حداقل مقدار پیشنهاد در اتاق معاملاتی ۱۰۰ گرم است.',
         ]);
 
         $metal  = $request->metal;

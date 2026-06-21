@@ -8,6 +8,7 @@ use App\Models\Notification;
 use App\Models\SilverDeliveryRequest;
 use App\Models\SilverLedger;
 use App\Models\Transaction;
+use App\Models\TradeRoomOffer;
 use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Models\WithdrawalRequest;
@@ -129,7 +130,55 @@ class AdminController extends Controller
                 'created_at'  => Jalali::format($w->created_at),
             ]);
 
-        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'stats', 'memberApplications', 'deliveryRequests', 'withdrawalRequests'));
+        $allTrades = $this->allTradesHistory();
+
+        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'stats', 'memberApplications', 'deliveryRequests', 'withdrawalRequests', 'allTrades'));
+    }
+
+    /** تاریخچه‌ی کلی معاملات (فروشگاه + اتاق معاملاتی) برای ادمین — یک لیست واحد، جدیدترین اول. */
+    private function allTradesHistory(): array
+    {
+        $shop = Transaction::with('user')->get()->map(fn ($t) => [
+            'id'                 => 'shop-' . $t->id,
+            'source'             => 'shop',
+            'source_label'       => 'فروشگاه',
+            'side'               => $t->type,
+            'item_label'         => $t->item_label,
+            'quantity'           => (float) $t->quantity,
+            'price'              => $t->price_per_unit,
+            'total'              => $t->total,
+            'user_name'          => $t->user?->name,
+            'counterparty_name'  => null,
+            'sort_at'            => $t->created_at,
+        ]);
+
+        $room = TradeRoomOffer::with(['user', 'counterparty'])
+            ->where('status', 'completed')
+            ->get()
+            ->map(fn ($o) => [
+                'id'                 => 'room-' . $o->id,
+                'source'             => 'room',
+                'source_label'       => 'اتاق معاملاتی',
+                'side'               => $o->side,
+                'item_label'         => $o->metal === 'gold' ? 'طلا (گرم)' : ('نقره ' . $o->purity . ' (گرم)'),
+                'quantity'           => (float) $o->grams,
+                'price'              => $o->price_per_gram,
+                'total'              => $o->total(),
+                'user_name'          => $o->user?->name,
+                'counterparty_name'  => $o->counterparty?->name,
+                'sort_at'            => $o->completed_at ?? $o->created_at,
+            ]);
+
+        return $shop->concat($room)
+            ->sortByDesc('sort_at')
+            ->take(300)
+            ->map(function ($t) {
+                $sortAt = $t['sort_at'];
+                unset($t['sort_at']);
+                return [...$t, 'date_raw' => $sortAt->format('Y-m-d'), 'created_at' => Jalali::format($sortAt)];
+            })
+            ->values()
+            ->all();
     }
 
     public function setLevel(Request $request, int $uid)

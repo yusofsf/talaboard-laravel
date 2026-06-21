@@ -141,3 +141,15 @@ tbody tr:hover { background: rgba(255,255,255,.03); }
   .fcard { padding: 20px 16px; }
   .page, .page-wide { padding: 20px 10px 40px; }
 }
+
+/* چاپ / خروجی PDF — فقط .print-area چاپ می‌شود */
+.print-only { display: none; }
+@media print {
+  body * { visibility: hidden; }
+  .print-area, .print-area * { visibility: visible; color: #000 !important; background: #fff !important; }
+  .print-area { position: absolute; inset: 0; width: 100%; padding: 0; margin: 0; }
+  .print-area table { border-color: #000; }
+  .print-area th, .print-area td { border-color: #000; }
+  .no-print { display: none !important; }
+  .print-only { display: block; }
+}

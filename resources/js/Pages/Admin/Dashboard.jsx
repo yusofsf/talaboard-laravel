@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { router, useForm, usePage } from '@inertiajs/react';
 import AppLayout, { faNum } from '../../Layouts/AppLayout';
+import JalaliDatePicker from '../../Components/JalaliDatePicker';
 
 const TYPE_ICON = { trade: '📊', wallet: '💰', system: '⚙️', promo: '🎁', info: '🔔' };
 
@@ -187,7 +188,7 @@ function TxnRow({ t }) {
     );
 }
 
-export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApplications, deliveryRequests, withdrawalRequests }) {
+export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApplications, deliveryRequests, withdrawalRequests, allTrades }) {
     const { auth } = usePage().props;
     const [tab, setTab] = useState('users');
 
@@ -195,6 +196,12 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     const notify = useForm({ title: '', body: '', type: 'info', target: 'all' });
     const [memberMsg, setMemberMsg] = useState({});
     const [withdrawalReason, setWithdrawalReason] = useState({});
+    const [tradeFilterDate, setTradeFilterDate] = useState('');
+
+    const filteredAllTrades = useMemo(
+        () => tradeFilterDate ? (allTrades || []).filter(t => t.date_raw === tradeFilterDate) : (allTrades || []),
+        [allTrades, tradeFilterDate]
+    );
 
     function deleteNotif(id) {
         if (!confirm('حذف شود؟')) return;
@@ -229,6 +236,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     const TABS = [
         ['users', 'کاربران'],
         ['txns', 'معاملات'],
+        ['all_trades', 'تاریخچه کلی معاملات'],
         ['wallet', 'کیف پول'],
         ['notifs', 'اعلان‌ها'],
         ['membership', `درخواست‌های عضویت${memberApplications?.length ? ` (${memberApplications.length})` : ''}`],
@@ -257,7 +265,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                 </div>
 
                 {/* تب‌ها */}
-                <div className="tabs">
+                <div className="tabs no-print">
                     {TABS.map(([key, label]) => (
                         <button key={key} className={`tab-btn${tab === key ? ' active' : ''}`} onClick={() => setTab(key)}>{label}</button>
                     ))}
@@ -287,6 +295,47 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                             </tbody>
                         </table>
                     </div>
+                )}
+
+                {/* تاریخچه کلی معاملات (فروشگاه + اتاق معاملاتی) */}
+                {tab === 'all_trades' && (
+                    <>
+                        <div className="no-print" style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 18 }}>
+                            <div style={{ minWidth: 280 }}>
+                                <label style={{ display: 'block', fontSize: 13, color: 'var(--muted)', marginBottom: 6, fontWeight: 600 }}>فیلتر بر اساس تاریخ (برای چاپ)</label>
+                                <JalaliDatePicker value={tradeFilterDate} onChange={setTradeFilterDate} yearsBack={5} allowCurrentYear />
+                            </div>
+                            {tradeFilterDate && <button type="button" className="btn-sm" onClick={() => setTradeFilterDate('')}>حذف فیلتر</button>}
+                            <button type="button" className="btn-sm" onClick={() => window.print()} style={{ borderColor: 'rgba(246,207,99,.4)', color: 'var(--gold-1)', background: 'rgba(246,207,99,.08)' }}>
+                                🖨️ چاپ / خروجی PDF
+                            </button>
+                        </div>
+
+                        {filteredAllTrades.length ? (
+                            <div className="table-wrap print-area">
+                                <div className="print-only" style={{ marginBottom: 14, fontWeight: 800, fontSize: 16 }}>تاریخچه کلی معاملات (فروشگاه + اتاق معاملاتی)</div>
+                                <table>
+                                    <thead><tr><th>تاریخ</th><th>منبع</th><th>کاربر</th><th>طرف معامله</th><th>نوع</th><th>کالا</th><th>مقدار</th><th>مبلغ کل</th></tr></thead>
+                                    <tbody>
+                                        {filteredAllTrades.map(t => (
+                                            <tr key={t.id}>
+                                                <td style={{ fontSize: 12, color: 'var(--muted)' }}>{t.created_at}</td>
+                                                <td><span className={`badge ${t.source === 'shop' ? 'gold' : 'silver'}`}>{t.source_label}</span></td>
+                                                <td><strong>{t.user_name}</strong></td>
+                                                <td style={{ color: 'var(--muted)', fontSize: 13 }}>{t.counterparty_name || '—'}</td>
+                                                <td><span className={`badge ${t.side === 'buy' ? 'buy-b' : 'sell-b'}`}>{t.side === 'buy' ? 'خرید' : 'فروش'}</span></td>
+                                                <td>{t.item_label}</td>
+                                                <td className="num">{t.quantity}</td>
+                                                <td className="num"><strong>{faNum(t.total)}</strong></td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="empty"><div className="ico">📜</div>{tradeFilterDate ? 'معامله‌ای در این تاریخ ثبت نشده.' : 'هنوز معامله‌ای ثبت نشده.'}</div>
+                        )}
+                    </>
                 )}
 
                 {/* کیف پول */}

@@ -220,6 +220,7 @@ class TradeRoomController extends Controller
             'counterparty_name' => $o->counterparty?->name,
             'created_at'     => Jalali::format($o->created_at),
             'completed_at'   => $o->completed_at ? Jalali::format($o->completed_at) : null,
+            'date_raw'       => ($o->completed_at ?? $o->created_at)->format('Y-m-d'),
         ];
     }
 

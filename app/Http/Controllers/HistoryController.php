@@ -19,6 +19,7 @@ class HistoryController extends Controller
             'price_per_unit' => $t->price_per_unit,
             'total'          => $t->total,
             'created_at'     => Jalali::format($t->created_at),
+            'date_raw'       => $t->created_at->format('Y-m-d'),
         ]);
 
         $summary = $this->buildSummary($user->transactions()->get());

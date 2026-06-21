@@ -3,11 +3,15 @@ import { gregorianToJalali, jalaliMonthLength, jalaliToGregorian, JALALI_MONTHS,
 
 const FA = n => String(n).replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
 
-/** انتخابگر تاریخ شمسی (روز/ماه/سال) — مقدار به‌صورت رشته‌ی میلادی YYYY-MM-DD برگردانده می‌شود. */
-export default function JalaliDatePicker({ value, onChange }) {
+/**
+ * انتخابگر تاریخ شمسی (روز/ماه/سال) — مقدار به‌صورت رشته‌ی میلادی YYYY-MM-DD برگردانده می‌شود.
+ * پیش‌فرض برای تاریخ تولد (حداقل ۱ سال سن، حداکثر ۱۰۰ سال) — برای فیلتر تاریخ معاملات
+ * yearsBack/allowCurrentYear را بده تا بازه‌ی سال شامل امسال هم بشود.
+ */
+export default function JalaliDatePicker({ value, onChange, yearsBack = 100, allowCurrentYear = false }) {
     const today = todayJalali();
-    const minYear = today.jy - 100;
-    const maxYear = today.jy - 1; // حداقل ۱ سال سن
+    const minYear = today.jy - yearsBack;
+    const maxYear = allowCurrentYear ? today.jy : today.jy - 1;
 
     const current = useMemo(() => {
         if (!value) return { jy: '', jm: '', jd: '' };

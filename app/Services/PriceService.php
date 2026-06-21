@@ -13,10 +13,11 @@ class PriceService
 
     // key داخلی ما → (stockId در طلالند، حالت: direct | gram)
     private const STOCK_MAP = [
-        'geram' => ['ABSHODE',   'gram'],    // گرم طلا = مثقال ÷ وزن مثقال
-        'bahar' => ['SEKKE',     'direct'],  // سکه تمام / بهار آزادی
-        'nim'   => ['SEKKE-NIM', 'direct'],  // نیم سکه
-        'rob'   => ['SEKKE-ROB', 'direct'],  // ربع سکه
+        'mithqal' => ['ABSHODE',   'direct'],  // مثقال طلا (آبشده)
+        'geram'   => ['ABSHODE',   'gram'],    // گرم طلا = مثقال ÷ وزن مثقال
+        'bahar'   => ['SEKKE',     'direct'],  // سکه تمام / بهار آزادی
+        'nim'     => ['SEKKE-NIM', 'direct'],  // نیم سکه
+        'rob'     => ['SEKKE-ROB', 'direct'],  // ربع سکه
     ];
 
     private int   $cacheTtl;

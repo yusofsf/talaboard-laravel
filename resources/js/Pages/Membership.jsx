@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useForm, usePage } from '@inertiajs/react';
 import AppLayout from '../Layouts/AppLayout';
 import VideoRecorder from '../Components/VideoRecorder';
@@ -5,8 +6,12 @@ import JalaliDatePicker from '../Components/JalaliDatePicker';
 
 const DECLARATION = `اینجانب [نام و نام خانوادگی] فرزند [نام پدر] با کد ملی [کد ملی]، در تاریخ [تاریخ روز]، درخواست احراز هویت در سایت metalsp.ir را ثبت می‌کنم و تأیید می‌نمایم که این حساب کاربری متعلق به شخص اینجانب بوده و مسئولیت تمامی فعالیت‌های انجام‌شده با آن را می‌پذیرم.`;
 
+const MAX_IMAGE = 200 * 1024;       // ۲۰۰ کیلوبایت
+const MAX_VIDEO = 5 * 1024 * 1024;  // ۵ مگابایت
+
 export default function Membership({ user }) {
     const { errors } = usePage().props;
+    const [fileErrors, setFileErrors] = useState({});
     const apply = useForm({
         national_id_doc: null,
         identity_doc: null,
@@ -15,8 +20,33 @@ export default function Membership({ user }) {
         residence_address: '',
     });
 
+    function handleImage(field, e) {
+        const file = e.target.files[0] || null;
+        if (file && file.size > MAX_IMAGE) {
+            setFileErrors(s => ({ ...s, [field]: `حجم فایل (${Math.round(file.size / 1024).toLocaleString('fa-IR')} کیلوبایت) بیشتر از حد مجاز (۲۰۰ کیلوبایت) است.` }));
+            apply.setData(field, null);
+            e.target.value = '';
+            return;
+        }
+        setFileErrors(s => ({ ...s, [field]: null }));
+        apply.setData(field, file);
+    }
+
+    function handleVideo(file) {
+        if (file && file.size > MAX_VIDEO) {
+            setFileErrors(s => ({ ...s, verification_video: `حجم فیلم (${(file.size / 1024 / 1024).toFixed(1).toLocaleString('fa-IR')} مگابایت) بیشتر از حد مجاز (۵ مگابایت) است. لطفاً کوتاه‌تر ضبط کنید.` }));
+            apply.setData('verification_video', null);
+            return;
+        }
+        setFileErrors(s => ({ ...s, verification_video: null }));
+        apply.setData('verification_video', file);
+    }
+
+    const hasFileError = Object.values(fileErrors).some(Boolean);
+
     function submitApply(e) {
         e.preventDefault();
+        if (hasFileError) return;
         apply.post('/membership/apply', {
             forceFormData: true,
             onSuccess: () => apply.reset(),
@@ -88,12 +118,14 @@ export default function Membership({ user }) {
                         <div className="field">
                             <label>تصویر کارت ملی (jpg یا png — حداکثر ۲۰۰ کیلوبایت)</label>
                             <input type="file" accept=".jpg,.jpeg,.png" disabled={apply.processing}
-                                onChange={e => apply.setData('national_id_doc', e.target.files[0])} required />
+                                onChange={e => handleImage('national_id_doc', e)} required />
+                            {fileErrors.national_id_doc && <div className="alert err" style={{ marginTop: 8 }}>{fileErrors.national_id_doc}</div>}
                         </div>
                         <div className="field">
                             <label>تصویر جواز صنفی (jpg یا png — حداکثر ۲۰۰ کیلوبایت)</label>
                             <input type="file" accept=".jpg,.jpeg,.png" disabled={apply.processing}
-                                onChange={e => apply.setData('identity_doc', e.target.files[0])} required />
+                                onChange={e => handleImage('identity_doc', e)} required />
+                            {fileErrors.identity_doc && <div className="alert err" style={{ marginTop: 8 }}>{fileErrors.identity_doc}</div>}
                         </div>
 
                         <div className="field">
@@ -104,7 +136,8 @@ export default function Membership({ user }) {
                                     {DECLARATION}
                                 </div>
                             </div>
-                            <VideoRecorder maxSeconds={30} onRecorded={file => apply.setData('verification_video', file)} />
+                            <VideoRecorder maxSeconds={30} onRecorded={handleVideo} />
+                            {fileErrors.verification_video && <div className="alert err" style={{ marginTop: 8 }}>{fileErrors.verification_video}</div>}
                         </div>
 
                         {apply.progress && (
@@ -123,7 +156,7 @@ export default function Membership({ user }) {
                             </div>
                         )}
 
-                        <button className="btn" type="submit" disabled={apply.processing || !apply.data.verification_video}>
+                        <button className="btn" type="submit" disabled={apply.processing || !apply.data.verification_video || hasFileError}>
                             {apply.processing
                                 ? (apply.progress ? `در حال آپلود... ${Math.round(apply.progress.percentage).toLocaleString('fa-IR')}٪` : 'در حال ارسال...')
                                 : 'ارسال درخواست'}

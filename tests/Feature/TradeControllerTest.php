@@ -19,8 +19,8 @@ class TradeControllerTest extends TestCase
     {
         $this->mock(PriceService::class, function ($mock) {
             $mock->shouldReceive('all')->andReturn([
-                'gold'       => ['geram' => 50_000_000],
-                'gold_buy'   => ['geram' => 49_000_000],
+                'gold'       => ['geram' => 50_000_000, 'mithqal' => 216_590_000],
+                'gold_buy'   => ['geram' => 49_000_000, 'mithqal' => 212_257_000],
                 'silver'     => ['gram_999' => 400_000, 'mithqal_999' => 1_732_720],
                 'silver_buy' => ['gram_999' => 390_000, 'mithqal_999' => 1_689_402],
                 'dollar'     => ['price' => 90_000, 'label' => 'دلار آمریکا'],
@@ -182,6 +182,31 @@ class TradeControllerTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)->post('/trade/mithqal_999', [
+            'trade_type' => 'sell',
+            'quantity'   => 1,
+        ]);
+
+        $response->assertSessionHasErrors('quantity');
+        $this->assertSame(0, Transaction::count());
+    }
+
+    public function test_buy_mithqal_gold_credits_gold_ledger_in_grams(): void
+    {
+        $this->fakePrices();
+        $user = User::factory()->create();
+        WalletTransaction::create(['user_id' => $user->id, 'amount' => 300_000_000, 'type' => 'deposit', 'description' => 'charge']);
+
+        $this->actingAs($user)->post('/trade/mithqal', ['trade_type' => 'buy', 'quantity' => 1]);
+
+        $this->assertEqualsWithDelta(4.3318, $user->refresh()->goldBalance(), 0.0001);
+    }
+
+    public function test_sell_mithqal_gold_fails_without_enough_gram_holding(): void
+    {
+        $this->fakePrices();
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post('/trade/mithqal', [
             'trade_type' => 'sell',
             'quantity'   => 1,
         ]);

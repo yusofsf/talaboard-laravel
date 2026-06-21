@@ -17,6 +17,7 @@ use Inertia\Inertia;
 class TradeController extends Controller
 {
     private const ITEMS = [
+        'mithqal'     => ['label' => 'مثقال طلا',        'group' => 'gold'],
         'geram'       => ['label' => 'گرم طلا',          'group' => 'gold'],
         'bahar'       => ['label' => 'سکه تمام',         'group' => 'gold'],
         'nim'         => ['label' => 'نیم سکه',           'group' => 'gold'],
@@ -78,8 +79,9 @@ class TradeController extends Controller
         }
 
         if ($request->trade_type === 'sell') {
-            if ($item === 'geram') {
-                if ($user->goldBalance() < $qty) {
+            if ($item === 'geram' || $item === 'mithqal') {
+                $grams = $this->goldGrams($item, $qty);
+                if ($user->goldBalance() < $grams) {
                     return back()->withErrors(['quantity' => 'موجودی طلای شما کافی نیست.']);
                 }
             } elseif ($meta['group'] === 'gold') {
@@ -123,11 +125,12 @@ class TradeController extends Controller
                 'type'    => 'trade',
             ]);
 
-            // خرید/فروش گرم طلا → موجودی انبار طلای کاربر تغییر می‌کند
-            if ($item === 'geram') {
+            // خرید/فروش طلا (گرم یا مثقال) → موجودی انبار طلای کاربر برحسب گرم تغییر می‌کند
+            if ($item === 'geram' || $item === 'mithqal') {
+                $grams = $this->goldGrams($item, $qty);
                 GoldLedger::create([
                     'user_id' => $user->id,
-                    'grams'   => $request->trade_type === 'buy' ? $qty : -$qty,
+                    'grams'   => $request->trade_type === 'buy' ? $grams : -$grams,
                     'type'    => $request->trade_type === 'buy' ? 'purchase' : 'sale',
                     'description' => "{$typeLabel} از فروشگاه — {$meta['label']} ({$qty})",
                 ]);
@@ -176,5 +179,12 @@ class TradeController extends Controller
             ? $qty * (float) env('MITHQAL_GRAMS', 4.3318)
             : $qty;
         return [$purity, round($grams, 4)];
+    }
+
+    /** تبدیل آیتم طلا (گرم یا مثقال) + مقدار به گرم. */
+    private function goldGrams(string $item, float $qty): float
+    {
+        $grams = $item === 'mithqal' ? $qty * (float) env('MITHQAL_GRAMS', 4.3318) : $qty;
+        return round($grams, 4);
     }
 }

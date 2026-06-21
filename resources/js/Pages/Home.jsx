@@ -106,10 +106,11 @@ const SILVER = [
     { key: 'gram_995',    name: 'گرم نقره ۹۹۵',     sub: 'هر گرم' },
 ];
 const GOLD = [
-    { key: 'bahar', name: 'سکه تمام', sub: 'طرح جدید' },
-    { key: 'nim',   name: 'نیم‌سکه',   sub: '' },
-    { key: 'rob',   name: 'ربع‌سکه',   sub: '' },
-    { key: 'geram', name: 'گرم طلا',   sub: '' },
+    { key: 'bahar',   name: 'سکه تمام', sub: 'طرح جدید' },
+    { key: 'nim',     name: 'نیم‌سکه',   sub: '' },
+    { key: 'rob',     name: 'ربع‌سکه',   sub: '' },
+    { key: 'mithqal', name: 'مثقال طلا', sub: '' },
+    { key: 'geram',   name: 'گرم طلا',   sub: '' },
 ];
 
 export default function Home({ prices: initial, refreshSeconds }) {

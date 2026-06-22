@@ -77,6 +77,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/wallet-credit', [AdminController::class, 'walletCredit'])->name('wallet-credit');
     Route::post('/inventory-adjust/{uid}', [AdminController::class, 'inventoryAdjust'])->name('inventory-adjust');
     Route::post('/notify', [AdminController::class, 'notify'])->name('notify');
+    Route::post('/notify/{id}/update', [AdminController::class, 'updateNotification'])->name('notify.update');
     Route::delete('/notify/{id}', [AdminController::class, 'deleteNotification'])->name('notify.delete');
     Route::post('/membership/approve/{uid}', [AdminController::class, 'membershipApprove'])->name('membership.approve');
     Route::post('/membership/reject/{uid}', [AdminController::class, 'membershipReject'])->name('membership.reject');

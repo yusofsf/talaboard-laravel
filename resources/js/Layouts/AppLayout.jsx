@@ -64,7 +64,7 @@ export default function AppLayout({ children }) {
 
                                 {user ? (
                                     <>
-                                        <MenuLink href="/history" onClick={() => setOpen(false)}>سوابق</MenuLink>
+                                        <MenuLink href="/history" onClick={() => setOpen(false)}>📜 سوابق</MenuLink>
                                         <MenuLink href="/wallet" onClick={() => setOpen(false)}>
                                             💰 کیف پول {user.wallet_balance > 0 && <span style={{ color: 'var(--gold-1)' }}> — {faNum(user.wallet_balance)}</span>}
                                         </MenuLink>

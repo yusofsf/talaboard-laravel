@@ -69,14 +69,17 @@ class AdminController extends Controller
                 'created_at'  => Jalali::format($w->created_at),
             ]);
 
-        $notifs = Notification::orderByDesc('created_at')->limit(100)->get()
+        $totalUserCount = User::count();
+        $notifs = Notification::withCount('reads')->orderByDesc('created_at')->limit(100)->get()
             ->map(fn($n) => [
-                'id'         => $n->id,
-                'title'      => $n->title,
-                'body'       => $n->body,
-                'type'       => $n->type,
-                'user_id'    => $n->user_id,
-                'created_at' => Jalali::format($n->created_at),
+                'id'           => $n->id,
+                'title'        => $n->title,
+                'body'         => $n->body,
+                'type'         => $n->type,
+                'user_id'      => $n->user_id,
+                'read_count'   => $n->reads_count,
+                'target_count' => $n->user_id ? 1 : $totalUserCount,
+                'created_at'   => Jalali::format($n->created_at),
             ]);
 
         $stats = [
@@ -412,6 +415,27 @@ class AdminController extends Controller
             "{$request->user()->name} اعلانی با عنوان «{$request->title}» ارسال کرد. تاریخ: " . Jalali::now());
 
         return back()->with('success', 'اعلان ارسال شد.');
+    }
+
+    public function updateNotification(Request $request, int $id)
+    {
+        $request->validate([
+            'title' => 'required|string|max:200',
+            'body'  => 'nullable|string',
+            'type'  => 'required|in:info,trade,wallet,promo,system',
+        ]);
+
+        $notif = Notification::findOrFail($id);
+        $notif->update([
+            'title' => $request->title,
+            'body'  => $request->body,
+            'type'  => $request->type,
+        ]);
+
+        $this->notifyOtherAdmins($request, 'ویرایش اعلان توسط ادمین',
+            "{$request->user()->name} اعلان «{$notif->title}» را ویرایش کرد. تاریخ: " . Jalali::now());
+
+        return back()->with('success', 'اعلان ویرایش شد.');
     }
 
     public function deleteNotification(Request $request, int $id)

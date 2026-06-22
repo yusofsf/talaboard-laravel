@@ -114,6 +114,10 @@ History.jsx, TradeRoom.jsx (`mine` tab), and Admin/Dashboard.jsx (`all_trades` t
 
 `JalaliDatePicker` defaults its year range to birth-date use (1–100 years ago, excludes current year) — pass `yearsBack`/`allowCurrentYear` props to use it for filters on recent activity instead, as these three pages do.
 
+### Admin-sent notifications can be edited, deleted, and tracked for read status
+
+`AdminController::notify/updateNotification/deleteNotification` cover the full lifecycle of an admin-broadcast `Notification`. The `notifs` tab in `Admin/Dashboard.jsx` shows each notification's read progress (`read_count`/`target_count`, computed via `Notification::withCount('reads')` against `NotificationRead`) — `target_count` is `1` for a single-recipient notification or the total user count for a broadcast (`user_id = null`). Editing reuses the same validation as sending; it does not reset anyone's read status.
+
 ### Admin actions notify every *other* admin, not just the affected user
 
 `AdminController::notifyOtherAdmins()` is called at the end of every admin action (level changes, wallet credits, inventory adjustments, membership approve/reject, delivery status updates, user/transaction edits and deletes, withdrawal approve/reject, manual notifications) to create a `Notification` row for each admin except the one who performed the action, naming the acting admin in the body. This is so admins can see what other admins are doing without a separate audit log table. When adding a new admin action, call this helper rather than only notifying the affected user — that's the established convention now, not a one-off.

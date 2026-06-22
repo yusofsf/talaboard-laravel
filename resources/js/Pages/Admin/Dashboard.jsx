@@ -213,6 +213,8 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     const [rejectReason, setRejectReason] = useState('');
     const [logCat, setLogCat] = useState('all');
     const [logDate, setLogDate] = useState('');
+    const [editingNotifId, setEditingNotifId] = useState(null);
+    const [notifEdit, setNotifEdit] = useState({ title: '', body: '', type: 'info' });
 
     const filteredLogs = useMemo(() => (activityLogs || []).filter(l =>
         (logCat === 'all' || l.category === logCat) && (!logDate || l.date_raw === logDate)
@@ -238,6 +240,19 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     function deleteNotif(id) {
         if (!confirm('حذف شود؟')) return;
         router.delete(`/admin/notify/${id}`, { preserveScroll: true });
+    }
+
+    function startEditNotif(n) {
+        setEditingNotifId(n.id);
+        setNotifEdit({ title: n.title, body: n.body || '', type: n.type });
+    }
+
+    function saveNotifEdit(id) {
+        if (!notifEdit.title.trim()) { alert('عنوان را وارد کنید.'); return; }
+        router.post(`/admin/notify/${id}/update`, notifEdit, {
+            preserveScroll: true,
+            onSuccess: () => setEditingNotifId(null),
+        });
     }
 
     function approveMembership(uid) {
@@ -467,18 +482,46 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                         </div>
                         <div className="table-wrap">
                             <table>
-                                <thead><tr><th>تاریخ</th><th>عنوان</th><th>نوع</th><th>گیرنده</th><th></th></tr></thead>
+                                <thead><tr><th>تاریخ</th><th>عنوان</th><th>نوع</th><th>گیرنده</th><th>دیده‌شده</th><th></th></tr></thead>
                                 <tbody>
                                     {notifs.map(n => (
-                                        <tr key={n.id}>
-                                            <td style={{ fontSize: 12, color: 'var(--muted)' }}>{n.created_at}</td>
-                                            <td><strong>{n.title}</strong></td>
-                                            <td>{TYPE_ICON[n.type] || '🔔'}</td>
-                                            <td style={{ fontSize: 13, color: 'var(--muted)' }}>{n.user_id ? `کاربر #${n.user_id}` : <span className="badge silver">همه</span>}</td>
-                                            <td>
-                                                <button onClick={() => deleteNotif(n.id)} style={{ padding: '4px 12px', borderRadius: 8, cursor: 'pointer', border: '1px solid rgba(255,107,120,.4)', background: 'rgba(255,107,120,.08)', color: '#ff6b78', fontFamily: 'inherit', fontSize: 12 }}>حذف</button>
-                                            </td>
-                                        </tr>
+                                        editingNotifId === n.id ? (
+                                            <tr key={n.id}>
+                                                <td colSpan={5}>
+                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 140px', gap: 10, padding: '8px 0', alignItems: 'center' }}>
+                                                        <input value={notifEdit.title} onChange={e => setNotifEdit(s => ({ ...s, title: e.target.value }))} placeholder="عنوان" />
+                                                        <input value={notifEdit.body} onChange={e => setNotifEdit(s => ({ ...s, body: e.target.value }))} placeholder="متن" />
+                                                        <select value={notifEdit.type} onChange={e => setNotifEdit(s => ({ ...s, type: e.target.value }))} style={{ background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 12, padding: '11px 14px', fontFamily: 'inherit', fontSize: 14, width: '100%' }}>
+                                                            <option value="info">🔔 اطلاعیه</option>
+                                                            <option value="trade">📊 معامله</option>
+                                                            <option value="wallet">💰 کیف پول</option>
+                                                            <option value="promo">🎁 تبلیغات</option>
+                                                            <option value="system">⚙️ سیستمی</option>
+                                                        </select>
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: 8, paddingBottom: 8 }}>
+                                                        <button onClick={() => saveNotifEdit(n.id)} className="btn-sm ok">ذخیره</button>
+                                                        <button onClick={() => setEditingNotifId(null)} className="btn-sm">انصراف</button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            <tr key={n.id}>
+                                                <td style={{ fontSize: 12, color: 'var(--muted)' }}>{n.created_at}</td>
+                                                <td><strong>{n.title}</strong>{n.body && <div style={{ fontSize: 12, color: 'var(--muted)' }}>{n.body}</div>}</td>
+                                                <td>{TYPE_ICON[n.type] || '🔔'}</td>
+                                                <td style={{ fontSize: 13, color: 'var(--muted)' }}>{n.user_id ? `کاربر #${n.user_id}` : <span className="badge silver">همه</span>}</td>
+                                                <td style={{ fontSize: 13 }}>
+                                                    {n.read_count > 0
+                                                        ? <span className="badge buy-b">{faNum(n.read_count)}/{faNum(n.target_count)}</span>
+                                                        : <span className="badge sell-b">دیده نشده</span>}
+                                                </td>
+                                                <td style={{ display: 'flex', gap: 6 }}>
+                                                    <button onClick={() => startEditNotif(n)} className="btn-sm">ویرایش</button>
+                                                    <button onClick={() => deleteNotif(n.id)} className="btn-sm danger">حذف</button>
+                                                </td>
+                                            </tr>
+                                        )
                                     ))}
                                 </tbody>
                             </table>

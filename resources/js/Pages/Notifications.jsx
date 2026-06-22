@@ -26,10 +26,8 @@ export default function Notifications({ notifications }) {
 
                 {notifications.length ? notifications.map(n => (
                     <div key={n.id} style={{
-                        background: n.is_read
-                            ? 'linear-gradient(160deg,var(--card),var(--card-2))'
-                            : 'linear-gradient(160deg,#1d2440,#1e2b50)',
-                        border: `1px solid ${n.is_read ? 'var(--line)' : 'rgba(246,207,99,.35)'}`,
+                        background: 'linear-gradient(160deg,#1d2440,#1e2b50)',
+                        border: '1px solid rgba(246,207,99,.35)',
                         borderRadius: 16, padding: '18px 20px', marginBottom: 12,
                         display: 'flex', gap: 16, alignItems: 'flex-start',
                     }}>
@@ -39,14 +37,10 @@ export default function Notifications({ notifications }) {
                             {n.body && <div style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.7 }}>{n.body}</div>}
                             <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>{n.created_at}</div>
                         </div>
-                        {!n.is_read && (
-                            <button onClick={() => markRead(n.id)} title="خوانده شد" style={{
-                                background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gold-1)', fontSize: 18,
-                            }}>✓</button>
-                        )}
-                        {!n.is_read && (
-                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--gold-1)', flexShrink: 0, marginTop: 8 }} />
-                        )}
+                        <button onClick={() => markRead(n.id)} title="خوانده شد و حذف شود" style={{
+                            background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gold-1)', fontSize: 18,
+                        }}>✓</button>
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--gold-1)', flexShrink: 0, marginTop: 8 }} />
                     </div>
                 )) : (
                     <div className="empty"><div className="ico">🔔</div><div>اعلانی وجود ندارد.</div></div>

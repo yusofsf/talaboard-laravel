@@ -15,9 +15,11 @@ class NotificationController extends Controller
         $user    = $request->user();
         $readIds = NotificationRead::where('user_id', $user->id)->pluck('notification_id')->toArray();
 
+        // اعلانی که کاربر خوانده، از لیست او حذف می‌شود (برای سایر گیرندگان احتمالی همچنان باقی می‌ماند)
         $notifs = Notification::where(function ($q) use ($user) {
             $q->where('user_id', $user->id)->orWhereNull('user_id');
         })
+        ->whereNotIn('id', $readIds)
         ->orderByDesc('created_at')
         ->get()
         ->map(fn($n) => [
@@ -25,7 +27,6 @@ class NotificationController extends Controller
             'title'      => $n->title,
             'body'       => $n->body,
             'type'       => $n->type,
-            'is_read'    => in_array($n->id, $readIds),
             'created_at' => Jalali::format($n->created_at),
         ]);
 

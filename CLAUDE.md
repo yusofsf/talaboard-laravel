@@ -116,7 +116,11 @@ History.jsx, TradeRoom.jsx (`mine` tab), and Admin/Dashboard.jsx (`all_trades` t
 
 ### Admin-sent notifications can be edited, deleted, and tracked for read status
 
-`AdminController::notify/updateNotification/deleteNotification` cover the full lifecycle of an admin-broadcast `Notification`. The `notifs` tab in `Admin/Dashboard.jsx` shows each notification's read progress (`read_count`/`target_count`, computed via `Notification::withCount('reads')` against `NotificationRead`) — `target_count` is `1` for a single-recipient notification or the total user count for a broadcast (`user_id = null`). Editing reuses the same validation as sending; it does not reset anyone's read status.
+`AdminController::notify/updateNotification/deleteNotification` cover the full lifecycle of an admin-broadcast `Notification`. The `notifs` tab in `Admin/Dashboard.jsx` shows each notification's read progress (`read_count`/`target_count`, computed via `Notification::withCount('reads')` against `NotificationRead`) — `target_count` is `1` for a single-recipient notification or the total user count for a broadcast (`user_id = null`). Editing reuses the same validation as sending; it does not reset anyone's read status. This admin-side read tracking is independent of the *row itself* ever being deleted (see below) — the `Notification` row persists for as long as any recipient might still need to see it; admins always see it regardless of per-user read state.
+
+### A user's notification list only shows *unread* notifications
+
+`NotificationController::index()` excludes any notification the current user has already created a `NotificationRead` row for (`whereNotIn('id', $readIds)`) — clicking the ✓ button effectively removes it from that user's own list rather than just toggling a "read" visual state. This is per-user: a broadcast notification (`user_id = null`) read by one recipient still shows for every other recipient who hasn't read it yet, and the `Notification` row itself is never deleted by this flow (admins still see and can manage it in the `notifs` tab regardless of who's read it).
 
 ### Admin actions notify every *other* admin, not just the affected user
 

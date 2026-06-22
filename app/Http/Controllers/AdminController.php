@@ -56,6 +56,7 @@ class AdminController extends Controller
                 'price_per_unit' => $t->price_per_unit,
                 'total'          => $t->total,
                 'created_at'     => Jalali::format($t->created_at),
+                'date_raw'       => $t->created_at->format('Y-m-d'),
             ]);
 
         $wTxns = WalletTransaction::with('user')->orderByDesc('created_at')->limit(200)->get()
@@ -67,6 +68,7 @@ class AdminController extends Controller
                 'type'        => $w->type,
                 'description' => $w->description,
                 'created_at'  => Jalali::format($w->created_at),
+                'date_raw'    => $w->created_at->format('Y-m-d'),
             ]);
 
         $totalUserCount = User::count();
@@ -137,6 +139,7 @@ class AdminController extends Controller
                 'address'        => $r->address,
                 'status'         => $r->status,
                 'created_at'     => Jalali::format($r->created_at),
+                'date_raw'       => $r->created_at->format('Y-m-d'),
             ]);
 
         $withdrawalRequests = WithdrawalRequest::with('user')
@@ -151,6 +154,7 @@ class AdminController extends Controller
                 'shaba'       => $w->shaba,
                 'status'      => $w->status,
                 'created_at'  => Jalali::format($w->created_at),
+                'date_raw'    => $w->created_at->format('Y-m-d'),
             ]);
 
         $allTrades = $this->allTradesHistory();

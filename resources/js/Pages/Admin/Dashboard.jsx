@@ -145,7 +145,7 @@ function UserRow({ u, isSelf }) {
     );
 }
 
-function TxnRow({ t }) {
+function TxnRow({ t, printOnly }) {
     const [editing, setEditing] = useState(false);
     const edit = useForm({ type: t.type, quantity: t.quantity, price_per_unit: t.price_per_unit });
 
@@ -190,12 +190,101 @@ function TxnRow({ t }) {
             <td>{t.item_label}</td>
             <td className="num">{t.quantity}</td>
             <td className="num"><strong>{faNum(t.total)}</strong></td>
+            {!printOnly && (
+                <td>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                        <button onClick={() => setEditing(true)} className="btn-sm">ویرایش</button>
+                        <button onClick={destroy} className="btn-sm danger">حذف</button>
+                    </div>
+                </td>
+            )}
+        </tr>
+    );
+}
+
+function WTxnRow({ w }) {
+    return (
+        <tr>
+            <td style={{ fontSize: 12, color: 'var(--muted)' }}>{w.created_at}</td>
+            <td>{w.user_name}</td>
+            <td><span className={`badge ${w.amount > 0 ? 'buy-b' : 'sell-b'}`}>{w.amount > 0 ? 'واریز' : 'برداشت'}</span></td>
+            <td className="num" style={{ color: w.amount > 0 ? 'var(--up)' : 'var(--down)', fontWeight: 700 }}>{w.amount > 0 ? '+' : ''}{faNum(w.amount)}</td>
+            <td style={{ color: 'var(--muted)', fontSize: 13 }}>{w.description || '—'}</td>
+        </tr>
+    );
+}
+
+const DELIVERY_STATUS_LABEL = { pending: 'در انتظار', approved: 'تأییدشده', shipped: 'ارسال‌شده', rejected: 'رد‌شده', delivered: 'تحویل داده‌شده' };
+
+function DeliveryRow({ r, printOnly, deliveryNote, setDeliveryNote, updateDelivery }) {
+    return (
+        <tr>
+            <td><strong>{r.user_name}</strong></td>
+            <td className="num" dir="ltr" style={{ fontSize: 13 }}>{r.user_phone}</td>
+            <td>{r.metal === 'gold' ? 'طلا' : `نقره ${r.purity}`}</td>
+            <td className="num">{r.grams} گرم</td>
+            <td>{r.recipient_name}<br /><span dir="ltr" style={{ fontSize: 12, color: 'var(--muted)' }}>{r.phone}</span></td>
+            <td style={{ fontSize: 12, color: 'var(--muted)', maxWidth: 220 }}>{r.address}</td>
             <td>
-                <div style={{ display: 'flex', gap: 6 }}>
-                    <button onClick={() => setEditing(true)} className="btn-sm">ویرایش</button>
-                    <button onClick={destroy} className="btn-sm danger">حذف</button>
-                </div>
+                <span className={`badge ${r.status === 'pending' ? 'silver' : r.status === 'rejected' ? 'sell-b' : 'buy-b'}`}>
+                    {DELIVERY_STATUS_LABEL[r.status]}
+                </span>
             </td>
+            <td style={{ fontSize: 12, color: 'var(--muted)' }}>{r.created_at}</td>
+            {!printOnly && (
+                <td>
+                    {r.status !== 'rejected' && r.status !== 'delivered' && (
+                        <input placeholder="توضیح / دلیل (برای رد الزامی)" value={deliveryNote[r.id] || ''}
+                            onChange={e => setDeliveryNote(s => ({ ...s, [r.id]: e.target.value }))}
+                            style={{ width: '100%', minWidth: 160, marginBottom: 6, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '5px 8px', fontFamily: 'inherit', fontSize: 12 }} />
+                    )}
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {r.status === 'pending' && (
+                            <button onClick={() => updateDelivery(r.id, 'approved')} className="btn-sm">تأیید</button>
+                        )}
+                        {r.status === 'approved' && (
+                            <button onClick={() => updateDelivery(r.id, 'shipped')} className="btn-sm">ارسال شد</button>
+                        )}
+                        {r.status === 'shipped' && (
+                            <button onClick={() => updateDelivery(r.id, 'delivered')} className="btn-sm" style={{ borderColor: 'rgba(65,225,166,.4)', color: 'var(--up)', background: 'rgba(65,225,166,.08)' }}>تحویل داده شد</button>
+                        )}
+                        {r.status !== 'rejected' && (
+                            <button onClick={() => updateDelivery(r.id, 'rejected')} className="btn-sm danger">رد</button>
+                        )}
+                    </div>
+                </td>
+            )}
+        </tr>
+    );
+}
+
+function WithdrawalRow({ w, printOnly, withdrawalNote, setWithdrawalNote, withdrawalReason, setWithdrawalReason, approveWithdrawal, rejectWithdrawal }) {
+    return (
+        <tr>
+            <td><strong>{w.user_name}</strong></td>
+            <td className="num" dir="ltr" style={{ fontSize: 13 }}>{w.user_phone}</td>
+            <td className="num" style={{ color: 'var(--gold-1)', fontWeight: 700 }}>{faNum(w.amount)}</td>
+            <td className="num" dir="ltr" style={{ fontSize: 13 }}>{w.card_number}</td>
+            <td className="num" dir="ltr" style={{ fontSize: 13 }}>{w.shaba}</td>
+            <td style={{ fontSize: 12, color: 'var(--muted)' }}>{w.created_at}</td>
+            {!printOnly && (
+                <td>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 200 }}>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                            <input placeholder="توضیح تأیید (اختیاری)" value={withdrawalNote[w.id] || ''}
+                                onChange={e => setWithdrawalNote(s => ({ ...s, [w.id]: e.target.value }))}
+                                style={{ flex: 1, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '5px 8px', fontFamily: 'inherit', fontSize: 12 }} />
+                            <button onClick={() => approveWithdrawal(w.id)} className="btn-sm" style={{ borderColor: 'rgba(65,225,166,.4)', color: 'var(--up)', background: 'rgba(65,225,166,.08)' }}>تأیید</button>
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                            <input placeholder="دلیل رد (الزامی)" value={withdrawalReason[w.id] || ''}
+                                onChange={e => setWithdrawalReason(s => ({ ...s, [w.id]: e.target.value }))}
+                                style={{ flex: 1, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '5px 8px', fontFamily: 'inherit', fontSize: 12 }} />
+                            <button onClick={() => rejectWithdrawal(w.id)} className="btn-sm danger">رد</button>
+                        </div>
+                    </div>
+                </td>
+            )}
         </tr>
     );
 }
@@ -261,6 +350,14 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     const [deliveryNote, setDeliveryNote] = useState({});
     const [tradeFrom, setTradeFrom] = useState('');
     const [tradeTo, setTradeTo] = useState('');
+    const [txnsFrom, setTxnsFrom] = useState('');
+    const [txnsTo, setTxnsTo] = useState('');
+    const [walletFrom, setWalletFrom] = useState('');
+    const [walletTo, setWalletTo] = useState('');
+    const [deliveryFrom, setDeliveryFrom] = useState('');
+    const [deliveryTo, setDeliveryTo] = useState('');
+    const [withdrawalsFrom, setWithdrawalsFrom] = useState('');
+    const [withdrawalsTo, setWithdrawalsTo] = useState('');
     const [rejectingId, setRejectingId] = useState(null);
     const [rejectReason, setRejectReason] = useState('');
     const [logCat, setLogCat] = useState('all');
@@ -281,13 +378,25 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     const [logsQ, setLogsQ] = useState('');
 
     const filteredUsers = useMemo(() => filterBySearch(users, usersQ, ['name', 'phone', 'email', 'national_id']), [users, usersQ]);
-    const filteredTxns = useMemo(() => filterBySearch(txns, txnsQ, ['user_name', 'user_phone', 'item_label']), [txns, txnsQ]);
-    const filteredWTxns = useMemo(() => filterBySearch(wTxns, walletQ, ['user_name', 'description']), [wTxns, walletQ]);
+    const filteredTxns = useMemo(
+        () => filterBySearch(filterByDateRange(txns, txnsFrom, txnsTo), txnsQ, ['user_name', 'user_phone', 'item_label']),
+        [txns, txnsFrom, txnsTo, txnsQ]
+    );
+    const filteredWTxns = useMemo(
+        () => filterBySearch(filterByDateRange(wTxns, walletFrom, walletTo), walletQ, ['user_name', 'description']),
+        [wTxns, walletFrom, walletTo, walletQ]
+    );
     const filteredNotifs = useMemo(() => filterBySearch(notifs, notifsQ, ['title', 'body']), [notifs, notifsQ]);
     const filteredMemberApps = useMemo(() => filterBySearch(memberApplications || [], memberQ, ['name', 'phone', 'national_id']), [memberApplications, memberQ]);
     const filteredVipMembers = useMemo(() => filterBySearch(vipMembers || [], vipQ, ['name', 'phone', 'national_id', 'email']), [vipMembers, vipQ]);
-    const filteredDeliveryRequests = useMemo(() => filterBySearch(deliveryRequests || [], deliveryQ, ['user_name', 'user_phone', 'recipient_name', 'phone', 'address']), [deliveryRequests, deliveryQ]);
-    const filteredWithdrawalRequests = useMemo(() => filterBySearch(withdrawalRequests || [], withdrawalsQ, ['user_name', 'user_phone', 'card_number', 'shaba']), [withdrawalRequests, withdrawalsQ]);
+    const filteredDeliveryRequests = useMemo(
+        () => filterBySearch(filterByDateRange(deliveryRequests || [], deliveryFrom, deliveryTo), deliveryQ, ['user_name', 'user_phone', 'recipient_name', 'phone', 'address']),
+        [deliveryRequests, deliveryFrom, deliveryTo, deliveryQ]
+    );
+    const filteredWithdrawalRequests = useMemo(
+        () => filterBySearch(filterByDateRange(withdrawalRequests || [], withdrawalsFrom, withdrawalsTo), withdrawalsQ, ['user_name', 'user_phone', 'card_number', 'shaba']),
+        [withdrawalRequests, withdrawalsFrom, withdrawalsTo, withdrawalsQ]
+    );
 
     const filteredLogs = useMemo(() => filterBySearch(filterByDateRange(
         (activityLogs || []).filter(l => logCat === 'all' || l.category === logCat),
@@ -295,13 +404,13 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     ), logsQ, ['description', 'user_name', 'action']), [activityLogs, logCat, logFrom, logTo, logsQ]);
 
     const usersPager = usePager(filteredUsers, usersQ);
-    const txnsPager = usePager(filteredTxns, txnsQ);
-    const wTxnsPager = usePager(filteredWTxns, walletQ);
+    const txnsPager = usePager(filteredTxns, `${txnsFrom}|${txnsTo}|${txnsQ}`);
+    const wTxnsPager = usePager(filteredWTxns, `${walletFrom}|${walletTo}|${walletQ}`);
     const notifsPager = usePager(filteredNotifs, notifsQ);
     const memberAppsPager = usePager(filteredMemberApps, memberQ);
     const vipPager = usePager(filteredVipMembers, vipQ);
-    const deliveryPager = usePager(filteredDeliveryRequests, deliveryQ);
-    const withdrawalsPager = usePager(filteredWithdrawalRequests, withdrawalsQ);
+    const deliveryPager = usePager(filteredDeliveryRequests, `${deliveryFrom}|${deliveryTo}|${deliveryQ}`);
+    const withdrawalsPager = usePager(filteredWithdrawalRequests, `${withdrawalsFrom}|${withdrawalsTo}|${withdrawalsQ}`);
     const logsPager = usePager(filteredLogs, `${logCat}|${logFrom}|${logTo}|${logsQ}`);
 
     function submitTradeReject(t) {
@@ -432,8 +541,11 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                 {/* معاملات */}
                 {tab === 'txns' && (
                     <>
-                        <div className="no-print" style={{ marginBottom: 14 }}>
+                        <div className="no-print" style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 14 }}>
                             <SearchBox value={txnsQ} onChange={setTxnsQ} placeholder="🔍 جستجو در کاربر، موبایل، کالا..." />
+                            <DateRangeFilter from={txnsFrom} to={txnsTo} onFromChange={setTxnsFrom} onToChange={setTxnsTo} />
+                            {(txnsFrom || txnsTo) && <button type="button" className="btn-sm" onClick={() => { setTxnsFrom(''); setTxnsTo(''); }}>حذف فیلتر تاریخ</button>}
+                            <button type="button" className="btn-sm gold" onClick={() => window.print()}>🖨️ چاپ / خروجی PDF</button>
                         </div>
                         <div className="table-wrap">
                             <table>
@@ -444,6 +556,16 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                             </table>
                         </div>
                         <Pager page={txnsPager.page} totalPages={txnsPager.totalPages} onChange={txnsPager.setPage} />
+
+                        <div className="table-wrap print-area print-only-block">
+                            <div className="print-only" style={{ marginBottom: 14, fontWeight: 800, fontSize: 16 }}>معاملات فروشگاه</div>
+                            <table>
+                                <thead><tr><th>تاریخ</th><th>کاربر</th><th>موبایل</th><th>نوع</th><th>کالا</th><th>مقدار</th><th>مبلغ کل</th></tr></thead>
+                                <tbody>
+                                    {filteredTxns.map(t => <TxnRow key={t.id} t={t} printOnly />)}
+                                </tbody>
+                            </table>
+                        </div>
                     </>
                 )}
 
@@ -507,26 +629,31 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                                 <button className="btn" type="submit" style={{ width: 'auto', padding: '11px 28px' }}>ثبت تراکنش</button>
                             </form>
                         </div>
-                        <div className="no-print" style={{ marginBottom: 14 }}>
+                        <div className="no-print" style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 14 }}>
                             <SearchBox value={walletQ} onChange={setWalletQ} placeholder="🔍 جستجو در کاربر، شرح..." />
+                            <DateRangeFilter from={walletFrom} to={walletTo} onFromChange={setWalletFrom} onToChange={setWalletTo} />
+                            {(walletFrom || walletTo) && <button type="button" className="btn-sm" onClick={() => { setWalletFrom(''); setWalletTo(''); }}>حذف فیلتر تاریخ</button>}
+                            <button type="button" className="btn-sm gold" onClick={() => window.print()}>🖨️ چاپ / خروجی PDF</button>
                         </div>
                         <div className="table-wrap">
                             <table>
                                 <thead><tr><th>تاریخ</th><th>کاربر</th><th>نوع</th><th>مبلغ</th><th>شرح</th></tr></thead>
                                 <tbody>
-                                    {wTxnsPager.pageItems.map(w => (
-                                        <tr key={w.id}>
-                                            <td style={{ fontSize: 12, color: 'var(--muted)' }}>{w.created_at}</td>
-                                            <td>{w.user_name}</td>
-                                            <td><span className={`badge ${w.amount > 0 ? 'buy-b' : 'sell-b'}`}>{w.amount > 0 ? 'واریز' : 'برداشت'}</span></td>
-                                            <td className="num" style={{ color: w.amount > 0 ? 'var(--up)' : 'var(--down)', fontWeight: 700 }}>{w.amount > 0 ? '+' : ''}{faNum(w.amount)}</td>
-                                            <td style={{ color: 'var(--muted)', fontSize: 13 }}>{w.description || '—'}</td>
-                                        </tr>
-                                    ))}
+                                    {wTxnsPager.pageItems.map(w => <WTxnRow key={w.id} w={w} />)}
                                 </tbody>
                             </table>
                         </div>
                         <Pager page={wTxnsPager.page} totalPages={wTxnsPager.totalPages} onChange={wTxnsPager.setPage} />
+
+                        <div className="table-wrap print-area print-only-block">
+                            <div className="print-only" style={{ marginBottom: 14, fontWeight: 800, fontSize: 16 }}>تراکنش‌های کیف پول</div>
+                            <table>
+                                <thead><tr><th>تاریخ</th><th>کاربر</th><th>نوع</th><th>مبلغ</th><th>شرح</th></tr></thead>
+                                <tbody>
+                                    {filteredWTxns.map(w => <WTxnRow key={w.id} w={w} />)}
+                                </tbody>
+                            </table>
+                        </div>
                     </>
                 )}
 
@@ -755,8 +882,11 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                 {/* تحویل فیزیکی */}
                 {tab === 'delivery' && (
                     <>
-                        <div className="no-print" style={{ marginBottom: 14 }}>
+                        <div className="no-print" style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 14 }}>
                             <SearchBox value={deliveryQ} onChange={setDeliveryQ} placeholder="🔍 جستجو در کاربر، موبایل، گیرنده، آدرس..." />
+                            <DateRangeFilter from={deliveryFrom} to={deliveryTo} onFromChange={setDeliveryFrom} onToChange={setDeliveryTo} />
+                            {(deliveryFrom || deliveryTo) && <button type="button" className="btn-sm" onClick={() => { setDeliveryFrom(''); setDeliveryTo(''); }}>حذف فیلتر تاریخ</button>}
+                            <button type="button" className="btn-sm gold" onClick={() => window.print()}>🖨️ چاپ / خروجی PDF</button>
                         </div>
                         {filteredDeliveryRequests.length ? (
                         <div className="table-wrap">
@@ -764,41 +894,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                                 <thead><tr><th>کاربر</th><th>موبایل</th><th>مورد</th><th>مقدار</th><th>گیرنده</th><th>آدرس</th><th>وضعیت</th><th>تاریخ</th><th></th></tr></thead>
                                 <tbody>
                                     {deliveryPager.pageItems.map(r => (
-                                        <tr key={r.id}>
-                                            <td><strong>{r.user_name}</strong></td>
-                                            <td className="num" dir="ltr" style={{ fontSize: 13 }}>{r.user_phone}</td>
-                                            <td>{r.metal === 'gold' ? 'طلا' : `نقره ${r.purity}`}</td>
-                                            <td className="num">{r.grams} گرم</td>
-                                            <td>{r.recipient_name}<br /><span dir="ltr" style={{ fontSize: 12, color: 'var(--muted)' }}>{r.phone}</span></td>
-                                            <td style={{ fontSize: 12, color: 'var(--muted)', maxWidth: 220 }}>{r.address}</td>
-                                            <td>
-                                                <span className={`badge ${r.status === 'pending' ? 'silver' : r.status === 'rejected' ? 'sell-b' : 'buy-b'}`}>
-                                                    {{ pending: 'در انتظار', approved: 'تأییدشده', shipped: 'ارسال‌شده', rejected: 'رد‌شده' }[r.status]}
-                                                </span>
-                                            </td>
-                                            <td style={{ fontSize: 12, color: 'var(--muted)' }}>{r.created_at}</td>
-                                            <td>
-                                                {r.status !== 'rejected' && r.status !== 'delivered' && (
-                                                    <input placeholder="توضیح / دلیل (برای رد الزامی)" value={deliveryNote[r.id] || ''}
-                                                        onChange={e => setDeliveryNote(s => ({ ...s, [r.id]: e.target.value }))}
-                                                        style={{ width: '100%', minWidth: 160, marginBottom: 6, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '5px 8px', fontFamily: 'inherit', fontSize: 12 }} />
-                                                )}
-                                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                                    {r.status === 'pending' && (
-                                                        <button onClick={() => updateDelivery(r.id, 'approved')} className="btn-sm">تأیید</button>
-                                                    )}
-                                                    {r.status === 'approved' && (
-                                                        <button onClick={() => updateDelivery(r.id, 'shipped')} className="btn-sm">ارسال شد</button>
-                                                    )}
-                                                    {r.status === 'shipped' && (
-                                                        <button onClick={() => updateDelivery(r.id, 'delivered')} className="btn-sm" style={{ borderColor: 'rgba(65,225,166,.4)', color: 'var(--up)', background: 'rgba(65,225,166,.08)' }}>تحویل داده شد</button>
-                                                    )}
-                                                    {r.status !== 'rejected' && (
-                                                        <button onClick={() => updateDelivery(r.id, 'rejected')} className="btn-sm danger">رد</button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
+                                        <DeliveryRow key={r.id} r={r} deliveryNote={deliveryNote} setDeliveryNote={setDeliveryNote} updateDelivery={updateDelivery} />
                                     ))}
                                 </tbody>
                             </table>
@@ -807,14 +903,27 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                             <div className="empty"><div className="ico">🚚</div>درخواست تحویل فیزیکی‌ای ثبت نشده.</div>
                         )}
                         <Pager page={deliveryPager.page} totalPages={deliveryPager.totalPages} onChange={deliveryPager.setPage} />
+
+                        <div className="table-wrap print-area print-only-block">
+                            <div className="print-only" style={{ marginBottom: 14, fontWeight: 800, fontSize: 16 }}>درخواست‌های تحویل فیزیکی</div>
+                            <table>
+                                <thead><tr><th>کاربر</th><th>موبایل</th><th>مورد</th><th>مقدار</th><th>گیرنده</th><th>آدرس</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
+                                <tbody>
+                                    {filteredDeliveryRequests.map(r => <DeliveryRow key={r.id} r={r} printOnly />)}
+                                </tbody>
+                            </table>
+                        </div>
                     </>
                 )}
 
                 {/* تسویه حساب */}
                 {tab === 'withdrawals' && (
                     <>
-                        <div className="no-print" style={{ marginBottom: 14 }}>
+                        <div className="no-print" style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 14 }}>
                             <SearchBox value={withdrawalsQ} onChange={setWithdrawalsQ} placeholder="🔍 جستجو در کاربر، موبایل، شماره کارت/شبا..." />
+                            <DateRangeFilter from={withdrawalsFrom} to={withdrawalsTo} onFromChange={setWithdrawalsFrom} onToChange={setWithdrawalsTo} />
+                            {(withdrawalsFrom || withdrawalsTo) && <button type="button" className="btn-sm" onClick={() => { setWithdrawalsFrom(''); setWithdrawalsTo(''); }}>حذف فیلتر تاریخ</button>}
+                            <button type="button" className="btn-sm gold" onClick={() => window.print()}>🖨️ چاپ / خروجی PDF</button>
                         </div>
                         {filteredWithdrawalRequests.length ? (
                         <div className="table-wrap">
@@ -822,30 +931,9 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                                 <thead><tr><th>کاربر</th><th>موبایل</th><th>مبلغ</th><th>شماره کارت</th><th>شماره شبا</th><th>تاریخ</th><th></th></tr></thead>
                                 <tbody>
                                     {withdrawalsPager.pageItems.map(w => (
-                                        <tr key={w.id}>
-                                            <td><strong>{w.user_name}</strong></td>
-                                            <td className="num" dir="ltr" style={{ fontSize: 13 }}>{w.user_phone}</td>
-                                            <td className="num" style={{ color: 'var(--gold-1)', fontWeight: 700 }}>{faNum(w.amount)}</td>
-                                            <td className="num" dir="ltr" style={{ fontSize: 13 }}>{w.card_number}</td>
-                                            <td className="num" dir="ltr" style={{ fontSize: 13 }}>{w.shaba}</td>
-                                            <td style={{ fontSize: 12, color: 'var(--muted)' }}>{w.created_at}</td>
-                                            <td>
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 200 }}>
-                                                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                                                        <input placeholder="توضیح تأیید (اختیاری)" value={withdrawalNote[w.id] || ''}
-                                                            onChange={e => setWithdrawalNote(s => ({ ...s, [w.id]: e.target.value }))}
-                                                            style={{ flex: 1, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '5px 8px', fontFamily: 'inherit', fontSize: 12 }} />
-                                                        <button onClick={() => approveWithdrawal(w.id)} className="btn-sm" style={{ borderColor: 'rgba(65,225,166,.4)', color: 'var(--up)', background: 'rgba(65,225,166,.08)' }}>تأیید</button>
-                                                    </div>
-                                                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                                                        <input placeholder="دلیل رد (الزامی)" value={withdrawalReason[w.id] || ''}
-                                                            onChange={e => setWithdrawalReason(s => ({ ...s, [w.id]: e.target.value }))}
-                                                            style={{ flex: 1, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '5px 8px', fontFamily: 'inherit', fontSize: 12 }} />
-                                                        <button onClick={() => rejectWithdrawal(w.id)} className="btn-sm danger">رد</button>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
+                                        <WithdrawalRow key={w.id} w={w} withdrawalNote={withdrawalNote} setWithdrawalNote={setWithdrawalNote}
+                                            withdrawalReason={withdrawalReason} setWithdrawalReason={setWithdrawalReason}
+                                            approveWithdrawal={approveWithdrawal} rejectWithdrawal={rejectWithdrawal} />
                                     ))}
                                 </tbody>
                             </table>
@@ -854,6 +942,16 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                             <div className="empty"><div className="ico">🏦</div>درخواست تسویه حساب در انتظار بررسی نیست.</div>
                         )}
                         <Pager page={withdrawalsPager.page} totalPages={withdrawalsPager.totalPages} onChange={withdrawalsPager.setPage} />
+
+                        <div className="table-wrap print-area print-only-block">
+                            <div className="print-only" style={{ marginBottom: 14, fontWeight: 800, fontSize: 16 }}>درخواست‌های تسویه حساب</div>
+                            <table>
+                                <thead><tr><th>کاربر</th><th>موبایل</th><th>مبلغ</th><th>شماره کارت</th><th>شماره شبا</th><th>تاریخ</th></tr></thead>
+                                <tbody>
+                                    {filteredWithdrawalRequests.map(w => <WithdrawalRow key={w.id} w={w} printOnly />)}
+                                </tbody>
+                            </table>
+                        </div>
                     </>
                 )}
 

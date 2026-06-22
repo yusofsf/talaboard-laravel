@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import AppLayout, { faNum } from '../../Layouts/AppLayout';
-import JalaliDatePicker from '../../Components/JalaliDatePicker';
+import Pager, { usePager } from '../../Components/Pager';
+import DateRangeFilter, { filterByDateRange } from '../../Components/DateRangeFilter';
+import SearchBox, { filterBySearch } from '../../Components/SearchBox';
 
 const LOG_CAT = {
     auth:       { label: 'ورود/احراز', badge: 'silver' },
@@ -198,6 +200,55 @@ function TxnRow({ t }) {
     );
 }
 
+function AllTradeRow({ t, printOnly, rejectingId, setRejectingId, rejectReason, setRejectReason, submitTradeReject }) {
+    const rejected = t.status === 'rejected';
+    return (
+        <tr style={rejected ? { opacity: .6 } : undefined}>
+            <td style={{ fontSize: 12, color: 'var(--muted)' }}>{t.created_at}</td>
+            <td><span className={`badge ${t.source === 'shop' ? 'gold' : 'silver'}`}>{t.source_label}</span></td>
+            <td><strong>{t.user_name}</strong></td>
+            <td style={{ color: 'var(--muted)', fontSize: 13 }}>{t.counterparty_name || '—'}</td>
+            <td><span className={`badge ${t.side === 'buy' ? 'buy-b' : 'sell-b'}`}>{t.side === 'buy' ? 'خرید' : 'فروش'}</span></td>
+            <td>
+                <span style={rejected ? { textDecoration: 'line-through' } : undefined}>{t.item_label}</span>
+                {rejected && <span className="badge sell-b" style={{ marginInlineStart: 6 }}>رد شد</span>}
+                {rejected && t.admin_note && <div style={{ fontSize: 11, color: 'var(--down)', marginTop: 4 }}>دلیل: {t.admin_note}</div>}
+            </td>
+            <td className="num">{t.quantity}</td>
+            <td className="num"><strong>{faNum(t.total)}</strong></td>
+            {!printOnly && (
+                <td>
+                    {t.can_reject ? (
+                        rejectingId === t.id ? (
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                <input autoFocus placeholder="دلیل رد" value={rejectReason} onChange={e => setRejectReason(e.target.value)}
+                                    style={{ width: 150, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '5px 8px', fontFamily: 'inherit', fontSize: 12 }} />
+                                <button className="btn-sm danger" onClick={() => submitTradeReject(t)}>ثبت رد</button>
+                                <button className="btn-sm" onClick={() => { setRejectingId(null); setRejectReason(''); }}>لغو</button>
+                            </div>
+                        ) : (
+                            <button className="btn-sm danger" onClick={() => { setRejectingId(t.id); setRejectReason(''); }}>رد با دلیل</button>
+                        )
+                    ) : <span style={{ color: 'var(--muted)', fontSize: 12 }}>—</span>}
+                </td>
+            )}
+        </tr>
+    );
+}
+
+function LogRow({ l }) {
+    const cat = LOG_CAT[l.category] || LOG_CAT.other;
+    return (
+        <tr>
+            <td style={{ fontSize: 12, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{l.created_at}</td>
+            <td><span className={`badge ${cat.badge}`}>{cat.label}</span></td>
+            <td style={{ fontSize: 13 }}>{l.user_name || '—'}</td>
+            <td style={{ fontSize: 13, whiteSpace: 'normal', minWidth: 280 }}>{l.description}</td>
+            <td className="num" dir="ltr" style={{ fontSize: 12, color: 'var(--muted)' }}>{l.ip || '—'}</td>
+        </tr>
+    );
+}
+
 export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApplications, vipMembers, deliveryRequests, withdrawalRequests, allTrades, activityLogs }) {
     const { auth } = usePage().props;
     const [tab, setTab] = useState('users');
@@ -208,17 +259,50 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     const [withdrawalReason, setWithdrawalReason] = useState({});
     const [withdrawalNote, setWithdrawalNote] = useState({});
     const [deliveryNote, setDeliveryNote] = useState({});
-    const [tradeFilterDate, setTradeFilterDate] = useState('');
+    const [tradeFrom, setTradeFrom] = useState('');
+    const [tradeTo, setTradeTo] = useState('');
     const [rejectingId, setRejectingId] = useState(null);
     const [rejectReason, setRejectReason] = useState('');
     const [logCat, setLogCat] = useState('all');
-    const [logDate, setLogDate] = useState('');
+    const [logFrom, setLogFrom] = useState('');
+    const [logTo, setLogTo] = useState('');
     const [editingNotifId, setEditingNotifId] = useState(null);
     const [notifEdit, setNotifEdit] = useState({ title: '', body: '', type: 'info' });
 
-    const filteredLogs = useMemo(() => (activityLogs || []).filter(l =>
-        (logCat === 'all' || l.category === logCat) && (!logDate || l.date_raw === logDate)
-    ), [activityLogs, logCat, logDate]);
+    const [usersQ, setUsersQ] = useState('');
+    const [txnsQ, setTxnsQ] = useState('');
+    const [tradesQ, setTradesQ] = useState('');
+    const [walletQ, setWalletQ] = useState('');
+    const [notifsQ, setNotifsQ] = useState('');
+    const [memberQ, setMemberQ] = useState('');
+    const [vipQ, setVipQ] = useState('');
+    const [deliveryQ, setDeliveryQ] = useState('');
+    const [withdrawalsQ, setWithdrawalsQ] = useState('');
+    const [logsQ, setLogsQ] = useState('');
+
+    const filteredUsers = useMemo(() => filterBySearch(users, usersQ, ['name', 'phone', 'email', 'national_id']), [users, usersQ]);
+    const filteredTxns = useMemo(() => filterBySearch(txns, txnsQ, ['user_name', 'user_phone', 'item_label']), [txns, txnsQ]);
+    const filteredWTxns = useMemo(() => filterBySearch(wTxns, walletQ, ['user_name', 'description']), [wTxns, walletQ]);
+    const filteredNotifs = useMemo(() => filterBySearch(notifs, notifsQ, ['title', 'body']), [notifs, notifsQ]);
+    const filteredMemberApps = useMemo(() => filterBySearch(memberApplications || [], memberQ, ['name', 'phone', 'national_id']), [memberApplications, memberQ]);
+    const filteredVipMembers = useMemo(() => filterBySearch(vipMembers || [], vipQ, ['name', 'phone', 'national_id', 'email']), [vipMembers, vipQ]);
+    const filteredDeliveryRequests = useMemo(() => filterBySearch(deliveryRequests || [], deliveryQ, ['user_name', 'user_phone', 'recipient_name', 'phone', 'address']), [deliveryRequests, deliveryQ]);
+    const filteredWithdrawalRequests = useMemo(() => filterBySearch(withdrawalRequests || [], withdrawalsQ, ['user_name', 'user_phone', 'card_number', 'shaba']), [withdrawalRequests, withdrawalsQ]);
+
+    const filteredLogs = useMemo(() => filterBySearch(filterByDateRange(
+        (activityLogs || []).filter(l => logCat === 'all' || l.category === logCat),
+        logFrom, logTo
+    ), logsQ, ['description', 'user_name', 'action']), [activityLogs, logCat, logFrom, logTo, logsQ]);
+
+    const usersPager = usePager(filteredUsers, usersQ);
+    const txnsPager = usePager(filteredTxns, txnsQ);
+    const wTxnsPager = usePager(filteredWTxns, walletQ);
+    const notifsPager = usePager(filteredNotifs, notifsQ);
+    const memberAppsPager = usePager(filteredMemberApps, memberQ);
+    const vipPager = usePager(filteredVipMembers, vipQ);
+    const deliveryPager = usePager(filteredDeliveryRequests, deliveryQ);
+    const withdrawalsPager = usePager(filteredWithdrawalRequests, withdrawalsQ);
+    const logsPager = usePager(filteredLogs, `${logCat}|${logFrom}|${logTo}|${logsQ}`);
 
     function submitTradeReject(t) {
         const reason = rejectReason.trim();
@@ -233,9 +317,10 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     }
 
     const filteredAllTrades = useMemo(
-        () => tradeFilterDate ? (allTrades || []).filter(t => t.date_raw === tradeFilterDate) : (allTrades || []),
-        [allTrades, tradeFilterDate]
+        () => filterBySearch(filterByDateRange(allTrades || [], tradeFrom, tradeTo), tradesQ, ['user_name', 'counterparty_name', 'item_label']),
+        [allTrades, tradeFrom, tradeTo, tradesQ]
     );
+    const allTradesPager = usePager(filteredAllTrades, `${tradeFrom}|${tradeTo}|${tradesQ}`);
 
     function deleteNotif(id) {
         if (!confirm('حذف شود؟')) return;
@@ -326,88 +411,78 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
 
                 {/* کاربران */}
                 {tab === 'users' && (
-                    <div className="table-wrap">
-                        <table>
-                            <thead><tr>
-                                <th>#</th><th>نام</th><th>موبایل</th><th>معاملات</th><th>کیف پول</th><th>طلا</th><th>نقره (۹۹۹/۹۹۵)</th><th>عضویت از</th><th>سطح</th><th></th>
-                            </tr></thead>
-                            <tbody>
-                                {users.map(u => <UserRow key={u.id} u={u} isSelf={u.id === auth.user.id} />)}
-                            </tbody>
-                        </table>
-                    </div>
+                    <>
+                        <div className="no-print" style={{ marginBottom: 14 }}>
+                            <SearchBox value={usersQ} onChange={setUsersQ} placeholder="🔍 جستجو در نام، موبایل، ایمیل، کد ملی..." />
+                        </div>
+                        <div className="table-wrap">
+                            <table>
+                                <thead><tr>
+                                    <th>#</th><th>نام</th><th>موبایل</th><th>معاملات</th><th>کیف پول</th><th>طلا</th><th>نقره (۹۹۹/۹۹۵)</th><th>عضویت از</th><th>سطح</th><th></th>
+                                </tr></thead>
+                                <tbody>
+                                    {usersPager.pageItems.map(u => <UserRow key={u.id} u={u} isSelf={u.id === auth.user.id} />)}
+                                </tbody>
+                            </table>
+                        </div>
+                        <Pager page={usersPager.page} totalPages={usersPager.totalPages} onChange={usersPager.setPage} />
+                    </>
                 )}
 
                 {/* معاملات */}
                 {tab === 'txns' && (
-                    <div className="table-wrap">
-                        <table>
-                            <thead><tr><th>تاریخ</th><th>کاربر</th><th>موبایل</th><th>نوع</th><th>کالا</th><th>مقدار</th><th>مبلغ کل</th><th></th></tr></thead>
-                            <tbody>
-                                {txns.map(t => <TxnRow key={t.id} t={t} />)}
-                            </tbody>
-                        </table>
-                    </div>
+                    <>
+                        <div className="no-print" style={{ marginBottom: 14 }}>
+                            <SearchBox value={txnsQ} onChange={setTxnsQ} placeholder="🔍 جستجو در کاربر، موبایل، کالا..." />
+                        </div>
+                        <div className="table-wrap">
+                            <table>
+                                <thead><tr><th>تاریخ</th><th>کاربر</th><th>موبایل</th><th>نوع</th><th>کالا</th><th>مقدار</th><th>مبلغ کل</th><th></th></tr></thead>
+                                <tbody>
+                                    {txnsPager.pageItems.map(t => <TxnRow key={t.id} t={t} />)}
+                                </tbody>
+                            </table>
+                        </div>
+                        <Pager page={txnsPager.page} totalPages={txnsPager.totalPages} onChange={txnsPager.setPage} />
+                    </>
                 )}
 
                 {/* تاریخچه کلی معاملات (فروشگاه + اتاق معاملاتی) */}
                 {tab === 'all_trades' && (
                     <>
                         <div className="no-print" style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 18 }}>
-                            <div style={{ minWidth: 280 }}>
-                                <label style={{ display: 'block', fontSize: 13, color: 'var(--muted)', marginBottom: 6, fontWeight: 600 }}>فیلتر بر اساس تاریخ (برای چاپ)</label>
-                                <JalaliDatePicker value={tradeFilterDate} onChange={setTradeFilterDate} yearsBack={5} allowCurrentYear />
-                            </div>
-                            {tradeFilterDate && <button type="button" className="btn-sm" onClick={() => setTradeFilterDate('')}>حذف فیلتر</button>}
+                            <SearchBox value={tradesQ} onChange={setTradesQ} placeholder="🔍 جستجو در کاربر، طرف معامله، کالا..." />
+                            <DateRangeFilter from={tradeFrom} to={tradeTo} onFromChange={setTradeFrom} onToChange={setTradeTo} />
+                            {(tradeFrom || tradeTo) && <button type="button" className="btn-sm" onClick={() => { setTradeFrom(''); setTradeTo(''); }}>حذف فیلتر</button>}
                             <button type="button" className="btn-sm" onClick={() => window.print()} style={{ borderColor: 'rgba(246,207,99,.4)', color: 'var(--gold-1)', background: 'rgba(246,207,99,.08)' }}>
                                 🖨️ چاپ / خروجی PDF
                             </button>
                         </div>
 
                         {filteredAllTrades.length ? (
-                            <div className="table-wrap print-area">
-                                <div className="print-only" style={{ marginBottom: 14, fontWeight: 800, fontSize: 16 }}>تاریخچه کلی معاملات (فروشگاه + اتاق معاملاتی)</div>
-                                <table>
-                                    <thead><tr><th>تاریخ</th><th>منبع</th><th>کاربر</th><th>طرف معامله</th><th>نوع</th><th>کالا</th><th>مقدار</th><th>مبلغ کل</th><th className="no-print"></th></tr></thead>
-                                    <tbody>
-                                        {filteredAllTrades.map(t => {
-                                            const rejected = t.status === 'rejected';
-                                            return (
-                                                <tr key={t.id} style={rejected ? { opacity: .6 } : undefined}>
-                                                    <td style={{ fontSize: 12, color: 'var(--muted)' }}>{t.created_at}</td>
-                                                    <td><span className={`badge ${t.source === 'shop' ? 'gold' : 'silver'}`}>{t.source_label}</span></td>
-                                                    <td><strong>{t.user_name}</strong></td>
-                                                    <td style={{ color: 'var(--muted)', fontSize: 13 }}>{t.counterparty_name || '—'}</td>
-                                                    <td><span className={`badge ${t.side === 'buy' ? 'buy-b' : 'sell-b'}`}>{t.side === 'buy' ? 'خرید' : 'فروش'}</span></td>
-                                                    <td>
-                                                        <span style={rejected ? { textDecoration: 'line-through' } : undefined}>{t.item_label}</span>
-                                                        {rejected && <span className="badge sell-b" style={{ marginInlineStart: 6 }}>رد شد</span>}
-                                                        {rejected && t.admin_note && <div style={{ fontSize: 11, color: 'var(--down)', marginTop: 4 }}>دلیل: {t.admin_note}</div>}
-                                                    </td>
-                                                    <td className="num">{t.quantity}</td>
-                                                    <td className="num"><strong>{faNum(t.total)}</strong></td>
-                                                    <td className="no-print">
-                                                        {t.can_reject ? (
-                                                            rejectingId === t.id ? (
-                                                                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                                                                    <input autoFocus placeholder="دلیل رد" value={rejectReason} onChange={e => setRejectReason(e.target.value)}
-                                                                        style={{ width: 150, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '5px 8px', fontFamily: 'inherit', fontSize: 12 }} />
-                                                                    <button className="btn-sm danger" onClick={() => submitTradeReject(t)}>ثبت رد</button>
-                                                                    <button className="btn-sm" onClick={() => { setRejectingId(null); setRejectReason(''); }}>لغو</button>
-                                                                </div>
-                                                            ) : (
-                                                                <button className="btn-sm danger" onClick={() => { setRejectingId(t.id); setRejectReason(''); }}>رد با دلیل</button>
-                                                            )
-                                                        ) : <span style={{ color: 'var(--muted)', fontSize: 12 }}>—</span>}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
+                            <>
+                                <div className="table-wrap">
+                                    <table>
+                                        <thead><tr><th>تاریخ</th><th>منبع</th><th>کاربر</th><th>طرف معامله</th><th>نوع</th><th>کالا</th><th>مقدار</th><th>مبلغ کل</th><th></th></tr></thead>
+                                        <tbody>
+                                            {allTradesPager.pageItems.map(t => <AllTradeRow key={t.id} t={t} rejectingId={rejectingId} setRejectingId={setRejectingId} rejectReason={rejectReason} setRejectReason={setRejectReason} submitTradeReject={submitTradeReject} />)}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <Pager page={allTradesPager.page} totalPages={allTradesPager.totalPages} onChange={allTradesPager.setPage} />
+
+                                <div className="table-wrap print-area print-only-block">
+                                    <div className="print-only" style={{ marginBottom: 14, fontWeight: 800, fontSize: 16 }}>تاریخچه کلی معاملات (فروشگاه + اتاق معاملاتی)</div>
+                                    <table>
+                                        <thead><tr><th>تاریخ</th><th>منبع</th><th>کاربر</th><th>طرف معامله</th><th>نوع</th><th>کالا</th><th>مقدار</th><th>مبلغ کل</th></tr></thead>
+                                        <tbody>
+                                            {filteredAllTrades.map(t => <AllTradeRow key={t.id} t={t} printOnly />)}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </>
                         ) : (
-                            <div className="empty"><div className="ico">📜</div>{tradeFilterDate ? 'معامله‌ای در این تاریخ ثبت نشده.' : 'هنوز معامله‌ای ثبت نشده.'}</div>
+                            <div className="empty"><div className="ico">📜</div>{(tradeFrom || tradeTo) ? 'معامله‌ای در این بازه ثبت نشده.' : 'هنوز معامله‌ای ثبت نشده.'}</div>
                         )}
                     </>
                 )}
@@ -432,11 +507,14 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                                 <button className="btn" type="submit" style={{ width: 'auto', padding: '11px 28px' }}>ثبت تراکنش</button>
                             </form>
                         </div>
+                        <div className="no-print" style={{ marginBottom: 14 }}>
+                            <SearchBox value={walletQ} onChange={setWalletQ} placeholder="🔍 جستجو در کاربر، شرح..." />
+                        </div>
                         <div className="table-wrap">
                             <table>
                                 <thead><tr><th>تاریخ</th><th>کاربر</th><th>نوع</th><th>مبلغ</th><th>شرح</th></tr></thead>
                                 <tbody>
-                                    {wTxns.map(w => (
+                                    {wTxnsPager.pageItems.map(w => (
                                         <tr key={w.id}>
                                             <td style={{ fontSize: 12, color: 'var(--muted)' }}>{w.created_at}</td>
                                             <td>{w.user_name}</td>
@@ -448,6 +526,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                                 </tbody>
                             </table>
                         </div>
+                        <Pager page={wTxnsPager.page} totalPages={wTxnsPager.totalPages} onChange={wTxnsPager.setPage} />
                     </>
                 )}
 
@@ -480,11 +559,14 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                                 <button className="btn" type="submit" style={{ width: 'auto', padding: '11px 28px' }}>ارسال</button>
                             </form>
                         </div>
+                        <div className="no-print" style={{ marginBottom: 14 }}>
+                            <SearchBox value={notifsQ} onChange={setNotifsQ} placeholder="🔍 جستجو در عنوان، متن..." />
+                        </div>
                         <div className="table-wrap">
                             <table>
                                 <thead><tr><th>تاریخ</th><th>عنوان</th><th>نوع</th><th>گیرنده</th><th>دیده‌شده</th><th></th></tr></thead>
                                 <tbody>
-                                    {notifs.map(n => (
+                                    {notifsPager.pageItems.map(n => (
                                         editingNotifId === n.id ? (
                                             <tr key={n.id}>
                                                 <td colSpan={5}>
@@ -526,14 +608,19 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                                 </tbody>
                             </table>
                         </div>
+                        <Pager page={notifsPager.page} totalPages={notifsPager.totalPages} onChange={notifsPager.setPage} />
                     </>
                 )}
 
                 {/* درخواست‌های عضویت ویژه */}
                 {tab === 'membership' && (
-                    memberApplications?.length ? (
+                    <>
+                        <div className="no-print" style={{ marginBottom: 14 }}>
+                            <SearchBox value={memberQ} onChange={setMemberQ} placeholder="🔍 جستجو در نام، موبایل، کد ملی..." />
+                        </div>
+                        {filteredMemberApps.length ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                            {memberApplications.map(m => (
+                            {memberAppsPager.pageItems.map(m => (
                                 <div key={m.id} className="fcard" style={{ padding: 20 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
                                         <div>
@@ -592,16 +679,22 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                                 </div>
                             ))}
                         </div>
-                    ) : (
-                        <div className="empty"><div className="ico">👑</div>درخواست عضویت ویژه‌ای در انتظار بررسی نیست.</div>
-                    )
+                        ) : (
+                            <div className="empty"><div className="ico">👑</div>درخواست عضویت ویژه‌ای در انتظار بررسی نیست.</div>
+                        )}
+                        <Pager page={memberAppsPager.page} totalPages={memberAppsPager.totalPages} onChange={memberAppsPager.setPage} />
+                    </>
                 )}
 
                 {/* عضویت‌های ویژه */}
                 {tab === 'vip' && (
-                    vipMembers?.length ? (
+                    <>
+                        <div className="no-print" style={{ marginBottom: 14 }}>
+                            <SearchBox value={vipQ} onChange={setVipQ} placeholder="🔍 جستجو در نام، موبایل، کد ملی، ایمیل..." />
+                        </div>
+                        {filteredVipMembers.length ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                            {vipMembers.map(m => (
+                            {vipPager.pageItems.map(m => (
                                 <div key={m.id} className="fcard" style={{ padding: 20 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
                                         <div>
@@ -652,19 +745,25 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                                 </div>
                             ))}
                         </div>
-                    ) : (
-                        <div className="empty"><div className="ico">👑</div>هیچ عضو ویژه‌ای ثبت نشده.</div>
-                    )
+                        ) : (
+                            <div className="empty"><div className="ico">👑</div>هیچ عضو ویژه‌ای ثبت نشده.</div>
+                        )}
+                        <Pager page={vipPager.page} totalPages={vipPager.totalPages} onChange={vipPager.setPage} />
+                    </>
                 )}
 
                 {/* تحویل فیزیکی */}
                 {tab === 'delivery' && (
-                    deliveryRequests?.length ? (
+                    <>
+                        <div className="no-print" style={{ marginBottom: 14 }}>
+                            <SearchBox value={deliveryQ} onChange={setDeliveryQ} placeholder="🔍 جستجو در کاربر، موبایل، گیرنده، آدرس..." />
+                        </div>
+                        {filteredDeliveryRequests.length ? (
                         <div className="table-wrap">
                             <table>
                                 <thead><tr><th>کاربر</th><th>موبایل</th><th>مورد</th><th>مقدار</th><th>گیرنده</th><th>آدرس</th><th>وضعیت</th><th>تاریخ</th><th></th></tr></thead>
                                 <tbody>
-                                    {deliveryRequests.map(r => (
+                                    {deliveryPager.pageItems.map(r => (
                                         <tr key={r.id}>
                                             <td><strong>{r.user_name}</strong></td>
                                             <td className="num" dir="ltr" style={{ fontSize: 13 }}>{r.user_phone}</td>
@@ -704,19 +803,25 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                                 </tbody>
                             </table>
                         </div>
-                    ) : (
-                        <div className="empty"><div className="ico">🚚</div>درخواست تحویل فیزیکی‌ای ثبت نشده.</div>
-                    )
+                        ) : (
+                            <div className="empty"><div className="ico">🚚</div>درخواست تحویل فیزیکی‌ای ثبت نشده.</div>
+                        )}
+                        <Pager page={deliveryPager.page} totalPages={deliveryPager.totalPages} onChange={deliveryPager.setPage} />
+                    </>
                 )}
 
                 {/* تسویه حساب */}
                 {tab === 'withdrawals' && (
-                    withdrawalRequests?.length ? (
+                    <>
+                        <div className="no-print" style={{ marginBottom: 14 }}>
+                            <SearchBox value={withdrawalsQ} onChange={setWithdrawalsQ} placeholder="🔍 جستجو در کاربر، موبایل، شماره کارت/شبا..." />
+                        </div>
+                        {filteredWithdrawalRequests.length ? (
                         <div className="table-wrap">
                             <table>
                                 <thead><tr><th>کاربر</th><th>موبایل</th><th>مبلغ</th><th>شماره کارت</th><th>شماره شبا</th><th>تاریخ</th><th></th></tr></thead>
                                 <tbody>
-                                    {withdrawalRequests.map(w => (
+                                    {withdrawalsPager.pageItems.map(w => (
                                         <tr key={w.id}>
                                             <td><strong>{w.user_name}</strong></td>
                                             <td className="num" dir="ltr" style={{ fontSize: 13 }}>{w.user_phone}</td>
@@ -745,15 +850,18 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                                 </tbody>
                             </table>
                         </div>
-                    ) : (
-                        <div className="empty"><div className="ico">🏦</div>درخواست تسویه حساب در انتظار بررسی نیست.</div>
-                    )
+                        ) : (
+                            <div className="empty"><div className="ico">🏦</div>درخواست تسویه حساب در انتظار بررسی نیست.</div>
+                        )}
+                        <Pager page={withdrawalsPager.page} totalPages={withdrawalsPager.totalPages} onChange={withdrawalsPager.setPage} />
+                    </>
                 )}
 
                 {/* گزارش فعالیت (سیستم لاگ) */}
                 {tab === 'logs' && (
                     <>
                         <div className="no-print" style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 18 }}>
+                            <SearchBox value={logsQ} onChange={setLogsQ} placeholder="🔍 جستجو در شرح، کاربر..." />
                             <div>
                                 <label style={{ display: 'block', fontSize: 13, color: 'var(--muted)', marginBottom: 6, fontWeight: 600 }}>دسته</label>
                                 <select value={logCat} onChange={e => setLogCat(e.target.value)}
@@ -762,35 +870,33 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                                     {Object.entries(LOG_CAT).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                                 </select>
                             </div>
-                            <div style={{ minWidth: 280 }}>
-                                <label style={{ display: 'block', fontSize: 13, color: 'var(--muted)', marginBottom: 6, fontWeight: 600 }}>تاریخ (برای چاپ)</label>
-                                <JalaliDatePicker value={logDate} onChange={setLogDate} yearsBack={5} allowCurrentYear />
-                            </div>
-                            {(logDate || logCat !== 'all') && <button type="button" className="btn-sm" onClick={() => { setLogDate(''); setLogCat('all'); }}>حذف فیلتر</button>}
+                            <DateRangeFilter from={logFrom} to={logTo} onFromChange={setLogFrom} onToChange={setLogTo} />
+                            {(logFrom || logTo || logCat !== 'all' || logsQ) && <button type="button" className="btn-sm" onClick={() => { setLogFrom(''); setLogTo(''); setLogCat('all'); setLogsQ(''); }}>حذف فیلتر</button>}
                             <button type="button" className="btn-sm gold" onClick={() => window.print()}>🖨️ چاپ / خروجی PDF</button>
                         </div>
 
                         {filteredLogs.length ? (
-                            <div className="table-wrap print-area">
-                                <div className="print-only" style={{ marginBottom: 6, fontWeight: 800, fontSize: 16 }}>گزارش فعالیت سامانه</div>
-                                <table>
-                                    <thead><tr><th>تاریخ</th><th>دسته</th><th>کاربر</th><th>شرح</th><th>IP</th></tr></thead>
-                                    <tbody>
-                                        {filteredLogs.map(l => {
-                                            const cat = LOG_CAT[l.category] || LOG_CAT.other;
-                                            return (
-                                                <tr key={l.id}>
-                                                    <td style={{ fontSize: 12, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{l.created_at}</td>
-                                                    <td><span className={`badge ${cat.badge}`}>{cat.label}</span></td>
-                                                    <td style={{ fontSize: 13 }}>{l.user_name || '—'}</td>
-                                                    <td style={{ fontSize: 13, whiteSpace: 'normal', minWidth: 280 }}>{l.description}</td>
-                                                    <td className="num" dir="ltr" style={{ fontSize: 12, color: 'var(--muted)' }}>{l.ip || '—'}</td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
+                            <>
+                                <div className="table-wrap">
+                                    <table>
+                                        <thead><tr><th>تاریخ</th><th>دسته</th><th>کاربر</th><th>شرح</th><th>IP</th></tr></thead>
+                                        <tbody>
+                                            {logsPager.pageItems.map(l => <LogRow key={l.id} l={l} />)}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <Pager page={logsPager.page} totalPages={logsPager.totalPages} onChange={logsPager.setPage} />
+
+                                <div className="table-wrap print-area print-only-block">
+                                    <div className="print-only" style={{ marginBottom: 6, fontWeight: 800, fontSize: 16 }}>گزارش فعالیت سامانه</div>
+                                    <table>
+                                        <thead><tr><th>تاریخ</th><th>دسته</th><th>کاربر</th><th>شرح</th><th>IP</th></tr></thead>
+                                        <tbody>
+                                            {filteredLogs.map(l => <LogRow key={l.id} l={l} />)}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </>
                         ) : (
                             <div className="empty"><div className="ico">🗒️</div>رویدادی برای نمایش نیست.</div>
                         )}

@@ -101,6 +101,24 @@ class AdminController extends Controller
                 'submitted_at'        => Jalali::format($u->updated_at),
             ]);
 
+        $vipMembers = User::where('is_vip', true)
+            ->orWhere('membership_level', 2)
+            ->orderByDesc('updated_at')->get()
+            ->map(fn ($u) => [
+                'id'                  => $u->id,
+                'name'                => $u->name,
+                'phone'               => $u->phone,
+                'email'               => $u->email,
+                'national_id'         => $u->national_id,
+                'birth_date'          => $u->birth_date ? Jalali::format($u->birth_date, false) : null,
+                'residence_address'   => $u->residence_address,
+                'national_id_doc'     => $u->national_id_doc ? Storage::url($u->national_id_doc) : null,
+                'identity_doc'        => $u->identity_doc ? Storage::url($u->identity_doc) : null,
+                'verification_video'  => $u->verification_video ? Storage::url($u->verification_video) : null,
+                'membership_status'   => $u->membership_status,
+                'approved_at'         => Jalali::format($u->updated_at, false),
+            ]);
+
         $deliveryRequests = SilverDeliveryRequest::with('user')
             ->where('status', '!=', 'delivered')
             ->orderByDesc('created_at')->get()
@@ -146,7 +164,7 @@ class AdminController extends Controller
                 'date_raw'    => optional($l->created_at)->format('Y-m-d'),
             ]);
 
-        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'stats', 'memberApplications', 'deliveryRequests', 'withdrawalRequests', 'allTrades', 'activityLogs'));
+        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'stats', 'memberApplications', 'vipMembers', 'deliveryRequests', 'withdrawalRequests', 'allTrades', 'activityLogs'));
     }
 
     /** ریز معاملات یک کاربر خاص (فروشگاه + اتاق معاملاتی) برای مشاهده و خروجی PDF ادمین. */

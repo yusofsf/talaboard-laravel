@@ -198,7 +198,7 @@ function TxnRow({ t }) {
     );
 }
 
-export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApplications, deliveryRequests, withdrawalRequests, allTrades, activityLogs }) {
+export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApplications, vipMembers, deliveryRequests, withdrawalRequests, allTrades, activityLogs }) {
     const { auth } = usePage().props;
     const [tab, setTab] = useState('users');
 
@@ -276,6 +276,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
         ['wallet', 'کیف پول'],
         ['notifs', 'اعلان‌ها'],
         ['membership', `درخواست‌های عضویت${memberApplications?.length ? ` (${memberApplications.length})` : ''}`],
+        ['vip', `عضویت‌های ویژه${vipMembers?.length ? ` (${vipMembers.length})` : ''}`],
         ['delivery', `تحویل فیزیکی${deliveryRequests?.length ? ` (${deliveryRequests.length})` : ''}`],
         ['withdrawals', `تسویه حساب${withdrawalRequests?.length ? ` (${withdrawalRequests.length})` : ''}`],
         ['logs', 'گزارش فعالیت'],
@@ -550,6 +551,66 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                         </div>
                     ) : (
                         <div className="empty"><div className="ico">👑</div>درخواست عضویت ویژه‌ای در انتظار بررسی نیست.</div>
+                    )
+                )}
+
+                {/* عضویت‌های ویژه */}
+                {tab === 'vip' && (
+                    vipMembers?.length ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            {vipMembers.map(m => (
+                                <div key={m.id} className="fcard" style={{ padding: 20 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+                                        <div>
+                                            <strong style={{ fontSize: 16 }}>{m.name}</strong>
+                                            <span style={{ color: 'var(--muted)', fontSize: 13, marginInlineStart: 10 }} dir="ltr">{m.phone}</span>
+                                            {m.national_id && <span style={{ color: 'var(--muted)', fontSize: 13, marginInlineStart: 10 }}>کد ملی: {m.national_id}</span>}
+                                        </div>
+                                        <span className="badge gold">عضو ویژه</span>
+                                    </div>
+
+                                    <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginBottom: 14, fontSize: 13, color: 'var(--muted)' }}>
+                                        {m.email && <span>ایمیل: <strong style={{ color: 'var(--txt)' }}>{m.email}</strong></span>}
+                                        {m.birth_date && <span>تاریخ تولد: <strong style={{ color: 'var(--txt)' }}>{m.birth_date}</strong></span>}
+                                        {m.residence_address && <span>آدرس: <strong style={{ color: 'var(--txt)' }}>{m.residence_address}</strong></span>}
+                                        <span>تاریخ تأیید: <strong style={{ color: 'var(--txt)' }}>{m.approved_at}</strong></span>
+                                    </div>
+
+                                    {(m.national_id_doc || m.identity_doc || m.verification_video) && (
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 14 }}>
+                                            <div>
+                                                <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>تصویر کارت ملی</div>
+                                                {m.national_id_doc
+                                                    ? <a href={m.national_id_doc} target="_blank" rel="noopener noreferrer">
+                                                        <img src={m.national_id_doc} alt="کارت ملی" style={{ width: '100%', borderRadius: 10, border: '1px solid var(--line)' }} />
+                                                      </a>
+                                                    : <div style={{ color: 'var(--muted)' }}>—</div>}
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>جواز صنفی</div>
+                                                {m.identity_doc
+                                                    ? <a href={m.identity_doc} target="_blank" rel="noopener noreferrer">
+                                                        <img src={m.identity_doc} alt="جواز صنفی" style={{ width: '100%', borderRadius: 10, border: '1px solid var(--line)' }} />
+                                                      </a>
+                                                    : <div style={{ color: 'var(--muted)' }}>—</div>}
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>فیلم اعتبارسنجی</div>
+                                                {m.verification_video
+                                                    ? <video src={m.verification_video} controls style={{ width: '100%', borderRadius: 10, border: '1px solid var(--line)' }} />
+                                                    : <div style={{ color: 'var(--muted)' }}>—</div>}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div style={{ marginTop: 14 }}>
+                                        <Link href={`/admin/users/${m.id}/trades`} className="btn-sm gold">ریز معاملات</Link>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="empty"><div className="ico">👑</div>هیچ عضو ویژه‌ای ثبت نشده.</div>
                     )
                 )}
 

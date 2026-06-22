@@ -27,6 +27,7 @@ class User extends Authenticatable
             'must_reset_password' => 'boolean',
             'membership_level'    => 'integer',
             'birth_date'          => 'date',
+            'last_seen_at'        => 'datetime',
         ];
     }
 

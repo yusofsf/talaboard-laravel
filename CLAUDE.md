@@ -128,6 +128,10 @@ History.jsx, TradeRoom.jsx (`mine` tab), and Admin/Dashboard.jsx (`all_trades` t
 
 `NotificationController::index()` excludes any notification the current user has already created a `NotificationRead` row for (`whereNotIn('id', $readIds)`) — clicking the ✓ button effectively removes it from that user's own list rather than just toggling a "read" visual state. This is per-user: a broadcast notification (`user_id = null`) read by one recipient still shows for every other recipient who hasn't read it yet, and the `Notification` row itself is never deleted by this flow (admins still see and can manage it in the `notifs` tab regardless of who's read it).
 
+### Online users (admin-only)
+
+`UpdateLastSeen` middleware (registered globally in the `web` group in `bootstrap/app.php`) stamps `users.last_seen_at` on every authenticated request, throttled to once per 60 seconds per user (`saveQuietly()`, no model events) to keep the write cheap. `AdminController::onlineUsers()` lists users with `last_seen_at` in the last 5 minutes, rendered at `/admin/online-users` (`Admin/OnlineUsers.jsx`), which polls itself every 15s via `router.reload({ only: ['users'] })`. Gated by the same `admin` middleware as the rest of `/admin/*` — the "🟢 کاربران آنلاین" menu link in `AppLayout.jsx` only renders when `user.is_admin`, same as the "🛠️ مدیریت" link.
+
 ### Admin actions notify every *other* admin, not just the affected user
 
 `AdminController::notifyOtherAdmins()` is called at the end of every admin action (level changes, wallet credits, inventory adjustments, membership approve/reject, delivery status updates, user/transaction edits and deletes, withdrawal approve/reject, manual notifications) to create a `Notification` row for each admin except the one who performed the action, naming the acting admin in the body. This is so admins can see what other admins are doing without a separate audit log table. When adding a new admin action, call this helper rather than only notifying the affected user — that's the established convention now, not a one-off.

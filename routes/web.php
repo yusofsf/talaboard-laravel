@@ -73,6 +73,7 @@ Route::middleware('auth')->group(function () {
 // پنل ادمین
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
+    Route::get('/online-users', [AdminController::class, 'onlineUsers'])->name('online-users');
     Route::post('/set-level/{uid}', [AdminController::class, 'setLevel'])->name('set-level');
     Route::post('/wallet-credit', [AdminController::class, 'walletCredit'])->name('wallet-credit');
     Route::post('/inventory-adjust/{uid}', [AdminController::class, 'inventoryAdjust'])->name('inventory-adjust');

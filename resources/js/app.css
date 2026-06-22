@@ -170,6 +170,8 @@ tbody tr:hover { background: rgba(255,255,255,.03); }
 
 /* چاپ / خروجی PDF — فقط .print-area چاپ می‌شود */
 .print-only { display: none; }
+/* وقتی لیست صفحه‌بندی شده، نسخه‌ی کامل (همه‌ی ردیف‌های فیلترشده) فقط هنگام چاپ نشان داده می‌شود */
+.print-only-block { display: none; }
 @media print {
   body * { visibility: hidden; }
   .print-area, .print-area * { visibility: visible; color: #000 !important; background: #fff !important; }
@@ -178,4 +180,5 @@ tbody tr:hover { background: rgba(255,255,255,.03); }
   .print-area th, .print-area td { border-color: #000; }
   .no-print { display: none !important; }
   .print-only { display: block; }
+  .print-only-block { display: block; }
 }

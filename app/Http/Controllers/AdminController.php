@@ -235,6 +235,26 @@ class AdminController extends Controller
         ]);
     }
 
+    /** کاربرانی که در ۵ دقیقه‌ی اخیر درخواستی فرستاده‌اند (UpdateLastSeen middleware) — فقط برای ادمین. */
+    public function onlineUsers()
+    {
+        $users = User::whereNotNull('last_seen_at')
+            ->where('last_seen_at', '>=', now()->subMinutes(5))
+            ->orderByDesc('last_seen_at')
+            ->get()
+            ->map(fn ($u) => [
+                'id'           => $u->id,
+                'name'         => $u->name,
+                'phone'        => $u->phone,
+                'is_vip'       => $u->is_vip,
+                'is_admin'     => $u->is_admin,
+                'last_seen_at' => Jalali::format($u->last_seen_at),
+                'seconds_ago'  => now()->diffInSeconds($u->last_seen_at),
+            ]);
+
+        return Inertia::render('Admin/OnlineUsers', ['users' => $users]);
+    }
+
     /** تاریخچه‌ی کلی معاملات (فروشگاه + اتاق معاملاتی) برای ادمین — یک لیست واحد، جدیدترین اول. */
     private function allTradesHistory(): array
     {

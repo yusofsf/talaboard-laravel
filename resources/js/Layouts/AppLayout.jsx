@@ -58,7 +58,7 @@ export default function AppLayout({ children }) {
                                 minWidth: 220, padding: 10, boxShadow: '0 14px 40px rgba(0,0,0,.4)',
                                 display: 'flex', flexDirection: 'column', gap: 2,
                             }}>
-                                <MenuLink href="/" onClick={() => setOpen(false)}>تابلوی قیمت</MenuLink>
+                                <MenuLink href="/" onClick={() => setOpen(false)}>💹 تابلوی قیمت</MenuLink>
                                 <MenuLink href="/chart" onClick={() => setOpen(false)}>📈 چارت</MenuLink>
                                 <MenuLink href="/calculator" onClick={() => setOpen(false)}>🧮 ماشین حساب</MenuLink>
 
@@ -80,7 +80,10 @@ export default function AppLayout({ children }) {
                                         )}
                                         <MenuLink href="/speed-test" onClick={() => setOpen(false)}>⚡ تست سرعت</MenuLink>
                                         {user.is_admin && (
-                                            <MenuLink href="/admin" onClick={() => setOpen(false)} gold>مدیریت</MenuLink>
+                                            <>
+                                                <MenuLink href="/admin" onClick={() => setOpen(false)} gold>🛠️ مدیریت</MenuLink>
+                                                <MenuLink href="/admin/online-users" onClick={() => setOpen(false)}>🟢 کاربران آنلاین</MenuLink>
+                                            </>
                                         )}
                                         <div style={{ height: 1, background: 'var(--line)', margin: '6px 0' }} />
                                         <MenuLink href="/profile" onClick={() => setOpen(false)}>{user.name}</MenuLink>

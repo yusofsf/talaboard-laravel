@@ -466,9 +466,14 @@ class AdminController extends Controller
 
     public function deliveryUpdate(Request $request, int $id)
     {
-        $request->validate(['status' => 'required|in:approved,shipped,delivered,rejected']);
+        $request->validate([
+            'status' => 'required|in:approved,shipped,delivered,rejected',
+            // دلیل برای رد اجباری، برای سایر وضعیت‌ها اختیاری
+            'note'   => 'required_if:status,rejected|nullable|string|max:300',
+        ]);
 
         $delivery = SilverDeliveryRequest::with('user')->findOrFail($id);
+        $note = trim((string) $request->input('note', ''));
 
         // در صورت رد درخواست، طلا/نقره‌ی رزرو‌شده به موجودی کاربر برمی‌گردد
         if ($request->status === 'rejected' && $delivery->status !== 'rejected') {
@@ -487,7 +492,7 @@ class AdminController extends Controller
             }
         }
 
-        $delivery->update(['status' => $request->status]);
+        $delivery->update(['status' => $request->status, 'admin_note' => $note !== '' ? $note : $delivery->admin_note]);
 
         $statusLabel = [
             'approved'  => 'تأیید شد',
@@ -496,15 +501,18 @@ class AdminController extends Controller
             'rejected'  => 'رد شد',
         ][$request->status];
 
+        $body = "درخواست شما «{$statusLabel}». تاریخ: " . Jalali::now();
+        if ($note !== '') $body .= "\nتوضیح ادمین: {$note}";
+
         Notification::create([
             'user_id' => $delivery->user_id,
             'title'   => 'وضعیت درخواست تحویل فیزیکی',
-            'body'    => "درخواست شما «{$statusLabel}». تاریخ: " . Jalali::now(),
+            'body'    => $body,
             'type'    => 'system',
         ]);
 
-        $this->notifyOtherAdmins($request, 'به‌روزرسانی تحویل فیزیکی توسط ادمین',
-            "{$request->user()->name} درخواست تحویل فیزیکی «{$delivery->user?->name}» را «{$statusLabel}» کرد. تاریخ: " . Jalali::now());
+        $adminLog = "{$request->user()->name} درخواست تحویل فیزیکی «{$delivery->user?->name}» را «{$statusLabel}» کرد." . ($note !== '' ? " توضیح: {$note}" : '') . ' تاریخ: ' . Jalali::now();
+        $this->notifyOtherAdmins($request, 'به‌روزرسانی تحویل فیزیکی توسط ادمین', $adminLog);
 
         try {
             $this->sms->sendDeliveryStatusUpdate($delivery->user->phone, $delivery->user->name, $statusLabel);
@@ -742,18 +750,24 @@ class AdminController extends Controller
 
     public function withdrawalApprove(Request $request, int $id)
     {
+        $request->validate(['note' => 'nullable|string|max:300']);
+        $note = trim((string) $request->input('note', ''));
+
         $withdrawal = WithdrawalRequest::with('user')->findOrFail($id);
-        $withdrawal->update(['status' => 'approved']);
+        $withdrawal->update(['status' => 'approved', 'admin_note' => $note !== '' ? $note : null]);
+
+        $body = number_format($withdrawal->amount) . ' تومان به حساب شما واریز شد. تاریخ: ' . Jalali::now();
+        if ($note !== '') $body .= "\nتوضیح ادمین: {$note}";
 
         Notification::create([
             'user_id' => $withdrawal->user_id,
             'title'   => 'تسویه حساب انجام شد',
-            'body'    => number_format($withdrawal->amount) . ' تومان به حساب شما واریز شد. تاریخ: ' . Jalali::now(),
+            'body'    => $body,
             'type'    => 'wallet',
         ]);
 
         $this->notifyOtherAdmins($request, 'تأیید تسویه حساب توسط ادمین',
-            "{$request->user()->name} تسویه حساب " . number_format($withdrawal->amount) . " تومانی «{$withdrawal->user?->name}» را تأیید کرد. تاریخ: " . Jalali::now());
+            "{$request->user()->name} تسویه حساب " . number_format($withdrawal->amount) . " تومانی «{$withdrawal->user?->name}» را تأیید کرد." . ($note !== '' ? " توضیح: {$note}" : '') . ' تاریخ: ' . Jalali::now());
 
         try {
             $this->sms->send($withdrawal->user->phone, 'تسویه حساب ' . number_format($withdrawal->amount) . ' تومانی شما انجام شد.');

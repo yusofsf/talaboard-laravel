@@ -65,6 +65,15 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // گزارش فعالیت (سیستم لاگ) — فایل جدا روی سرور: storage/logs/activity-YYYY-MM-DD.log
+        'activity' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/activity.log'),
+            'level' => 'info',
+            'days' => env('ACTIVITY_LOG_DAYS', 90),
+            'replace_placeholders' => true,
+        ],
+
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),

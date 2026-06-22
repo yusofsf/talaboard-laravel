@@ -206,6 +206,8 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     const notify = useForm({ title: '', body: '', type: 'info', target: 'all' });
     const [memberMsg, setMemberMsg] = useState({});
     const [withdrawalReason, setWithdrawalReason] = useState({});
+    const [withdrawalNote, setWithdrawalNote] = useState({});
+    const [deliveryNote, setDeliveryNote] = useState({});
     const [tradeFilterDate, setTradeFilterDate] = useState('');
     const [rejectingId, setRejectingId] = useState(null);
     const [rejectReason, setRejectReason] = useState('');
@@ -248,13 +250,17 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     }
 
     function updateDelivery(id, status) {
-        if (status === 'rejected' && !confirm('رد شود؟ طلا/نقره به موجودی کاربر برمی‌گردد.')) return;
-        router.post(`/admin/delivery/${id}/update`, { status }, { preserveScroll: true });
+        const note = (deliveryNote[id] || '').trim();
+        if (status === 'rejected') {
+            if (!note) { alert('برای رد، دلیل را وارد کنید.'); return; }
+            if (!confirm('رد شود؟ طلا/نقره به موجودی کاربر برمی‌گردد.')) return;
+        }
+        router.post(`/admin/delivery/${id}/update`, { status, note }, { preserveScroll: true });
     }
 
     function approveWithdrawal(id) {
         if (!confirm('تسویه حساب تأیید شود؟')) return;
-        router.post(`/admin/withdrawals/${id}/approve`, {}, { preserveScroll: true });
+        router.post(`/admin/withdrawals/${id}/approve`, { note: (withdrawalNote[id] || '').trim() }, { preserveScroll: true });
     }
 
     function rejectWithdrawal(id) {
@@ -569,6 +575,11 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                                             </td>
                                             <td style={{ fontSize: 12, color: 'var(--muted)' }}>{r.created_at}</td>
                                             <td>
+                                                {r.status !== 'rejected' && r.status !== 'delivered' && (
+                                                    <input placeholder="توضیح / دلیل (برای رد الزامی)" value={deliveryNote[r.id] || ''}
+                                                        onChange={e => setDeliveryNote(s => ({ ...s, [r.id]: e.target.value }))}
+                                                        style={{ width: '100%', minWidth: 160, marginBottom: 6, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '5px 8px', fontFamily: 'inherit', fontSize: 12 }} />
+                                                )}
                                                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                                                     {r.status === 'pending' && (
                                                         <button onClick={() => updateDelivery(r.id, 'approved')} className="btn-sm">تأیید</button>
@@ -610,12 +621,19 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                                             <td className="num" dir="ltr" style={{ fontSize: 13 }}>{w.shaba}</td>
                                             <td style={{ fontSize: 12, color: 'var(--muted)' }}>{w.created_at}</td>
                                             <td>
-                                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                                                    <button onClick={() => approveWithdrawal(w.id)} className="btn-sm" style={{ borderColor: 'rgba(65,225,166,.4)', color: 'var(--up)', background: 'rgba(65,225,166,.08)' }}>تأیید</button>
-                                                    <input placeholder="دلیل رد" value={withdrawalReason[w.id] || ''}
-                                                        onChange={e => setWithdrawalReason(s => ({ ...s, [w.id]: e.target.value }))}
-                                                        style={{ width: 120, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '5px 8px', fontFamily: 'inherit', fontSize: 12 }} />
-                                                    <button onClick={() => rejectWithdrawal(w.id)} className="btn-sm danger">رد</button>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 200 }}>
+                                                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                                        <input placeholder="توضیح تأیید (اختیاری)" value={withdrawalNote[w.id] || ''}
+                                                            onChange={e => setWithdrawalNote(s => ({ ...s, [w.id]: e.target.value }))}
+                                                            style={{ flex: 1, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '5px 8px', fontFamily: 'inherit', fontSize: 12 }} />
+                                                        <button onClick={() => approveWithdrawal(w.id)} className="btn-sm" style={{ borderColor: 'rgba(65,225,166,.4)', color: 'var(--up)', background: 'rgba(65,225,166,.08)' }}>تأیید</button>
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                                        <input placeholder="دلیل رد (الزامی)" value={withdrawalReason[w.id] || ''}
+                                                            onChange={e => setWithdrawalReason(s => ({ ...s, [w.id]: e.target.value }))}
+                                                            style={{ flex: 1, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '5px 8px', fontFamily: 'inherit', fontSize: 12 }} />
+                                                        <button onClick={() => rejectWithdrawal(w.id)} className="btn-sm danger">رد</button>
+                                                    </div>
                                                 </div>
                                             </td>
                                         </tr>

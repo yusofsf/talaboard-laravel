@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ActivityLog;
+use App\Models\SilverDeliveryRequest;
 use App\Models\User;
 use App\Models\WalletTransaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -62,5 +63,27 @@ class ActivityLogTest extends TestCase
 
         $this->actingAs($user)->get("/admin/users/{$other->id}/trades")
             ->assertForbidden();
+    }
+
+    public function test_delivery_reject_requires_a_reason(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $user  = User::factory()->create();
+        $delivery = SilverDeliveryRequest::create([
+            'user_id' => $user->id, 'metal' => 'gold', 'purity' => '', 'grams' => 5,
+            'recipient_name' => 'x', 'phone' => '0912', 'address' => 'y', 'status' => 'pending',
+        ]);
+
+        // رد بدون دلیل → خطای اعتبارسنجی
+        $this->actingAs($admin)->post("/admin/delivery/{$delivery->id}/update", ['status' => 'rejected'])
+            ->assertSessionHasErrors('note');
+        $this->assertSame('pending', $delivery->refresh()->status);
+
+        // رد با دلیل → موفق و دلیل ذخیره می‌شود
+        $this->actingAs($admin)->post("/admin/delivery/{$delivery->id}/update", ['status' => 'rejected', 'note' => 'مدارک ناقص'])
+            ->assertRedirect();
+        $delivery->refresh();
+        $this->assertSame('rejected', $delivery->status);
+        $this->assertSame('مدارک ناقص', $delivery->admin_note);
     }
 }

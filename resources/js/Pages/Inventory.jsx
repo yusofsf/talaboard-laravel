@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useForm, usePage } from '@inertiajs/react';
 import AppLayout, { faNum } from '../Layouts/AppLayout';
+import Pager, { usePager } from '../Components/Pager';
 
 const TYPE_LABEL = {
     purchase: 'خرید از فروشگاه', sale: 'فروش به فروشگاه',
@@ -19,36 +20,42 @@ const DELIVERY_STATUS = {
 };
 
 function HistoryTable({ rows, showPurity }) {
+    const pager = usePager(rows);
+
     if (!rows.length) {
         return <div className="empty" style={{ padding: '24px 0' }}><div className="ico">📦</div>هنوز تراکنشی ثبت نشده.</div>;
     }
     return (
-        <div className="table-wrap">
-            <table>
-                <thead><tr>
-                    <th>تاریخ</th>{showPurity && <th>عیار</th>}<th>نوع</th><th>گرم</th><th>توضیحات</th>
-                </tr></thead>
-                <tbody>
-                    {rows.map(r => (
-                        <tr key={r.id}>
-                            <td style={{ fontSize: 12, color: 'var(--muted)' }}>{r.created_at}</td>
-                            {showPurity && <td>{r.purity}</td>}
-                            <td>{TYPE_LABEL[r.type] || r.type}</td>
-                            <td className="num" style={{ color: r.grams > 0 ? 'var(--up)' : 'var(--down)', fontWeight: 700 }}>
-                                {r.grams > 0 ? '+' : ''}{r.grams}
-                            </td>
-                            <td style={{ color: 'var(--muted)', fontSize: 13 }}>{r.description || '—'}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
+        <>
+            <div className="table-wrap">
+                <table>
+                    <thead><tr>
+                        <th>تاریخ</th>{showPurity && <th>عیار</th>}<th>نوع</th><th>گرم</th><th>توضیحات</th>
+                    </tr></thead>
+                    <tbody>
+                        {pager.pageItems.map(r => (
+                            <tr key={r.id}>
+                                <td style={{ fontSize: 12, color: 'var(--muted)' }}>{r.created_at}</td>
+                                {showPurity && <td>{r.purity}</td>}
+                                <td>{TYPE_LABEL[r.type] || r.type}</td>
+                                <td className="num" style={{ color: r.grams > 0 ? 'var(--up)' : 'var(--down)', fontWeight: 700 }}>
+                                    {r.grams > 0 ? '+' : ''}{r.grams}
+                                </td>
+                                <td style={{ color: 'var(--muted)', fontSize: 13 }}>{r.description || '—'}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            <Pager page={pager.page} totalPages={pager.totalPages} onChange={pager.setPage} />
+        </>
     );
 }
 
 export default function Inventory({ goldBalance, silverBalance, goldHistory, silverHistory, deliveryRequests }) {
     const { errors } = usePage().props;
     const [showForm, setShowForm] = useState(false);
+    const deliveryPager = usePager(deliveryRequests);
     const form = useForm({
         metal: 'gold', purity: '999', grams: '',
         recipient_name: '', phone: '', address: '',
@@ -147,7 +154,7 @@ export default function Inventory({ goldBalance, silverBalance, goldHistory, sil
                             <table>
                                 <thead><tr><th>تاریخ</th><th>مورد</th><th>مقدار</th><th>وضعیت</th><th>یادداشت ادمین</th></tr></thead>
                                 <tbody>
-                                    {deliveryRequests.map(r => {
+                                    {deliveryPager.pageItems.map(r => {
                                         const [label, cls] = DELIVERY_STATUS[r.status] || [r.status, 'silver'];
                                         return (
                                             <tr key={r.id}>
@@ -162,6 +169,7 @@ export default function Inventory({ goldBalance, silverBalance, goldHistory, sil
                                 </tbody>
                             </table>
                         </div>
+                        <Pager page={deliveryPager.page} totalPages={deliveryPager.totalPages} onChange={deliveryPager.setPage} />
                     </>
                 )}
 

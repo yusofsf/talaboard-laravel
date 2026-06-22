@@ -1,7 +1,28 @@
 import { useMemo, useState } from 'react';
 import { router, useForm, usePage } from '@inertiajs/react';
 import AppLayout, { faNum } from '../Layouts/AppLayout';
-import JalaliDatePicker from '../Components/JalaliDatePicker';
+import DateRangeFilter, { filterByDateRange } from '../Components/DateRangeFilter';
+import Pager, { usePager } from '../Components/Pager';
+
+function MyOfferRow({ o }) {
+    return (
+        <tr>
+            <td><span className={`badge ${o.side === 'sell' ? 'sell-b' : 'buy-b'}`}>{o.side === 'sell' ? 'فروش' : 'خرید'}</span></td>
+            <td>{o.item_label}</td>
+            <td className="num">{o.grams}</td>
+            <td className="num">{faNum(o.price_per_gram)}</td>
+            <td className="num">{faNum(o.total)}</td>
+            <td>
+                {o.status === 'completed' && <span className="badge buy-b">تکمیل‌شده</span>}
+                {o.status === 'cancelled' && (o.admin_note
+                    ? <span className="badge sell-b">برگشت داده شد</span>
+                    : <span className="badge silver">لغوشده</span>)}
+                {o.admin_note && <div style={{ fontSize: 11, color: 'var(--down)', marginTop: 4 }}>دلیل: {o.admin_note}</div>}
+            </td>
+            <td style={{ fontSize: 12, color: 'var(--muted)' }}>{o.completed_at || o.created_at}</td>
+        </tr>
+    );
+}
 
 const ITEMS = [
     { key: 'gold',      label: 'طلا',         metal: 'gold',   purity: '' },
@@ -12,7 +33,8 @@ const ITEMS = [
 export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalance, goldBalance, silverBalance }) {
     const { errors } = usePage().props;
     const [tab, setTab] = useState('open');
-    const [filterDate, setFilterDate] = useState('');
+    const [myFrom, setMyFrom] = useState('');
+    const [myTo, setMyTo] = useState('');
     const [item, setItem] = useState('gold');
     const form = useForm({ metal: 'silver', side: 'sell', purity: '999', grams: '', price_per_gram: '' });
 
@@ -22,9 +44,10 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
     const itemBuyOffers = useMemo(() => buyOffers.filter(matchesItem), [buyOffers, item]);
 
     const filteredMyOffers = useMemo(
-        () => filterDate ? myOffers.filter(o => o.date_raw === filterDate) : myOffers,
-        [myOffers, filterDate]
+        () => filterByDateRange(myOffers, myFrom, myTo),
+        [myOffers, myFrom, myTo]
     );
+    const myOffersPager = usePager(filteredMyOffers, `${myFrom}|${myTo}`);
 
     const total = form.data.grams && form.data.price_per_gram
         ? Math.round(parseFloat(form.data.grams) * parseInt(form.data.price_per_gram, 10))
@@ -164,11 +187,8 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
 
                 {tab === 'mine' && (
                     <div className="no-print" style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 18 }}>
-                        <div style={{ minWidth: 280 }}>
-                            <label style={{ display: 'block', fontSize: 13, color: 'var(--muted)', marginBottom: 6, fontWeight: 600 }}>فیلتر بر اساس تاریخ (برای چاپ)</label>
-                            <JalaliDatePicker value={filterDate} onChange={setFilterDate} yearsBack={5} allowCurrentYear />
-                        </div>
-                        {filterDate && <button type="button" className="btn-sm" onClick={() => setFilterDate('')}>حذف فیلتر</button>}
+                        <DateRangeFilter from={myFrom} to={myTo} onFromChange={setMyFrom} onToChange={setMyTo} />
+                        {(myFrom || myTo) && <button type="button" className="btn-sm" onClick={() => { setMyFrom(''); setMyTo(''); }}>حذف فیلتر</button>}
                         <button type="button" className="btn-sm" onClick={() => window.print()} style={{ borderColor: 'rgba(246,207,99,.4)', color: 'var(--gold-1)', background: 'rgba(246,207,99,.08)' }}>
                             🖨️ چاپ / خروجی PDF
                         </button>
@@ -203,31 +223,27 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
 
                 {tab === 'mine' && (
                     filteredMyOffers.length ? (
-                        <div className="table-wrap print-area">
-                            <div className="print-only" style={{ marginBottom: 14, fontWeight: 800, fontSize: 16 }}>تاریخچه‌ی اتاق معاملاتی</div>
-                            <table>
-                                <thead><tr><th>نوع</th><th>مورد</th><th>مقدار</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
-                                <tbody>
-                                    {filteredMyOffers.map(o => (
-                                        <tr key={o.id}>
-                                            <td><span className={`badge ${o.side === 'sell' ? 'sell-b' : 'buy-b'}`}>{o.side === 'sell' ? 'فروش' : 'خرید'}</span></td>
-                                            <td>{o.item_label}</td>
-                                            <td className="num">{o.grams}</td>
-                                            <td className="num">{faNum(o.price_per_gram)}</td>
-                                            <td className="num">{faNum(o.total)}</td>
-                                            <td>
-                                                {o.status === 'completed' && <span className="badge buy-b">تکمیل‌شده</span>}
-                                                {o.status === 'cancelled' && (o.admin_note
-                                                    ? <span className="badge sell-b">برگشت داده شد</span>
-                                                    : <span className="badge silver">لغوشده</span>)}
-                                                {o.admin_note && <div style={{ fontSize: 11, color: 'var(--down)', marginTop: 4 }}>دلیل: {o.admin_note}</div>}
-                                            </td>
-                                            <td style={{ fontSize: 12, color: 'var(--muted)' }}>{o.completed_at || o.created_at}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                        <>
+                            <div className="table-wrap">
+                                <table>
+                                    <thead><tr><th>نوع</th><th>مورد</th><th>مقدار</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
+                                    <tbody>
+                                        {myOffersPager.pageItems.map(o => <MyOfferRow key={o.id} o={o} />)}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <Pager page={myOffersPager.page} totalPages={myOffersPager.totalPages} onChange={myOffersPager.setPage} />
+
+                            <div className="table-wrap print-area print-only-block">
+                                <div className="print-only" style={{ marginBottom: 14, fontWeight: 800, fontSize: 16 }}>تاریخچه‌ی اتاق معاملاتی</div>
+                                <table>
+                                    <thead><tr><th>نوع</th><th>مورد</th><th>مقدار</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
+                                    <tbody>
+                                        {filteredMyOffers.map(o => <MyOfferRow key={o.id} o={o} />)}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </>
                     ) : (
                         <div className="empty"><div className="ico">📋</div>هنوز معامله‌ای انجام نداده‌اید.</div>
                     )

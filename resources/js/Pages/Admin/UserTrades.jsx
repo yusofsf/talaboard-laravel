@@ -1,15 +1,38 @@
 import { useMemo, useState } from 'react';
 import { Link } from '@inertiajs/react';
 import AppLayout, { faNum } from '../../Layouts/AppLayout';
-import JalaliDatePicker from '../../Components/JalaliDatePicker';
+import DateRangeFilter, { filterByDateRange } from '../../Components/DateRangeFilter';
+import Pager, { usePager } from '../../Components/Pager';
+
+function TradeRow({ t }) {
+    const rejected = t.status === 'rejected';
+    return (
+        <tr style={rejected ? { opacity: .6 } : undefined}>
+            <td style={{ fontSize: 12, color: 'var(--muted)' }}>{t.created_at}</td>
+            <td><span className={`badge ${t.source === 'فروشگاه' ? 'gold' : 'silver'}`}>{t.source}</span></td>
+            <td style={{ fontSize: 12, color: 'var(--muted)' }}>{t.role}</td>
+            <td><span className={`badge ${t.side === 'buy' ? 'buy-b' : 'sell-b'}`}>{t.side === 'buy' ? 'خرید' : 'فروش'}</span></td>
+            <td>
+                <span style={rejected ? { textDecoration: 'line-through' } : undefined}>{t.item_label}</span>
+                {rejected && <span className="badge sell-b" style={{ marginInlineStart: 6 }}>رد شد</span>}
+                {rejected && t.admin_note && <div style={{ fontSize: 11, color: 'var(--down)', marginTop: 4 }}>دلیل: {t.admin_note}</div>}
+            </td>
+            <td className="num">{t.quantity}</td>
+            <td className="num">{faNum(t.price)}</td>
+            <td className="num" style={{ color: 'var(--gold-1)', fontWeight: 700 }}>{faNum(t.total)}</td>
+        </tr>
+    );
+}
 
 export default function UserTrades({ subject, trades }) {
-    const [filterDate, setFilterDate] = useState('');
+    const [from, setFrom] = useState('');
+    const [to, setTo] = useState('');
 
     const filtered = useMemo(
-        () => filterDate ? trades.filter(t => t.date_raw === filterDate) : trades,
-        [trades, filterDate]
+        () => filterByDateRange(trades, from, to),
+        [trades, from, to]
     );
+    const pager = usePager(filtered, `${from}|${to}`);
 
     const totals = useMemo(() => {
         let buy = 0, sell = 0;
@@ -50,58 +73,59 @@ export default function UserTrades({ subject, trades }) {
 
                 {/* فیلتر + چاپ */}
                 <div className="no-print" style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 18 }}>
-                    <div style={{ minWidth: 280 }}>
-                        <label style={{ display: 'block', fontSize: 13, color: 'var(--muted)', marginBottom: 6, fontWeight: 600 }}>فیلتر بر اساس تاریخ (برای چاپ)</label>
-                        <JalaliDatePicker value={filterDate} onChange={setFilterDate} yearsBack={5} allowCurrentYear />
-                    </div>
-                    {filterDate && <button type="button" className="btn-sm" onClick={() => setFilterDate('')}>حذف فیلتر</button>}
+                    <DateRangeFilter from={from} to={to} onFromChange={setFrom} onToChange={setTo} />
+                    {(from || to) && <button type="button" className="btn-sm" onClick={() => { setFrom(''); setTo(''); }}>حذف فیلتر</button>}
                     <button type="button" className="btn-sm gold" onClick={() => window.print()}>🖨️ چاپ / خروجی PDF</button>
                 </div>
 
                 {filtered.length ? (
-                    <div className="table-wrap print-area">
-                        <div className="print-only" style={{ marginBottom: 6, fontWeight: 800, fontSize: 16 }}>
-                            ریز معاملات — {subject.name} ({subject.phone})
+                    <>
+                        {/* نسخه‌ی صفحه‌بندی‌شده — فقط روی صفحه */}
+                        <div className="table-wrap">
+                            <table>
+                                <thead><tr>
+                                    <th>تاریخ</th><th>منبع</th><th>نقش</th><th>نوع</th><th>کالا</th><th>مقدار</th><th>قیمت واحد</th><th>مبلغ کل</th>
+                                </tr></thead>
+                                <tbody>
+                                    {pager.pageItems.map(t => <TradeRow key={t.id} t={t} />)}
+                                </tbody>
+                            </table>
                         </div>
-                        <table>
-                            <thead><tr>
-                                <th>تاریخ</th><th>منبع</th><th>نقش</th><th>نوع</th><th>کالا</th><th>مقدار</th><th>قیمت واحد</th><th>مبلغ کل</th>
-                            </tr></thead>
-                            <tbody>
-                                {filtered.map(t => {
-                                    const rejected = t.status === 'rejected';
-                                    return (
-                                        <tr key={t.id} style={rejected ? { opacity: .6 } : undefined}>
-                                            <td style={{ fontSize: 12, color: 'var(--muted)' }}>{t.created_at}</td>
-                                            <td><span className={`badge ${t.source === 'فروشگاه' ? 'gold' : 'silver'}`}>{t.source}</span></td>
-                                            <td style={{ fontSize: 12, color: 'var(--muted)' }}>{t.role}</td>
-                                            <td><span className={`badge ${t.side === 'buy' ? 'buy-b' : 'sell-b'}`}>{t.side === 'buy' ? 'خرید' : 'فروش'}</span></td>
-                                            <td>
-                                                <span style={rejected ? { textDecoration: 'line-through' } : undefined}>{t.item_label}</span>
-                                                {rejected && <span className="badge sell-b" style={{ marginInlineStart: 6 }}>رد شد</span>}
-                                                {rejected && t.admin_note && <div style={{ fontSize: 11, color: 'var(--down)', marginTop: 4 }}>دلیل: {t.admin_note}</div>}
-                                            </td>
-                                            <td className="num">{t.quantity}</td>
-                                            <td className="num">{faNum(t.price)}</td>
-                                            <td className="num" style={{ color: 'var(--gold-1)', fontWeight: 700 }}>{faNum(t.total)}</td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                            <tfoot>
-                                <tr style={{ borderTop: '2px solid var(--line)' }}>
-                                    <td colSpan={7} style={{ fontWeight: 700 }}>جمع خرید (به‌جز رد‌شده‌ها)</td>
-                                    <td className="num" style={{ color: 'var(--up)', fontWeight: 800 }}>{faNum(totals.buy)}</td>
-                                </tr>
-                                <tr>
-                                    <td colSpan={7} style={{ fontWeight: 700 }}>جمع فروش (به‌جز رد‌شده‌ها)</td>
-                                    <td className="num" style={{ color: 'var(--down)', fontWeight: 800 }}>{faNum(totals.sell)}</td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
+                        <Pager page={pager.page} totalPages={pager.totalPages} onChange={pager.setPage} />
+
+                        {/* نسخه‌ی کامل — فقط هنگام چاپ */}
+                        <div className="table-wrap print-area print-only-block">
+                            <div className="print-only" style={{ marginBottom: 6, fontWeight: 800, fontSize: 16 }}>
+                                ریز معاملات — {subject.name} ({subject.phone})
+                            </div>
+                            <table>
+                                <thead><tr>
+                                    <th>تاریخ</th><th>منبع</th><th>نقش</th><th>نوع</th><th>کالا</th><th>مقدار</th><th>قیمت واحد</th><th>مبلغ کل</th>
+                                </tr></thead>
+                                <tbody>
+                                    {filtered.map(t => <TradeRow key={t.id} t={t} />)}
+                                </tbody>
+                                <tfoot>
+                                    <tr style={{ borderTop: '2px solid var(--line)' }}>
+                                        <td colSpan={7} style={{ fontWeight: 700 }}>جمع خرید (به‌جز رد‌شده‌ها)</td>
+                                        <td className="num" style={{ color: 'var(--up)', fontWeight: 800 }}>{faNum(totals.buy)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td colSpan={7} style={{ fontWeight: 700 }}>جمع فروش (به‌جز رد‌شده‌ها)</td>
+                                        <td className="num" style={{ color: 'var(--down)', fontWeight: 800 }}>{faNum(totals.sell)}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        {/* جمع‌ها روی صفحه هم نشان داده شود */}
+                        <div className="no-print" style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 4 }}>
+                            <div style={{ fontWeight: 700 }}>جمع خرید (به‌جز رد‌شده‌ها): <span style={{ color: 'var(--up)' }}>{faNum(totals.buy)}</span></div>
+                            <div style={{ fontWeight: 700 }}>جمع فروش (به‌جز رد‌شده‌ها): <span style={{ color: 'var(--down)' }}>{faNum(totals.sell)}</span></div>
+                        </div>
+                    </>
                 ) : (
-                    <div className="empty"><div className="ico">📜</div>{filterDate ? 'معامله‌ای در این تاریخ نیست.' : 'این کاربر هنوز معامله‌ای ندارد.'}</div>
+                    <div className="empty"><div className="ico">📜</div>{(from || to) ? 'معامله‌ای در این بازه نیست.' : 'این کاربر هنوز معامله‌ای ندارد.'}</div>
                 )}
             </div>
         </AppLayout>

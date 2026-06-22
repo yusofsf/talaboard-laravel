@@ -108,7 +108,7 @@ export default function AppLayout({ children }) {
 
                 <Link href="/" className="nav-brand">
                     <img src="/logo.jpg" alt="آبشده صفرپور" style={{ width: 34, height: 34, borderRadius: 10, objectFit: 'cover' }} />
-                    <span>آبشده صفرپور<span style={{ fontSize: '0.6em', fontWeight: 400 }} dir="ltr">(metalsp)</span></span>
+                    <span>آبشده صفرپور</span>
                 </Link>
             </nav>
 
@@ -157,7 +157,7 @@ export default function AppLayout({ children }) {
                     </a>
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--muted)', opacity: .7 }}>
-                    آبشده صفرپور<span style={{ fontSize: '0.85em' }} dir="ltr">(metalsp)</span> — تمامی حقوق محفوظ است
+                    آبشده صفرپور — تمامی حقوق محفوظ است
                 </div>
             </footer>
         </>

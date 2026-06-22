@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title inertia>آبشده صفرپور(metalsp)</title>
+<title inertia>آبشده صفرپور</title>
 <link rel="icon" href="/logo.jpg" type="image/jpeg">
 <link rel="apple-touch-icon" href="/logo.jpg">
 <link rel="preconnect" href="https://cdn.jsdelivr.net">

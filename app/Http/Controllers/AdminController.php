@@ -520,7 +520,7 @@ class AdminController extends Controller
         ][$request->status];
 
         $adminName = $request->user()->name;
-        $body = "درخواست شما «{$statusLabel}» (توسط ادمین: {$adminName}). تاریخ: " . Jalali::now();
+        $body = "درخواست شما «{$statusLabel}». تاریخ: " . Jalali::now();
         if ($note !== '') $body .= "\nتوضیح ادمین: {$note}";
 
         Notification::create([

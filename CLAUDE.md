@@ -108,6 +108,10 @@ Two unrelated trading mechanisms:
 
 Admin sees both at once: `AdminController::allTradesHistory()` merges shop `Transaction` rows and completed `TradeRoomOffer` rows into a single admin-only list (`all_trades` tab in `Admin/Dashboard.jsx`), sorted by whichever date is most relevant per row (`completed_at` for trade-room, `created_at` for shop) — this is a read-only reporting view assembled in the controller, not a new table.
 
+### Trade room open offers are split into two sorted order-book sections
+
+`TradeRoomController::index()` no longer returns a single merged `offers` list — it returns `sellOffers` (cheapest `price_per_gram` first) and `buyOffers` (priciest first), each its own query/sort, rendered side-by-side in `TradeRoom.jsx` via the `OfferSection` helper component. This mirrors a standard order-book: the best price for whichever side a viewer wants to take is always at the top of its column.
+
 ### Print/PDF export pattern (no server-side PDF library)
 
 History.jsx, TradeRoom.jsx (`mine` tab), and Admin/Dashboard.jsx (`all_trades` tab) each have a Jalali date filter + a "چاپ / خروجی PDF" button that just calls `window.print()` — there is no `barryvdh/laravel-dompdf` or similar dependency, and there shouldn't be one added for this. The PDF comes from the browser's native "Save as PDF" print destination. The mechanism is pure CSS in `app.css`: `.print-area`/`.print-area *` get `visibility: visible` while everything else is hidden, `.no-print` force-hides UI chrome (tabs, filter controls, buttons) during print, and `.print-only` (hidden normally) shows a printed-only heading. Each row-array carries a `date_raw` field (`Y-m-d`, Gregorian) from the controller specifically for this client-side day filter — `created_at` is already Jalali-formatted for display and isn't comparable. If you add another printable table, follow this same three-class pattern rather than reaching for a PDF package.

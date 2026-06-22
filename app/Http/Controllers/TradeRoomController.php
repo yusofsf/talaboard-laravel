@@ -22,9 +22,17 @@ class TradeRoomController extends Controller
     {
         $this->ensureVip($request->user());
 
-        $offers = TradeRoomOffer::with(['user', 'counterparty'])
-            ->where('status', 'open')
-            ->orderByDesc('created_at')
+        // سفارش‌های فروش: ارزان‌ترین اول (برای خریدار بهترین قیمت بالاست)
+        $sellOffers = TradeRoomOffer::with(['user', 'counterparty'])
+            ->where('status', 'open')->where('side', 'sell')
+            ->orderBy('price_per_gram')->orderByDesc('created_at')
+            ->get()
+            ->map(fn ($o) => $this->present($o, $request->user()));
+
+        // سفارش‌های خرید: گران‌ترین اول (برای فروشنده بهترین قیمت بالاست)
+        $buyOffers = TradeRoomOffer::with(['user', 'counterparty'])
+            ->where('status', 'open')->where('side', 'buy')
+            ->orderByDesc('price_per_gram')->orderByDesc('created_at')
             ->get()
             ->map(fn ($o) => $this->present($o, $request->user()));
 
@@ -37,7 +45,8 @@ class TradeRoomController extends Controller
             ->map(fn ($o) => $this->present($o, $request->user()));
 
         return Inertia::render('TradeRoom', [
-            'offers'        => $offers,
+            'sellOffers'    => $sellOffers,
+            'buyOffers'     => $buyOffers,
             'myOffers'      => $myOffers,
             'walletBalance' => $request->user()->walletBalance(),
             'goldBalance'   => $request->user()->goldBalance(),

@@ -3,11 +3,23 @@ import { router, useForm, usePage } from '@inertiajs/react';
 import AppLayout, { faNum } from '../Layouts/AppLayout';
 import JalaliDatePicker from '../Components/JalaliDatePicker';
 
+const ITEMS = [
+    { key: 'gold',      label: 'طلا',         metal: 'gold',   purity: '' },
+    { key: 'silver999', label: 'نقره ۹۹۹/۹',  metal: 'silver', purity: '999' },
+    { key: 'silver995', label: 'نقره ۹۹۵',    metal: 'silver', purity: '995' },
+];
+
 export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalance, goldBalance, silverBalance }) {
     const { errors } = usePage().props;
     const [tab, setTab] = useState('open');
     const [filterDate, setFilterDate] = useState('');
+    const [item, setItem] = useState('gold');
     const form = useForm({ metal: 'silver', side: 'sell', purity: '999', grams: '', price_per_gram: '' });
+
+    const activeItem = ITEMS.find(i => i.key === item);
+    const matchesItem = o => o.metal === activeItem.metal && (activeItem.metal === 'gold' || o.purity === activeItem.purity);
+    const itemSellOffers = useMemo(() => sellOffers.filter(matchesItem), [sellOffers, item]);
+    const itemBuyOffers = useMemo(() => buyOffers.filter(matchesItem), [buyOffers, item]);
 
     const filteredMyOffers = useMemo(
         () => filterDate ? myOffers.filter(o => o.date_raw === filterDate) : myOffers,
@@ -164,10 +176,29 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                 )}
 
                 {tab === 'open' && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18 }}>
-                        <OfferSection title="🔴 سفارش‌های فروش (ارزان‌ترین اول)" offers={sellOffers} accept={accept} cancel={cancel} />
-                        <OfferSection title="🟢 سفارش‌های خرید (گران‌ترین اول)" offers={buyOffers} accept={accept} cancel={cancel} />
-                    </div>
+                    <>
+                        <div className="no-print btn-row" style={{ gridTemplateColumns: `repeat(${ITEMS.length}, 1fr)`, marginBottom: 18 }}>
+                            {ITEMS.map(i => (
+                                <button key={i.key} type="button" onClick={() => {
+                                    setItem(i.key);
+                                    form.setData(d => ({ ...d, metal: i.metal, purity: i.purity || d.purity }));
+                                }}
+                                    style={{
+                                        padding: '10px', borderRadius: 12, fontFamily: 'inherit', fontSize: 14, fontWeight: 700,
+                                        cursor: 'pointer', border: 'none',
+                                        background: item === i.key ? 'rgba(246,207,99,.2)' : 'rgba(255,255,255,.06)',
+                                        color: item === i.key ? 'var(--gold-1)' : 'var(--muted)',
+                                        outline: item === i.key ? '2px solid var(--gold-1)' : '2px solid transparent',
+                                    }}>
+                                    {i.label}
+                                </button>
+                            ))}
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18 }}>
+                            <OfferSection title="🔴 سفارش‌های فروش (ارزان‌ترین اول)" offers={itemSellOffers} accept={accept} cancel={cancel} />
+                            <OfferSection title="🟢 سفارش‌های خرید (گران‌ترین اول)" offers={itemBuyOffers} accept={accept} cancel={cancel} />
+                        </div>
+                    </>
                 )}
 
                 {tab === 'mine' && (

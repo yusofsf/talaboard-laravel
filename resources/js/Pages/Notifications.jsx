@@ -1,9 +1,12 @@
 import { router } from '@inertiajs/react';
 import AppLayout from '../Layouts/AppLayout';
+import Pager, { usePager } from '../Components/Pager';
 
 const TYPE_ICON = { trade: '📊', wallet: '💰', system: '⚙️', promo: '🎁', info: '🔔' };
 
 export default function Notifications({ notifications }) {
+    const pager = usePager(notifications);
+
     function markRead(id) {
         router.post(`/notifications/read/${id}`, {}, { preserveScroll: true });
     }
@@ -24,7 +27,7 @@ export default function Notifications({ notifications }) {
                     )}
                 </div>
 
-                {notifications.length ? notifications.map(n => (
+                {notifications.length ? pager.pageItems.map(n => (
                     <div key={n.id} style={{
                         background: 'linear-gradient(160deg,#1d2440,#1e2b50)',
                         border: '1px solid rgba(246,207,99,.35)',
@@ -45,6 +48,7 @@ export default function Notifications({ notifications }) {
                 )) : (
                     <div className="empty"><div className="ico">🔔</div><div>اعلانی وجود ندارد.</div></div>
                 )}
+                <Pager page={pager.page} totalPages={pager.totalPages} onChange={pager.setPage} />
             </div>
         </AppLayout>
     );

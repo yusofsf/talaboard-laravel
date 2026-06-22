@@ -120,6 +120,12 @@ History.jsx, TradeRoom.jsx (`mine` tab), and Admin/Dashboard.jsx (`all_trades` t
 
 `JalaliDatePicker` defaults its year range to birth-date use (1–100 years ago, excludes current year) — pass `yearsBack`/`allowCurrentYear` props to use it for filters on recent activity instead, as these three pages do.
 
+### Client-side pagination and date-range filtering (`Components/Pager.jsx`, `Components/DateRangeFilter.jsx`)
+
+`usePager(items, resetKey?)` from `Pager.jsx` is the standard way to paginate a list that's already been sent in full via Inertia (10/page, fixed — see `PAGE_SIZE`). Pass a `resetKey` (e.g. a filter value) so the page resets to 1 when filters change; render `<Pager page totalPages onChange={setPage} />` below the table. `DateRangeFilter.jsx` exports the `<DateRangeFilter from to onFromChange onToChange />` component (two `JalaliDatePicker`s, "از تاریخ"/"تا تاریخ") plus `filterByDateRange(items, from, to, dateField='date_raw')`, replacing the older single-date filters.
+
+For any page that both paginates *and* prints (e.g. `History.jsx`), render **two** tables: a normal `.table-wrap` showing only `pager.pageItems` (what the user sees and pages through on screen), and a second `.table-wrap.print-area.print-only-block` containing the *full* filtered (unpaginated) list — wrapped in the `.print-only-block` CSS class (`app.css`) which is `display: none` normally and `display: block` only inside `@media print`. This is the pattern to copy for any future paginated+printable list: pagination must never truncate what gets printed.
+
 ### Admin-sent notifications can be edited, deleted, and tracked for read status
 
 `AdminController::notify/updateNotification/deleteNotification` cover the full lifecycle of an admin-broadcast `Notification`. The `notifs` tab in `Admin/Dashboard.jsx` shows each notification's read progress (`read_count`/`target_count`, computed via `Notification::withCount('reads')` against `NotificationRead`) — `target_count` is `1` for a single-recipient notification or the total user count for a broadcast (`user_id = null`). Editing reuses the same validation as sending; it does not reset anyone's read status. This admin-side read tracking is independent of the *row itself* ever being deleted (see below) — the `Notification` row persists for as long as any recipient might still need to see it; admins always see it regardless of per-user read state.

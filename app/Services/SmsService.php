@@ -20,7 +20,7 @@ class SmsService
 
     private function enabled(): bool
     {
-        return !empty($this->apiKey);
+        return config('sms.enabled', true) && !empty($this->apiKey);
     }
 
     public function sendOtpLogin(string $phone, string $otp): bool

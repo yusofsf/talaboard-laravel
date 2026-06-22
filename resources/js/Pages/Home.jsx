@@ -331,7 +331,12 @@ export default function Home({ prices: initial, refreshSeconds }) {
                     </div>
 
                     <div className="tv-brandc">
-                        <div className="tv-shopname">آبشده صفرپور</div>
+                        <div className="tv-shopname">آبشده صفرپور<span style={{
+                            fontSize: '0.35em', fontWeight: 700, marginInlineStart: 8,
+                            fontFamily: 'Vazirmatn, Tahoma, system-ui, sans-serif',
+                            WebkitBackgroundClip: 'initial', backgroundClip: 'initial',
+                            WebkitTextFillColor: 'var(--gold-1)', color: 'var(--gold-1)',
+                        }} dir="ltr">(metalsp)</span></div>
                     </div>
 
                     <div className="tv-status">

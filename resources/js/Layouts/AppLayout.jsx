@@ -157,7 +157,7 @@ export default function AppLayout({ children }) {
                     </a>
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--muted)', opacity: .7 }}>
-                    آبشده صفرپور — تمامی حقوق محفوظ است
+                    آبشده صفرپور<span style={{ fontSize: '0.85em' }} dir="ltr">(metalsp)</span> — تمامی حقوق محفوظ است
                 </div>
             </footer>
         </>

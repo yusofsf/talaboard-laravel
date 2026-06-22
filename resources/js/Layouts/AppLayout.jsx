@@ -72,6 +72,7 @@ export default function AppLayout({ children }) {
                                         <MenuLink href="/notifications" onClick={() => setOpen(false)}>
                                             🔔 اعلان‌ها {user.unread_count > 0 && <span className="nav-badge" style={{ position: 'static', marginInlineStart: 6 }}>{user.unread_count}</span>}
                                         </MenuLink>
+                                        <MenuLink href="/tickets" onClick={() => setOpen(false)}>🎫 تیکت‌های پشتیبانی</MenuLink>
                                         {showMembershipLink && (
                                             <MenuLink href="/membership" onClick={() => setOpen(false)}>عضویت ویژه</MenuLink>
                                         )}

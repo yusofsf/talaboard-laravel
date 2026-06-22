@@ -168,6 +168,14 @@ Both shop trades and trade-room deals can be reversed by an admin from the `all_
 
 `SmsService::enabled()` checks `config('sms.enabled', true)` (env `SMS_ENABLED`, default `true`) **in addition to** the Kavenegar API key being non-empty — so setting `SMS_ENABLED=false` silences every outgoing SMS (OTP login/reset, welcome, trade confirms, delivery/withdrawal notices, admin manual sends) without touching `KAVENEGAR_API_KEY`, letting it be flipped back on instantly with no credential re-entry. This is a separate concern from `TWO_FA_ENABLED` — disabling SMS doesn't change the 2FA login branch in `AuthController::login()`; it just makes any `sendOtpLogin` call inside that branch silently fail, same as if Kavenegar itself were down (the existing `smsOk` fallback to `MASTER_OTP` on the verify-otp page already handles that case).
 
+### Support tickets
+
+`Ticket` (one per conversation, `status`: `open`/`answered`/`closed`) + `TicketMessage` (one row per message, `is_admin` flag, optional `user_id` of the sender) implement a simple back-and-forth thread. User-facing routes (`TicketController` — `/tickets`, `/tickets/{id}`, reply) are scoped to `where('user_id', $request->user()->id)` everywhere, so one user can never see or reply to another's ticket (404, not 403, to avoid leaking existence). Admin-facing routes (`AdminController::ticketShow/ticketReply/ticketClose`) are unscoped and live under the existing `/admin` + `admin` middleware group.
+
+**Admin name visibility follows the same rule as everywhere else in this app**: `ticketReply()` sends the user a notification with just the reply text (no admin name), but calls `notifyOtherAdmins()` (which *does* name the acting admin) so other admins know who answered — same convention as delivery/withdrawal notifications. The admin-side thread (`Admin/TicketShow.jsx`) shows `admin_name` per message; the user-side thread (`Tickets/Show.jsx`) never receives that field from the controller at all (not just hidden client-side).
+
+A user replying to their own ticket flips `status` back to `open` (even if it was `answered`) and re-notifies all admins — closing the loop without needing a separate "needs attention" flag. `closed` is a dead end for replying (`reply()` rejects with a flash error) until the user opens a new ticket; there's no reopen action.
+
 ### Admin per-user trade detail
 
 `AdminController::userTrades($uid)` → `Admin/UserTrades.jsx` shows one user's shop transactions plus the trade-room deals they were on either side of (offerer or counterparty), with the user's role and a normalized buy/sell `side` from *that user's* perspective, date filter, totals, and print-to-PDF. Linked from the "ریز معاملات" button in the users table. Separate from the combined `all_trades` tab (which spans all users).

@@ -8,6 +8,8 @@ use App\Models\GoldLedger;
 use App\Models\Notification;
 use App\Models\SilverDeliveryRequest;
 use App\Models\SilverLedger;
+use App\Models\Ticket;
+use App\Models\TicketMessage;
 use App\Models\Transaction;
 use App\Models\TradeRoomOffer;
 use App\Models\User;
@@ -171,7 +173,19 @@ class AdminController extends Controller
                 'date_raw'    => optional($l->created_at)->format('Y-m-d'),
             ]);
 
-        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'stats', 'memberApplications', 'vipMembers', 'deliveryRequests', 'withdrawalRequests', 'allTrades', 'activityLogs'));
+        $tickets = Ticket::with('user')->withCount('messages')->orderByDesc('updated_at')->get()
+            ->map(fn ($t) => [
+                'id'         => $t->id,
+                'user_name'  => $t->user?->name,
+                'user_phone' => $t->user?->phone,
+                'subject'    => $t->subject,
+                'status'     => $t->status,
+                'msg_count'  => $t->messages_count,
+                'created_at' => Jalali::format($t->created_at),
+                'date_raw'   => $t->created_at->format('Y-m-d'),
+            ]);
+
+        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'stats', 'memberApplications', 'vipMembers', 'deliveryRequests', 'withdrawalRequests', 'allTrades', 'activityLogs', 'tickets'));
     }
 
     /** ریز معاملات یک کاربر خاص (فروشگاه + اتاق معاملاتی) برای مشاهده و خروجی PDF ادمین. */
@@ -257,6 +271,75 @@ class AdminController extends Controller
             ]);
 
         return Inertia::render('Admin/OnlineUsers', ['users' => $users]);
+    }
+
+    public function ticketShow(int $id)
+    {
+        $ticket = Ticket::with(['user', 'messages.user'])->findOrFail($id);
+
+        return Inertia::render('Admin/TicketShow', [
+            'ticket' => [
+                'id'         => $ticket->id,
+                'subject'    => $ticket->subject,
+                'status'     => $ticket->status,
+                'user_name'  => $ticket->user?->name,
+                'user_phone' => $ticket->user?->phone,
+                'messages'   => $ticket->messages->map(fn ($m) => [
+                    'id'         => $m->id,
+                    'is_admin'   => $m->is_admin,
+                    // نام ادمین فقط برای ادمین‌ها نمایش داده می‌شود
+                    'admin_name' => $m->is_admin ? $m->user?->name : null,
+                    'message'    => $m->message,
+                    'created_at' => Jalali::format($m->created_at),
+                ]),
+            ],
+        ]);
+    }
+
+    public function ticketReply(Request $request, int $id)
+    {
+        $request->validate(['message' => 'required|string|max:2000']);
+
+        $ticket = Ticket::with('user')->findOrFail($id);
+        $admin  = $request->user();
+
+        TicketMessage::create([
+            'ticket_id' => $ticket->id, 'user_id' => $admin->id, 'is_admin' => true,
+            'message'   => $request->message, 'created_at' => now(),
+        ]);
+        $ticket->update(['status' => 'answered']);
+
+        // نوتیف به کاربر — بدون نام ادمین
+        Notification::create([
+            'user_id' => $ticket->user_id,
+            'title'   => "پاسخ جدید به تیکت «{$ticket->subject}»",
+            'body'    => "پاسخ ادمین: {$request->message}\nتاریخ: " . Jalali::now(),
+            'type'    => 'system',
+        ]);
+
+        // نوتیف به سایر ادمین‌ها — با نام ادمین پاسخ‌دهنده
+        $this->notifyOtherAdmins($request, 'پاسخ به تیکت توسط ادمین',
+            "{$admin->name} به تیکت «{$ticket->subject}» (کاربر: {$ticket->user?->name}) پاسخ داد. تاریخ: " . Jalali::now());
+
+        return back()->with('success', 'پاسخ ارسال شد.');
+    }
+
+    public function ticketClose(Request $request, int $id)
+    {
+        $ticket = Ticket::with('user')->findOrFail($id);
+        $ticket->update(['status' => 'closed']);
+
+        Notification::create([
+            'user_id' => $ticket->user_id,
+            'title'   => "تیکت «{$ticket->subject}» بسته شد",
+            'body'    => 'این تیکت توسط پشتیبانی بسته شد. در صورت نیاز می‌توانید تیکت جدید ثبت کنید. تاریخ: ' . Jalali::now(),
+            'type'    => 'system',
+        ]);
+
+        $this->notifyOtherAdmins($request, 'بستن تیکت توسط ادمین',
+            "{$request->user()->name} تیکت «{$ticket->subject}» (کاربر: {$ticket->user?->name}) را بست. تاریخ: " . Jalali::now());
+
+        return back()->with('success', 'تیکت بسته شد.');
     }
 
     /** تاریخچه‌ی کلی معاملات (فروشگاه + اتاق معاملاتی) برای ادمین — یک لیست واحد، جدیدترین اول. */

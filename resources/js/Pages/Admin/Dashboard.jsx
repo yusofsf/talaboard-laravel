@@ -11,10 +11,17 @@ const LOG_CAT = {
     wallet:     { label: 'کیف پول',      badge: 'buy-b' },
     admin:      { label: 'مدیریت',       badge: 'sell-b' },
     membership: { label: 'عضویت',        badge: 'silver' },
+    ticket:     { label: 'تیکت',         badge: 'gold' },
     other:      { label: 'سایر',         badge: 'silver' },
 };
 
 const TYPE_ICON = { trade: '📊', wallet: '💰', system: '⚙️', promo: '🎁', info: '🔔' };
+
+const TICKET_STATUS = {
+    open:     ['در انتظار پاسخ', 'silver'],
+    answered: ['پاسخ‌داده‌شده', 'buy-b'],
+    closed:   ['بسته‌شده', 'sell-b'],
+};
 
 function levelOf(u) {
     if (u.is_admin && (u.is_vip || u.membership_level === 2)) return 'vip_admin';
@@ -338,7 +345,7 @@ function LogRow({ l }) {
     );
 }
 
-export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApplications, vipMembers, deliveryRequests, withdrawalRequests, allTrades, activityLogs }) {
+export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApplications, vipMembers, deliveryRequests, withdrawalRequests, allTrades, activityLogs, tickets }) {
     const { auth } = usePage().props;
     const [tab, setTab] = useState('users');
 
@@ -376,6 +383,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     const [deliveryQ, setDeliveryQ] = useState('');
     const [withdrawalsQ, setWithdrawalsQ] = useState('');
     const [logsQ, setLogsQ] = useState('');
+    const [ticketsQ, setTicketsQ] = useState('');
 
     const filteredUsers = useMemo(() => filterBySearch(users, usersQ, ['name', 'phone', 'email', 'national_id']), [users, usersQ]);
     const filteredTxns = useMemo(
@@ -403,6 +411,8 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
         logFrom, logTo
     ), logsQ, ['description', 'user_name', 'action']), [activityLogs, logCat, logFrom, logTo, logsQ]);
 
+    const filteredTickets = useMemo(() => filterBySearch(tickets || [], ticketsQ, ['subject', 'user_name', 'user_phone']), [tickets, ticketsQ]);
+
     const usersPager = usePager(filteredUsers, usersQ);
     const txnsPager = usePager(filteredTxns, `${txnsFrom}|${txnsTo}|${txnsQ}`);
     const wTxnsPager = usePager(filteredWTxns, `${walletFrom}|${walletTo}|${walletQ}`);
@@ -412,6 +422,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     const deliveryPager = usePager(filteredDeliveryRequests, `${deliveryFrom}|${deliveryTo}|${deliveryQ}`);
     const withdrawalsPager = usePager(filteredWithdrawalRequests, `${withdrawalsFrom}|${withdrawalsTo}|${withdrawalsQ}`);
     const logsPager = usePager(filteredLogs, `${logCat}|${logFrom}|${logTo}|${logsQ}`);
+    const ticketsPager = usePager(filteredTickets, ticketsQ);
 
     function submitTradeReject(t) {
         const reason = rejectReason.trim();
@@ -488,6 +499,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
         ['vip', `عضویت‌های ویژه${vipMembers?.length ? ` (${vipMembers.length})` : ''}`],
         ['delivery', `تحویل فیزیکی${deliveryRequests?.length ? ` (${deliveryRequests.length})` : ''}`],
         ['withdrawals', `تسویه حساب${withdrawalRequests?.length ? ` (${withdrawalRequests.length})` : ''}`],
+        ['tickets', `تیکت‌ها${tickets?.filter(t => t.status === 'open').length ? ` (${tickets.filter(t => t.status === 'open').length})` : ''}`],
         ['logs', 'گزارش فعالیت'],
     ];
 
@@ -952,6 +964,41 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                                 </tbody>
                             </table>
                         </div>
+                    </>
+                )}
+
+                {/* تیکت‌ها */}
+                {tab === 'tickets' && (
+                    <>
+                        <div className="no-print" style={{ marginBottom: 14 }}>
+                            <SearchBox value={ticketsQ} onChange={setTicketsQ} placeholder="🔍 جستجو در موضوع، کاربر، موبایل..." />
+                        </div>
+                        {filteredTickets.length ? (
+                            <div className="table-wrap">
+                                <table>
+                                    <thead><tr><th>موضوع</th><th>کاربر</th><th>موبایل</th><th>وضعیت</th><th>تعداد پیام</th><th>تاریخ</th><th></th></tr></thead>
+                                    <tbody>
+                                        {ticketsPager.pageItems.map(t => {
+                                            const [label, badge] = TICKET_STATUS[t.status] || TICKET_STATUS.open;
+                                            return (
+                                                <tr key={t.id}>
+                                                    <td><strong>{t.subject}</strong></td>
+                                                    <td>{t.user_name}</td>
+                                                    <td className="num" dir="ltr" style={{ fontSize: 13 }}>{t.user_phone}</td>
+                                                    <td><span className={`badge ${badge}`}>{label}</span></td>
+                                                    <td className="num">{t.msg_count}</td>
+                                                    <td style={{ fontSize: 12, color: 'var(--muted)' }}>{t.created_at}</td>
+                                                    <td><Link href={`/admin/tickets/${t.id}`} className="btn-sm gold">مشاهده / پاسخ</Link></td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="empty"><div className="ico">🎫</div>هیچ تیکتی ثبت نشده.</div>
+                        )}
+                        <Pager page={ticketsPager.page} totalPages={ticketsPager.totalPages} onChange={ticketsPager.setPage} />
                     </>
                 )}
 

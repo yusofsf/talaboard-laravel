@@ -9,6 +9,7 @@ use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SilverDeliveryController;
+use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TradeController;
 use App\Http\Controllers\TradeRoomController;
 use App\Http\Controllers\WalletController;
@@ -68,12 +69,20 @@ Route::middleware('auth')->group(function () {
     Route::post('/trade-room/{id}/cancel', [TradeRoomController::class, 'cancel'])->name('trade-room.cancel');
 
     Route::post('/silver-delivery', [SilverDeliveryController::class, 'store'])->name('silver-delivery.store');
+
+    Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
+    Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
+    Route::get('/tickets/{id}', [TicketController::class, 'show'])->name('tickets.show');
+    Route::post('/tickets/{id}/reply', [TicketController::class, 'reply'])->name('tickets.reply');
 });
 
 // پنل ادمین
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/online-users', [AdminController::class, 'onlineUsers'])->name('online-users');
+    Route::get('/tickets/{id}', [AdminController::class, 'ticketShow'])->name('tickets.show');
+    Route::post('/tickets/{id}/reply', [AdminController::class, 'ticketReply'])->name('tickets.reply');
+    Route::post('/tickets/{id}/close', [AdminController::class, 'ticketClose'])->name('tickets.close');
     Route::post('/set-level/{uid}', [AdminController::class, 'setLevel'])->name('set-level');
     Route::post('/wallet-credit', [AdminController::class, 'walletCredit'])->name('wallet-credit');
     Route::post('/inventory-adjust/{uid}', [AdminController::class, 'inventoryAdjust'])->name('inventory-adjust');

@@ -501,7 +501,8 @@ class AdminController extends Controller
             'rejected'  => 'رد شد',
         ][$request->status];
 
-        $body = "درخواست شما «{$statusLabel}». تاریخ: " . Jalali::now();
+        $adminName = $request->user()->name;
+        $body = "درخواست شما «{$statusLabel}» (توسط ادمین: {$adminName}). تاریخ: " . Jalali::now();
         if ($note !== '') $body .= "\nتوضیح ادمین: {$note}";
 
         Notification::create([
@@ -511,7 +512,7 @@ class AdminController extends Controller
             'type'    => 'system',
         ]);
 
-        $adminLog = "{$request->user()->name} درخواست تحویل فیزیکی «{$delivery->user?->name}» را «{$statusLabel}» کرد." . ($note !== '' ? " توضیح: {$note}" : '') . ' تاریخ: ' . Jalali::now();
+        $adminLog = "{$adminName} درخواست تحویل فیزیکی «{$delivery->user?->name}» را «{$statusLabel}» کرد." . ($note !== '' ? " توضیح: {$note}" : '') . ' تاریخ: ' . Jalali::now();
         $this->notifyOtherAdmins($request, 'به‌روزرسانی تحویل فیزیکی توسط ادمین', $adminLog);
 
         try {

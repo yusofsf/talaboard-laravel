@@ -74,6 +74,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
     Route::get('/tickets/{id}', [TicketController::class, 'show'])->name('tickets.show');
     Route::post('/tickets/{id}/reply', [TicketController::class, 'reply'])->name('tickets.reply');
+    Route::post('/tickets/{id}/resolve', [TicketController::class, 'resolve'])->name('tickets.resolve');
 });
 
 // پنل ادمین

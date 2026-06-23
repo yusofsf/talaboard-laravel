@@ -4,6 +4,7 @@ import AppLayout from '../../Layouts/AppLayout';
 const STATUS = {
     open:     ['در انتظار پاسخ', 'silver'],
     answered: ['پاسخ‌داده‌شده', 'buy-b'],
+    resolved: ['حل شد', 'buy-b'],
     closed:   ['بسته‌شده', 'sell-b'],
 };
 
@@ -61,18 +62,21 @@ export default function AdminTicketShow({ ticket }) {
                     <div className="alert info">این تیکت بسته شده است.</div>
                 ) : (
                     <div className="fcard" style={{ maxWidth: 560, marginBottom: 16 }}>
+                        {ticket.status === 'resolved' && (
+                            <div className="alert info" style={{ marginBottom: 16 }}>کاربر این تیکت را حل‌شده اعلام کرده و امکان ارسال پاسخ ندارد.</div>
+                        )}
                         {errors.message && <div className="alert err">{errors.message}</div>}
-                        <form onSubmit={submit}>
-                            <div className="field"><label>پاسخ ادمین</label>
-                                <textarea rows={4} value={form.data.message} onChange={e => form.setData('message', e.target.value)} required
-                                    style={{ width: '100%', padding: '11px 14px', borderRadius: 12, fontFamily: 'inherit', background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', fontSize: 15, resize: 'vertical' }} /></div>
-                            <div style={{ display: 'flex', gap: 10 }}>
-                                <button className="btn" type="submit" disabled={form.processing} style={{ width: 'auto', padding: '11px 28px' }}>
+                        {ticket.status !== 'resolved' && (
+                            <form onSubmit={submit}>
+                                <div className="field"><label>پاسخ ادمین</label>
+                                    <textarea rows={4} value={form.data.message} onChange={e => form.setData('message', e.target.value)} required
+                                        style={{ width: '100%', padding: '11px 14px', borderRadius: 12, fontFamily: 'inherit', background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', fontSize: 15, resize: 'vertical' }} /></div>
+                                <button className="btn" type="submit" disabled={form.processing} style={{ width: 'auto', padding: '11px 28px', marginInlineEnd: 10 }}>
                                     {form.processing ? '...' : 'ارسال پاسخ'}
                                 </button>
-                                <button type="button" onClick={closeTicket} className="btn-sm danger">بستن تیکت</button>
-                            </div>
-                        </form>
+                            </form>
+                        )}
+                        <button type="button" onClick={closeTicket} className="btn-sm danger" style={{ marginTop: ticket.status === 'resolved' ? 0 : 10 }}>بستن تیکت</button>
                     </div>
                 )}
             </div>

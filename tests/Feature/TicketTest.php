@@ -72,6 +72,29 @@ class TicketTest extends TestCase
         $this->assertTrue(Notification::where('user_id', $admin->id)->exists());
     }
 
+    public function test_user_can_mark_ticket_resolved_and_then_no_one_can_reply(): void
+    {
+        $user  = User::factory()->create();
+        $admin = User::factory()->admin()->create();
+        $ticket = Ticket::create(['user_id' => $user->id, 'subject' => 'حل‌شدنی', 'status' => 'answered']);
+
+        $this->actingAs($user)->post("/tickets/{$ticket->id}/resolve")->assertRedirect();
+
+        $ticket->refresh();
+        $this->assertSame('resolved', $ticket->status);
+        $this->assertTrue(Notification::where('user_id', $admin->id)->exists());
+
+        // کاربر دیگر نمی‌تواند پاسخ بدهد
+        $this->actingAs($user)->post("/tickets/{$ticket->id}/reply", ['message' => 'یه چیز دیگه'])
+            ->assertSessionHas('error');
+
+        // ادمین هم دیگر نمی‌تواند پاسخ بدهد
+        $this->actingAs($admin)->post("/admin/tickets/{$ticket->id}/reply", ['message' => 'باشه'])
+            ->assertSessionHas('error');
+
+        $this->assertSame(1, $ticket->messages()->count());
+    }
+
     public function test_closed_ticket_rejects_user_reply(): void
     {
         $user = User::factory()->create();

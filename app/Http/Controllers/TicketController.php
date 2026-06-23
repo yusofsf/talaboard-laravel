@@ -61,7 +61,7 @@ class TicketController extends Controller
 
         $user = $request->user();
         $ticket = Ticket::where('user_id', $user->id)->findOrFail($id);
-        if ($ticket->status === 'closed') {
+        if (in_array($ticket->status, ['closed', 'resolved'])) {
             return back()->with('error', 'این تیکت بسته شده و امکان پاسخ‌دهی ندارد.');
         }
 
@@ -75,6 +75,27 @@ class TicketController extends Controller
         ActivityLog::record('ticket_reply', 'ticket', "پاسخ کاربر {$user->name} در تیکت «{$ticket->subject}»", $user->id);
 
         return back()->with('success', 'پاسخ شما ارسال شد.');
+    }
+
+    /** کاربر تیکت را حل‌شده اعلام می‌کند — پس از آن نه خودش و نه ادمین نمی‌توانند پیام جدیدی ثبت کنند. */
+    public function resolve(Request $request, int $id)
+    {
+        $user = $request->user();
+        $ticket = Ticket::where('user_id', $user->id)->findOrFail($id);
+        if (in_array($ticket->status, ['closed', 'resolved'])) {
+            return back()->with('error', 'این تیکت قبلاً بسته شده است.');
+        }
+
+        TicketMessage::create([
+            'ticket_id' => $ticket->id, 'user_id' => $user->id, 'is_admin' => false,
+            'message' => 'مشکل حل شد.', 'created_at' => now(),
+        ]);
+        $ticket->update(['status' => 'resolved']);
+
+        $this->notifyAllAdmins("تیکت «{$ticket->subject}» حل شد", "{$user->name} اعلام کرد مشکل تیکت «{$ticket->subject}» حل شده است.");
+        ActivityLog::record('ticket_resolve', 'ticket', "کاربر {$user->name} تیکت «{$ticket->subject}» را حل‌شده اعلام کرد", $user->id);
+
+        return back()->with('success', 'تیکت به‌عنوان حل‌شده ثبت شد.');
     }
 
     private function presentTicket(Ticket $ticket): array

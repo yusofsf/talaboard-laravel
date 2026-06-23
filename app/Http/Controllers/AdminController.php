@@ -303,6 +303,10 @@ class AdminController extends Controller
         $ticket = Ticket::with('user')->findOrFail($id);
         $admin  = $request->user();
 
+        if (in_array($ticket->status, ['closed', 'resolved'])) {
+            return back()->with('error', 'این تیکت بسته شده و امکان پاسخ‌دهی ندارد.');
+        }
+
         TicketMessage::create([
             'ticket_id' => $ticket->id, 'user_id' => $admin->id, 'is_admin' => true,
             'message'   => $request->message, 'created_at' => now(),

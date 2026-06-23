@@ -174,7 +174,9 @@ Both shop trades and trade-room deals can be reversed by an admin from the `all_
 
 **Admin name visibility follows the same rule as everywhere else in this app**: `ticketReply()` sends the user a notification with just the reply text (no admin name), but calls `notifyOtherAdmins()` (which *does* name the acting admin) so other admins know who answered — same convention as delivery/withdrawal notifications. The admin-side thread (`Admin/TicketShow.jsx`) shows `admin_name` per message; the user-side thread (`Tickets/Show.jsx`) never receives that field from the controller at all (not just hidden client-side).
 
-A user replying to their own ticket flips `status` back to `open` (even if it was `answered`) and re-notifies all admins — closing the loop without needing a separate "needs attention" flag. `closed` is a dead end for replying (`reply()` rejects with a flash error) until the user opens a new ticket; there's no reopen action.
+A user replying to their own ticket flips `status` back to `open` (even if it was `answered`) and re-notifies all admins — closing the loop without needing a separate "needs attention" flag. `closed` and `resolved` are both dead ends for replying (rejected with a flash error, checked in `reply()` on both `TicketController` and `AdminController::ticketReply`) until the user opens a new ticket; there's no reopen action.
+
+`resolved` (`TicketController::resolve()`) is the user's own "problem solved" declaration — distinct from `closed` (admin-only, via `ticketClose()`) so the UI/notification copy can say "you marked this solved" instead of "an admin closed this." It still posts a `مشکل حل شد.` system-style message into the thread and notifies all admins (same as ticket creation/reply), and blocks further replies from *both* sides identically to `closed`.
 
 ### Admin per-user trade detail
 

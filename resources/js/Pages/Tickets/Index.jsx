@@ -5,6 +5,7 @@ import AppLayout from '../../Layouts/AppLayout';
 const STATUS = {
     open:     ['در انتظار پاسخ', 'silver'],
     answered: ['پاسخ‌داده‌شده', 'buy-b'],
+    resolved: ['حل شد', 'buy-b'],
     closed:   ['بسته‌شده', 'sell-b'],
 };
 

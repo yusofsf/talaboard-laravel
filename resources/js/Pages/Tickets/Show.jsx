@@ -1,19 +1,26 @@
-import { Link, useForm, usePage } from '@inertiajs/react';
+import { router, useForm, usePage, Link } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
 
 const STATUS = {
     open:     ['در انتظار پاسخ', 'silver'],
     answered: ['پاسخ‌داده‌شده', 'buy-b'],
+    resolved: ['حل شد', 'buy-b'],
     closed:   ['بسته‌شده', 'sell-b'],
 };
 
 export default function TicketShow({ ticket }) {
     const { errors } = usePage().props;
     const form = useForm({ message: '' });
+    const isOver = ticket.status === 'closed' || ticket.status === 'resolved';
 
     function submit(e) {
         e.preventDefault();
         form.post(`/tickets/${ticket.id}/reply`, { onSuccess: () => form.reset() });
+    }
+
+    function markResolved() {
+        if (!confirm('مشکل شما حل شد؟ پس از این دیگر نمی‌توانید در این تیکت پیام بفرستید.')) return;
+        router.post(`/tickets/${ticket.id}/resolve`);
     }
 
     const [label, badge] = STATUS[ticket.status] || STATUS.open;
@@ -48,8 +55,12 @@ export default function TicketShow({ ticket }) {
                     ))}
                 </div>
 
-                {ticket.status === 'closed' ? (
-                    <div className="alert info">این تیکت بسته شده است. در صورت نیاز یک تیکت جدید ثبت کنید.</div>
+                {isOver ? (
+                    <div className="alert info">
+                        {ticket.status === 'resolved'
+                            ? 'شما این تیکت را حل‌شده اعلام کردید. در صورت بروز مشکل جدید، یک تیکت تازه ثبت کنید.'
+                            : 'این تیکت بسته شده است. در صورت نیاز یک تیکت جدید ثبت کنید.'}
+                    </div>
                 ) : (
                     <div className="fcard" style={{ maxWidth: 560 }}>
                         {errors.message && <div className="alert err">{errors.message}</div>}
@@ -57,7 +68,14 @@ export default function TicketShow({ ticket }) {
                             <div className="field"><label>پاسخ شما</label>
                                 <textarea rows={4} value={form.data.message} onChange={e => form.setData('message', e.target.value)} required
                                     style={{ width: '100%', padding: '11px 14px', borderRadius: 12, fontFamily: 'inherit', background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', fontSize: 15, resize: 'vertical' }} /></div>
-                            <button className="btn" type="submit" disabled={form.processing}>{form.processing ? '...' : 'ارسال پاسخ'}</button>
+                            <div style={{ display: 'flex', gap: 10 }}>
+                                <button className="btn" type="submit" disabled={form.processing} style={{ width: 'auto', padding: '11px 28px' }}>
+                                    {form.processing ? '...' : 'ارسال پاسخ'}
+                                </button>
+                                <button type="button" onClick={markResolved} className="btn-sm" style={{ borderColor: 'rgba(65,225,166,.4)', color: 'var(--up)', background: 'rgba(65,225,166,.08)' }}>
+                                    ✅ مشکلم حل شد
+                                </button>
+                            </div>
                         </form>
                     </div>
                 )}

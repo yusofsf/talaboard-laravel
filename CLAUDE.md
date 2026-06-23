@@ -100,6 +100,18 @@ Both Jalali implementations independently convert/display dates; there is no sha
 
 Video is recorded in-browser via `VideoRecorder.jsx` (`getUserMedia` + `MediaRecorder`, capped at 640×480/600kbps to keep file size down), not picked from disk — there's no plain `<input type=file>` fallback for video.
 
+### Admin-editable settings (key-value `Setting`)
+
+Runtime-editable config lives in the `settings` table via `Setting::get($key, $default)` / `Setting::put($key, $value)` (cached with `Cache::rememberForever`, busted on write). This is distinct from env/config values (`GOLD_FACTOR`, `MITHQAL_GRAMS`, …) which are deploy-time only — use `Setting` when an admin must change something from the UI without a redeploy. Currently the only key is `trade_room_commission_percent` (default `0.1`), editable from the new "⚙️ تنظیمات" tab in `Admin/Dashboard.jsx` (`AdminController::updateSettings`). When adding another admin-tunable value, add a key here rather than a new column/env.
+
+### Trade-room commission
+
+On a completed trade-room deal (`TradeRoomController::accept`), a commission of `Setting::get('trade_room_commission_percent')`% of the deal total is split **half between buyer and seller** (buyer pays `total + buyerFee`, seller receives `total − sellerFee`). The fee **leaves the user-wallet system** (platform share — not credited to any user wallet, so the sum of user wallets drops by the fee), is snapshotted onto the offer's `commission` column, shown in both parties' notifications, and admins are notified of every completed deal. If you change who-pays, keep the ledger balanced (every debit needs a destination; here the destination is "out of the system").
+
+### Trade room entry unit: gram vs mithqal
+
+The trade room stores everything in **grams** (`grams`, `price_per_gram`), but the offer form has a گرم/مثقال unit toggle. When mithqal is selected, the form's quantity & price inputs are interpreted as mithqal and converted to grams + per-gram price via `MITHQAL_GRAMS` (passed to the page as `mithqalGrams`) **at submit time only** (`form.transform`) — the order book and storage stay gram-canonical. The price-board cards (`Home.jsx`) deep-link VIPs into `/trade-room?metal=…&purity=…&unit=…`; `TradeRoom.jsx` reads those params on mount to preselect the item + unit. Min order is still 100 grams (the mithqal `min` is rounded up so it can't fall under the gram floor).
+
 ### Trade room (`TradeRoomController`) vs. shop trades (`TradeController`)
 
 Two unrelated trading mechanisms:

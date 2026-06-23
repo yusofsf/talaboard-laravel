@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { router, useForm, usePage } from '@inertiajs/react';
 import AppLayout, { faNum } from '../Layouts/AppLayout';
 import DateRangeFilter, { filterByDateRange } from '../Components/DateRangeFilter';
@@ -36,6 +36,24 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
     const [myTo, setMyTo] = useState('');
     const [item, setItem] = useState('gold');
     const form = useForm({ metal: 'silver', side: 'sell', purity: '999', grams: '', price_per_gram: '' });
+
+    // قیمت لحظه‌ای سایت برای پیش‌فرض فیلد قیمت در فرم ثبت پیشنهاد
+    const [prices, setPrices] = useState(null);
+    useEffect(() => {
+        fetch('/api/prices').then(r => r.json()).then(setPrices).catch(() => {});
+    }, []);
+
+    // با تغییر فلز / عیار / خرید‌وفروش، قیمت هر گرم را با قیمت زنده‌ی سایت پر کن (فروش = قیمت فروش، خرید = قیمت خرید)
+    useEffect(() => {
+        if (!prices) return;
+        const { metal, side, purity } = form.data;
+        const gramKey = metal === 'gold' ? 'geram' : `gram_${purity}`;
+        const group = metal === 'gold'
+            ? (side === 'buy' ? 'gold_buy' : 'gold')
+            : (side === 'buy' ? 'silver_buy' : 'silver');
+        const v = prices?.[group]?.[gramKey];
+        if (typeof v === 'number' && v > 0) form.setData('price_per_gram', String(Math.round(v)));
+    }, [prices, form.data.metal, form.data.side, form.data.purity]);
 
     const activeItem = ITEMS.find(i => i.key === item);
     const matchesItem = o => o.metal === activeItem.metal && (activeItem.metal === 'gold' || o.purity === activeItem.purity);
@@ -190,7 +208,7 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                             </div>
                         </div>
                         <div className="field">
-                            <label>قیمت هر گرم (تومان)</label>
+                            <label>قیمت هر گرم (تومان) — پیش‌فرض از قیمت لحظه‌ای سایت، قابل ویرایش</label>
                             <input type="number" min="1" value={form.data.price_per_gram}
                                 onChange={e => form.setData('price_per_gram', e.target.value)} required />
                         </div>

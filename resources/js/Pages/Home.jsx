@@ -36,7 +36,7 @@ function UsdIcon() {
     );
 }
 
-function PriceCard({ id, name, sub, icon, cls, price, open, buyable, href }) {
+function PriceCard({ id, name, sub, icon, cls, price, open, buyable, href, roomHref }) {
     const [flash, setFlash] = useState(false);
     const prevRef = useRef(undefined);
 
@@ -75,6 +75,12 @@ function PriceCard({ id, name, sub, icon, cls, price, open, buyable, href }) {
                     ? <span className={`tv-chg ${chg.up ? 'up' : 'down'}`}>{chg.up ? '▲' : '▼'} {faPct(chg.pct)}</span>
                     : <span className="tv-chg zero">۰٪</span>}
             </div>
+            {roomHref && (
+                <button type="button" className="tv-room-btn"
+                    onClick={(e) => { e.stopPropagation(); router.visit(roomHref); }}>
+                    🤝 ورود به اتاق معاملاتی
+                </button>
+            )}
         </div>
     );
 }
@@ -113,9 +119,20 @@ const GOLD = [
     { key: 'geram',   name: 'گرم طلا',   sub: '' },
 ];
 
+const ROOM_META = {
+    geram:       'metal=gold&unit=gram',
+    mithqal:     'metal=gold&unit=mithqal',
+    gram_999:    'metal=silver&purity=999&unit=gram',
+    mithqal_999: 'metal=silver&purity=999&unit=mithqal',
+    gram_995:    'metal=silver&purity=995&unit=gram',
+    mithqal_995: 'metal=silver&purity=995&unit=mithqal',
+};
+
 export default function Home({ prices: initial, refreshSeconds }) {
     const { auth } = usePage().props;
     const user = auth?.user;
+    const isVip = !!user && (user.is_vip || user.membership_level === 2);
+    const roomHref = key => (isVip && ROOM_META[key]) ? `/trade-room?${ROOM_META[key]}` : null;
 
     const [data, setData] = useState(initial);
     const [online, setOnline] = useState(true);
@@ -241,6 +258,13 @@ export default function Home({ prices: initial, refreshSeconds }) {
                 .tv-card.usd .tv-glow{background:var(--usd-glow)}
                 .tv-card.buyable{cursor:pointer}
                 .tv-card.buyable:active{transform:scale(.985)}
+                .tv-room-btn{
+                  margin-top:12px; width:100%; padding:8px 12px; border-radius:10px; cursor:pointer;
+                  font-family:inherit; font-size:13px; font-weight:700;
+                  color:var(--gold-1); border:1px solid rgba(246,207,99,.35); background:rgba(246,207,99,.1);
+                  transition:background .15s, border-color .15s;
+                }
+                .tv-room-btn:hover{background:rgba(246,207,99,.2); border-color:rgba(246,207,99,.6)}
 
                 .tv-top{display:flex; align-items:center; gap:12px; min-width:0}
                 .tv-top > div{min-width:0; overflow:hidden}
@@ -375,7 +399,7 @@ export default function Home({ prices: initial, refreshSeconds }) {
                         <div className="tv-grid">
                             {SILVER.map(s => (
                                 <PriceCard key={s.key} id={`card-silver-${s.key}`} name={s.name} sub={s.sub}
-                                    icon={<IngotIcon />} cls="silver" buyable href={`/trade/${s.key}`}
+                                    icon={<IngotIcon />} cls="silver" buyable href={`/trade/${s.key}`} roomHref={roomHref(s.key)}
                                     price={data.silver?.[s.key]} open={open[`silver.${s.key}`]} />
                             ))}
                             <PriceCard id="card-usd-price" name="دلار (خرید و فروش نداریم)" sub="هر دلار"
@@ -404,7 +428,7 @@ export default function Home({ prices: initial, refreshSeconds }) {
                         <div className="tv-grid">
                             {GOLD.map(g => (
                                 <PriceCard key={g.key} id={`card-gold-${g.key}`} name={g.name} sub={g.sub}
-                                    icon={<CoinIcon />} cls="gold" buyable href={`/trade/${g.key}`}
+                                    icon={<CoinIcon />} cls="gold" buyable href={`/trade/${g.key}`} roomHref={roomHref(g.key)}
                                     price={data.gold?.[g.key]} open={open[`gold.${g.key}`]} />
                             ))}
                         </div>

@@ -71,17 +71,28 @@ export default function TradingViewChart({ symbol, height = 420, fallbackUrl }) 
                 </div>
             )}
             {status === 'failed' && (
-                <div className="alert err" style={{ textAlign: 'center' }}>
-                    چارت TradingView بارگذاری نشد (ممکن است از ایران در دسترس نباشد).
-                    {fallbackUrl && (
-                        <>
-                            <br />
-                            <a href={fallbackUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold-1)', fontWeight: 700 }}>
-                                مشاهده‌ی چارت در TGJU
+                fallbackUrl ? (
+                    <div>
+                        <div className="alert info" style={{ textAlign: 'center', marginBottom: 10 }}>
+                            چارت TradingView بارگذاری نشد؛ نسخه‌ی جایگزین از TGJU نمایش داده می‌شود.
+                        </div>
+                        <iframe
+                            title="چارت TGJU"
+                            src={fallbackUrl}
+                            style={{ width: '100%', height, border: '1px solid var(--line)', borderRadius: 14, background: '#fff' }}
+                            loading="lazy"
+                        />
+                        <div style={{ textAlign: 'center', marginTop: 8 }}>
+                            <a href={fallbackUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold-1)', fontWeight: 700, fontSize: 13 }}>
+                                اگر چارت نمایش داده نشد، اینجا در TGJU باز کنید ↗
                             </a>
-                        </>
-                    )}
-                </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="alert err" style={{ textAlign: 'center' }}>
+                        چارت TradingView بارگذاری نشد (ممکن است از ایران در دسترس نباشد).
+                    </div>
+                )
             )}
         </div>
     );

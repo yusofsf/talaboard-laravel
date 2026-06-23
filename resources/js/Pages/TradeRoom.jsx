@@ -96,12 +96,25 @@ const ITEMS = [
     { key: 'silver995', label: 'نقره ۹۹۵',    metal: 'silver', purity: '995' },
 ];
 
-export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalance, goldBalance, silverBalance }) {
+export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalance, goldBalance, silverBalance, commissionPercent, mithqalGrams }) {
     const { errors } = usePage().props;
+    const M = mithqalGrams || 4.3318;
     const [myFrom, setMyFrom] = useState('');
     const [myTo, setMyTo] = useState('');
     const [item, setItem] = useState('gold');
+    const [unit, setUnit] = useState('gram'); // gram | mithqal — فقط واحد ورودی فرم
     const form = useForm({ metal: 'silver', side: 'sell', purity: '999', grams: '', price_per_gram: '' });
+
+    // اگر از تابلوی قیمت با پارامتر آمده باشد، فلز/عیار/واحد و آیتم را پیش‌انتخاب کن
+    useEffect(() => {
+        const q = new URLSearchParams(window.location.search);
+        const metal = q.get('metal');
+        if (metal !== 'gold' && metal !== 'silver') return;
+        const purity = q.get('purity') === '995' ? '995' : '999';
+        if (q.get('unit') === 'mithqal') setUnit('mithqal');
+        form.setData(d => ({ ...d, metal, purity: metal === 'silver' ? purity : d.purity }));
+        setItem(metal === 'gold' ? 'gold' : (purity === '995' ? 'silver995' : 'silver999'));
+    }, []);
 
     // قیمت لحظه‌ای سایت برای پیش‌فرض فیلد قیمت در فرم ثبت پیشنهاد
     const [prices, setPrices] = useState(null);
@@ -109,7 +122,8 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
         fetch('/api/prices').then(r => r.json()).then(setPrices).catch(() => {});
     }, []);
 
-    // با تغییر فلز / عیار / خرید‌وفروش، قیمت هر گرم را با قیمت زنده‌ی سایت پر کن (فروش = قیمت فروش، خرید = قیمت خرید)
+    // با تغییر فلز / عیار / خرید‌وفروش / واحد، قیمت را با قیمت زنده‌ی سایت پر کن
+    // (فروش = قیمت فروش، خرید = قیمت خرید؛ برای مثقال، قیمت گرم × ضریب مثقال)
     useEffect(() => {
         if (!prices) return;
         const { metal, side, purity } = form.data;
@@ -118,8 +132,11 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
             ? (side === 'buy' ? 'gold_buy' : 'gold')
             : (side === 'buy' ? 'silver_buy' : 'silver');
         const v = prices?.[group]?.[gramKey];
-        if (typeof v === 'number' && v > 0) form.setData('price_per_gram', String(Math.round(v)));
-    }, [prices, form.data.metal, form.data.side, form.data.purity]);
+        if (typeof v === 'number' && v > 0) {
+            const perUnit = unit === 'mithqal' ? v * M : v;
+            form.setData('price_per_gram', String(Math.round(perUnit)));
+        }
+    }, [prices, form.data.metal, form.data.side, form.data.purity, unit]);
 
     const activeItem = ITEMS.find(i => i.key === item);
     const matchesItem = o => o.metal === activeItem.metal && (activeItem.metal === 'gold' || o.purity === activeItem.purity);
@@ -138,7 +155,15 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
 
     function submit(e) {
         e.preventDefault();
-        form.post('/trade-room', { onSuccess: () => form.reset('grams', 'price_per_gram') });
+        // اگر واحد مثقال است، مقدار و قیمت به گرم تبدیل می‌شوند (در سرور همه‌چیز گرمی ذخیره می‌شود)
+        const qty = parseFloat(form.data.grams) || 0;
+        const perUnit = parseInt(form.data.price_per_gram, 10) || 0;
+        const payload = unit === 'mithqal'
+            ? { ...form.data, grams: +(qty * M).toFixed(4), price_per_gram: Math.round(perUnit / M) }
+            : form.data;
+        form.transform(() => payload).post('/trade-room', {
+            onSuccess: () => { form.transform(d => d); form.reset('grams', 'price_per_gram'); },
+        });
     }
 
     function accept(id) {
@@ -256,6 +281,20 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                                 </button>
                             ))}
                         </div>
+                        <div className="btn-row" style={{ marginBottom: 16 }}>
+                            {[['gram', 'گرم'], ['mithqal', 'مثقال']].map(([u, label]) => (
+                                <button key={u} type="button" onClick={() => setUnit(u)}
+                                    style={{
+                                        padding: '10px', borderRadius: 12, fontFamily: 'inherit', fontSize: 14, fontWeight: 700,
+                                        cursor: 'pointer', border: 'none',
+                                        background: unit === u ? 'rgba(246,207,99,.2)' : 'rgba(255,255,255,.06)',
+                                        color: unit === u ? 'var(--gold-1)' : 'var(--muted)',
+                                        outline: unit === u ? '2px solid var(--gold-1)' : '2px solid transparent',
+                                    }}>
+                                    واحد: {label}
+                                </button>
+                            ))}
+                        </div>
                         <div style={{ display: 'grid', gridTemplateColumns: form.data.metal === 'silver' ? '1fr 1fr' : '1fr', gap: 12 }}>
                             {form.data.metal === 'silver' && (
                                 <div className="field">
@@ -268,13 +307,13 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                                 </div>
                             )}
                             <div className="field">
-                                <label>مقدار (گرم) — حداقل ۱۰۰</label>
-                                <input type="number" step="any" min="100" value={form.data.grams}
+                                <label>مقدار ({unit === 'mithqal' ? 'مثقال' : 'گرم'}) — حداقل معادل ۱۰۰ گرم</label>
+                                <input type="number" step="any" min={unit === 'mithqal' ? (100 / M).toFixed(2) : 100} value={form.data.grams}
                                     onChange={e => form.setData('grams', e.target.value)} required />
                             </div>
                         </div>
                         <div className="field">
-                            <label>قیمت هر گرم (تومان) — پیش‌فرض از قیمت لحظه‌ای سایت، قابل ویرایش</label>
+                            <label>قیمت هر {unit === 'mithqal' ? 'مثقال' : 'گرم'} (تومان) — پیش‌فرض از قیمت لحظه‌ای سایت، قابل ویرایش</label>
                             <input type="number" min="1" value={form.data.price_per_gram}
                                 onChange={e => form.setData('price_per_gram', e.target.value)} required />
                         </div>
@@ -282,6 +321,11 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                             <div style={{ background: 'rgba(255,255,255,.04)', border: '1px solid var(--line)', borderRadius: 12, padding: '12px 16px', marginBottom: 16 }}>
                                 <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>مبلغ کل</div>
                                 <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--gold-1)' }}>{faNum(total)} تومان</div>
+                                {commissionPercent > 0 && (
+                                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6 }}>
+                                        کارمزد اتاق معاملاتی: {commissionPercent}٪ (هنگام انجام معامله بین خریدار و فروشنده نصف‌نصف کسر می‌شود)
+                                    </div>
+                                )}
                             </div>
                         )}
                         <button className="btn" type="submit" disabled={form.processing}>

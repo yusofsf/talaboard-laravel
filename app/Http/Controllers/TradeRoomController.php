@@ -56,6 +56,7 @@ class TradeRoomController extends Controller
                 '995' => $request->user()->silverBalance('995'),
             ],
             'commissionPercent' => (float) Setting::get('trade_room_commission_percent', 0.1),
+            'mithqalGrams'      => (float) env('MITHQAL_GRAMS', 4.3318),
         ]);
     }
 

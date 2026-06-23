@@ -114,7 +114,6 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'flex-start', marginBottom: 24 }}>
                     {/* سمت راست (در RTL فرزند اول): سفارش‌های باز */}
                     <div className="no-print" style={{ flex: 1, minWidth: 320 }}>
-                        <div className="section-title">🤝 سفارش‌های باز</div>
                         <div className="btn-row" style={{ gridTemplateColumns: `repeat(${ITEMS.length}, 1fr)`, marginBottom: 18 }}>
                             {ITEMS.map(i => (
                                 <button key={i.key} type="button" onClick={() => {

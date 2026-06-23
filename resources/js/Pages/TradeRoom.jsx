@@ -215,8 +215,8 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                             ))}
                         </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18 }}>
-                            <OfferSection title="🔴 سفارش‌های فروش (ارزان‌ترین اول)" offers={itemSellOffers} accept={accept} cancel={cancel} />
-                            <OfferSection title="🟢 سفارش‌های خرید (گران‌ترین اول)" offers={itemBuyOffers} accept={accept} cancel={cancel} />
+                            <OfferSection title="🔴 سفارش‌های فروش" offers={itemSellOffers} accept={accept} cancel={cancel} />
+                            <OfferSection title="🟢 سفارش‌های خرید" offers={itemBuyOffers} accept={accept} cancel={cancel} />
                         </div>
                     </>
                 )}

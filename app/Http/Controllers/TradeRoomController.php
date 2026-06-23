@@ -6,6 +6,7 @@ use App\Helpers\Jalali;
 use App\Models\ActivityLog;
 use App\Models\GoldLedger;
 use App\Models\Notification;
+use App\Models\Setting;
 use App\Models\SilverLedger;
 use App\Models\TradeRoomOffer;
 use App\Models\User;
@@ -54,6 +55,7 @@ class TradeRoomController extends Controller
                 '999' => $request->user()->silverBalance('999'),
                 '995' => $request->user()->silverBalance('995'),
             ],
+            'commissionPercent' => (float) Setting::get('trade_room_commission_percent', 0.1),
         ]);
     }
 
@@ -136,13 +138,19 @@ class TradeRoomController extends Controller
                 $total  = $offer->total();
                 $itemLabel = $metal === 'gold' ? 'طلا' : self::PURITY_LABEL[$purity];
 
+                // کارمزد اتاق معاملاتی — به‌صورت نصف‌نصف بین خریدار و فروشنده. مبلغ کارمزد از سیستم خارج می‌شود (سهم فروشگاه).
+                $rate      = (float) Setting::get('trade_room_commission_percent', 0.1) / 100;
+                $fee       = (int) round($total * $rate);
+                $buyerFee  = intdiv($fee, 2);
+                $sellerFee = $fee - $buyerFee;
+
                 if ($offer->side === 'sell') {
                     // پیشنهاددهنده فروشنده است؛ acceptor خریدار است
-                    if ($acceptor->walletBalance() < $total) {
+                    if ($acceptor->walletBalance() < $total + $buyerFee) {
                         throw new \RuntimeException('موجودی کیف پول شما کافی نیست.');
                     }
-                    WalletTransaction::create(['user_id' => $acceptor->id, 'amount' => -$total, 'type' => 'withdraw', 'description' => "خرید {$itemLabel} از اتاق معاملاتی #{$offer->id}"]);
-                    WalletTransaction::create(['user_id' => $offer->user_id, 'amount' => $total, 'type' => 'deposit', 'description' => "فروش {$itemLabel} در اتاق معاملاتی #{$offer->id}"]);
+                    WalletTransaction::create(['user_id' => $acceptor->id, 'amount' => -($total + $buyerFee), 'type' => 'withdraw', 'description' => "خرید {$itemLabel} از اتاق معاملاتی #{$offer->id}" . ($buyerFee > 0 ? " (شامل کارمزد " . number_format($buyerFee) . " تومان)" : '')]);
+                    WalletTransaction::create(['user_id' => $offer->user_id, 'amount' => $total - $sellerFee, 'type' => 'deposit', 'description' => "فروش {$itemLabel} در اتاق معاملاتی #{$offer->id}" . ($sellerFee > 0 ? " (پس از کسر کارمزد " . number_format($sellerFee) . " تومان)" : '')]);
                     $this->createLedger($acceptor->id, $metal, $purity, $grams, 'p2p_buy', $offer->id, "خرید از اتاق معاملاتی #{$offer->id}");
                 } else {
                     // پیشنهاددهنده خریدار است (پول قبلاً رزرو شده)؛ acceptor فروشنده است
@@ -150,17 +158,31 @@ class TradeRoomController extends Controller
                         throw new \RuntimeException('موجودی شما کافی نیست.');
                     }
                     $this->createLedger($acceptor->id, $metal, $purity, -$grams, 'p2p_sell', $offer->id, "فروش به اتاق معاملاتی #{$offer->id}");
-                    WalletTransaction::create(['user_id' => $acceptor->id, 'amount' => $total, 'type' => 'deposit', 'description' => "فروش {$itemLabel} در اتاق معاملاتی #{$offer->id}"]);
+                    WalletTransaction::create(['user_id' => $acceptor->id, 'amount' => $total - $sellerFee, 'type' => 'deposit', 'description' => "فروش {$itemLabel} در اتاق معاملاتی #{$offer->id}" . ($sellerFee > 0 ? " (پس از کسر کارمزد " . number_format($sellerFee) . " تومان)" : '')]);
+                    if ($buyerFee > 0) {
+                        WalletTransaction::create(['user_id' => $offer->user_id, 'amount' => -$buyerFee, 'type' => 'withdraw', 'description' => "کارمزد خرید اتاق معاملاتی #{$offer->id}"]);
+                    }
                     $this->createLedger($offer->user_id, $metal, $purity, $grams, 'p2p_buy', $offer->id, "خرید از اتاق معاملاتی #{$offer->id}");
                 }
 
-                $offer->update(['status' => 'completed', 'counterparty_id' => $acceptor->id, 'completed_at' => now()]);
+                $offer->update(['status' => 'completed', 'counterparty_id' => $acceptor->id, 'completed_at' => now(), 'commission' => $fee]);
 
+                $feeNote = $fee > 0 ? ' — کارمزد: ' . number_format($fee) . ' تومان' : '';
                 foreach ([$offer->user_id, $acceptor->id] as $uid) {
                     Notification::create([
                         'user_id' => $uid,
                         'title'   => 'معامله‌ی اتاق معاملاتی تکمیل شد',
-                        'body'    => "{$itemLabel} — {$grams} گرم — " . number_format($total) . ' تومان — ' . Jalali::now(),
+                        'body'    => "{$itemLabel} — {$grams} گرم — " . number_format($total) . ' تومان' . $feeNote . ' — ' . Jalali::now(),
+                        'type'    => 'trade',
+                    ]);
+                }
+
+                // اطلاع به ادمین‌ها از ثبت معامله‌ی اتاق معاملاتی
+                foreach (User::where('is_admin', true)->pluck('id') as $adminId) {
+                    Notification::create([
+                        'user_id' => $adminId,
+                        'title'   => 'معامله‌ی جدید در اتاق معاملاتی',
+                        'body'    => "{$itemLabel} — {$grams} گرم — " . number_format($total) . ' تومان' . $feeNote . ' — ' . Jalali::now(),
                         'type'    => 'trade',
                     ]);
                 }
@@ -238,6 +260,7 @@ class TradeRoomController extends Controller
             'status'         => $o->status,
             'is_mine'        => $o->user_id === $viewer->id,
             'admin_note'     => $o->admin_note,
+            'commission'     => (int) $o->commission,
             'created_at'     => Jalali::format($o->created_at),
             'completed_at'   => $o->completed_at ? Jalali::format($o->completed_at) : null,
             'date_raw'       => ($o->completed_at ?? $o->created_at)->format('Y-m-d'),

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class TradeRoomOffer extends Model
 {
-    protected $fillable = ['user_id', 'metal', 'side', 'purity', 'grams', 'price_per_gram', 'status', 'counterparty_id', 'completed_at', 'admin_note'];
+    protected $fillable = ['user_id', 'metal', 'side', 'purity', 'grams', 'price_per_gram', 'status', 'counterparty_id', 'completed_at', 'admin_note', 'commission'];
 
     protected $casts = ['grams' => 'decimal:4', 'completed_at' => 'datetime'];
 

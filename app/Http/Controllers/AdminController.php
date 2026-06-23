@@ -7,6 +7,7 @@ use App\Models\ActivityLog;
 use App\Models\DepositRequest;
 use App\Models\GoldLedger;
 use App\Models\Notification;
+use App\Models\Setting;
 use App\Models\SilverDeliveryRequest;
 use App\Models\SilverLedger;
 use App\Models\Ticket;
@@ -201,7 +202,11 @@ class AdminController extends Controller
                 'date_raw'   => $t->created_at->format('Y-m-d'),
             ]);
 
-        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'stats', 'memberApplications', 'vipMembers', 'deliveryRequests', 'withdrawalRequests', 'depositRequests', 'allTrades', 'activityLogs', 'tickets'));
+        $settings = [
+            'trade_room_commission_percent' => (float) Setting::get('trade_room_commission_percent', 0.1),
+        ];
+
+        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'stats', 'memberApplications', 'vipMembers', 'deliveryRequests', 'withdrawalRequests', 'depositRequests', 'allTrades', 'activityLogs', 'tickets', 'settings'));
     }
 
     /** ریز معاملات یک کاربر خاص (فروشگاه + اتاق معاملاتی) برای مشاهده و خروجی PDF ادمین. */
@@ -416,6 +421,21 @@ class AdminController extends Controller
             })
             ->values()
             ->all();
+    }
+
+    public function updateSettings(Request $request)
+    {
+        $request->validate([
+            'trade_room_commission_percent' => 'required|numeric|min:0|max:10',
+        ]);
+
+        $old = Setting::get('trade_room_commission_percent', 0.1);
+        Setting::put('trade_room_commission_percent', $request->trade_room_commission_percent);
+
+        $this->notifyOtherAdmins($request, 'تغییر تنظیمات توسط ادمین',
+            "{$request->user()->name} کارمزد اتاق معاملاتی را از {$old}٪ به {$request->trade_room_commission_percent}٪ تغییر داد. تاریخ: " . Jalali::now());
+
+        return back()->with('success', 'تنظیمات ذخیره شد.');
     }
 
     public function setLevel(Request $request, int $uid)

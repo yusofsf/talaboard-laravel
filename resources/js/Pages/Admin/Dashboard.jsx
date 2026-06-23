@@ -376,7 +376,7 @@ function LogRow({ l }) {
     );
 }
 
-export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApplications, vipMembers, deliveryRequests, withdrawalRequests, depositRequests, allTrades, activityLogs, tickets }) {
+export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApplications, vipMembers, deliveryRequests, withdrawalRequests, depositRequests, allTrades, activityLogs, tickets, settings }) {
     const { auth } = usePage().props;
     const [tab, setTab] = useState('users');
 
@@ -407,6 +407,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     const [logTo, setLogTo] = useState('');
     const [editingNotifId, setEditingNotifId] = useState(null);
     const [notifEdit, setNotifEdit] = useState({ title: '', body: '', type: 'info' });
+    const settingsForm = useForm({ trade_room_commission_percent: settings?.trade_room_commission_percent ?? 0.1 });
 
     const [usersQ, setUsersQ] = useState('');
     const [txnsQ, setTxnsQ] = useState('');
@@ -554,6 +555,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
         ['deposits', `افزایش موجودی${depositRequests?.length ? ` (${depositRequests.length})` : ''}`],
         ['tickets', `تیکت‌ها${tickets?.filter(t => t.status === 'open').length ? ` (${tickets.filter(t => t.status === 'open').length})` : ''}`],
         ['logs', 'گزارش فعالیت'],
+        ['settings', '⚙️ تنظیمات'],
     ];
 
     return (
@@ -1138,6 +1140,26 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                             <div className="empty"><div className="ico">🗒️</div>رویدادی برای نمایش نیست.</div>
                         )}
                     </>
+                )}
+
+                {/* تنظیمات */}
+                {tab === 'settings' && (
+                    <div className="fcard" style={{ maxWidth: 480 }}>
+                        <h2 style={{ fontSize: 16 }}>تنظیمات اتاق معاملاتی</h2>
+                        <div style={{ height: 16 }} />
+                        <form onSubmit={e => { e.preventDefault(); settingsForm.post('/admin/settings', { preserveScroll: true }); }}>
+                            <div className="field">
+                                <label>کارمزد اتاق معاملاتی (درصد) — بین خریدار و فروشنده نصف‌نصف کسر می‌شود</label>
+                                <input type="number" step="0.01" min="0" max="10"
+                                    value={settingsForm.data.trade_room_commission_percent}
+                                    onChange={e => settingsForm.setData('trade_room_commission_percent', e.target.value)} required />
+                                {settingsForm.errors.trade_room_commission_percent && <div className="alert err" style={{ marginTop: 8 }}>{settingsForm.errors.trade_room_commission_percent}</div>}
+                            </div>
+                            <button className="btn" type="submit" disabled={settingsForm.processing} style={{ width: 'auto', padding: '11px 28px' }}>
+                                {settingsForm.processing ? '...' : 'ذخیره تنظیمات'}
+                            </button>
+                        </form>
+                    </div>
                 )}
 
             </div>

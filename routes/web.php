@@ -84,6 +84,7 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/online-users', [AdminController::class, 'onlineUsers'])->name('online-users');
+    Route::post('/settings', [AdminController::class, 'updateSettings'])->name('settings.update');
     Route::get('/tickets/{id}', [AdminController::class, 'ticketShow'])->name('tickets.show');
     Route::post('/tickets/{id}/reply', [AdminController::class, 'ticketReply'])->name('tickets.reply');
     Route::post('/tickets/{id}/close', [AdminController::class, 'ticketClose'])->name('tickets.close');

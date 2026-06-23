@@ -28,8 +28,9 @@ class HistoryController extends Controller
         $summary = $this->buildSummary($user->transactions()->where('status', 'active')->get());
 
         return Inertia::render('History', [
-            'transactions' => $txns,
-            'summary'      => $summary,
+            'transactions'   => $txns,
+            'summary'        => $summary,
+            'wallet_balance' => $user->walletBalance(),
         ]);
     }
 

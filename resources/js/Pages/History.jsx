@@ -26,7 +26,7 @@ function TxnRow({ t, i }) {
     );
 }
 
-export default function History({ transactions, summary }) {
+export default function History({ transactions, summary, wallet_balance }) {
     const [tab, setTab] = useState('txn');
     const [from, setFrom] = useState('');
     const [to, setTo] = useState('');
@@ -98,7 +98,19 @@ export default function History({ transactions, summary }) {
                     )}
 
                     {tab === 'acc' && (
-                        summary.length ? (
+                        <>
+                            <div style={{
+                                background: 'linear-gradient(135deg,var(--gold-1),var(--gold-2))',
+                                borderRadius: 18, padding: '20px 24px', marginBottom: 18,
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14,
+                            }}>
+                                <div>
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: '#5a3a00', opacity: .8 }}>موجودی کیف پول</div>
+                                    <div style={{ fontSize: 26, fontWeight: 900, color: '#1a1200' }}>{faNum(wallet_balance)} <span style={{ fontSize: 13, fontWeight: 700 }}>تومان</span></div>
+                                </div>
+                                <div style={{ fontSize: 32, opacity: .35 }}>💰</div>
+                            </div>
+                            {summary.length ? (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
                                 {summary.map(s => (
                                     <div key={s.label} style={{
@@ -131,9 +143,10 @@ export default function History({ transactions, summary }) {
                                     </div>
                                 ))}
                             </div>
-                        ) : (
-                            <div className="empty"><div className="ico">📊</div><div>هنوز داده‌ای برای محاسبه وجود ندارد.</div></div>
-                        )
+                            ) : (
+                                <div className="empty"><div className="ico">📊</div><div>هنوز داده‌ای برای محاسبه وجود ندارد.</div></div>
+                            )}
+                        </>
                     )}
                 </div>
             </div>

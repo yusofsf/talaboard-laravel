@@ -156,6 +156,14 @@ export default function AppLayout({ children }) {
                         </svg>
                         <span dir="ltr">۰۹۱۵۸۹۵۲۸۸۵</span>
                     </a>
+                    <a href="mailto:info@metalsp.ir"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--muted)', fontSize: 14 }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="5" width="18" height="14" rx="2" />
+                            <path d="m4 7 8 6 8-6" />
+                        </svg>
+                        <span dir="ltr">info@metalsp.ir</span>
+                    </a>
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--muted)', opacity: .7 }}>
                     آبشده صفرپور — تمامی حقوق محفوظ است

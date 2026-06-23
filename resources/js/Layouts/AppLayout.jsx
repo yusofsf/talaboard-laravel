@@ -89,14 +89,8 @@ export default function AppLayout({ children }) {
                                             </>
                                         )}
                                         <div style={{ height: 1, background: 'var(--line)', margin: '6px 0' }} />
-                                        <MenuLink href="/profile" onClick={() => setOpen(false)}>{user.name}</MenuLink>
-                                        <button onClick={logout} style={{
-                                            textAlign: 'right', padding: '10px 12px', borderRadius: 8,
-                                            background: 'none', border: 'none', color: 'var(--down)',
-                                            fontFamily: 'inherit', fontSize: 14, cursor: 'pointer',
-                                        }}>
-                                            خروج
-                                        </button>
+                                        <MenuLink href="/profile" onClick={() => setOpen(false)}>👤 {user.name}</MenuLink>
+                                        <button onClick={logout} className="menu-link danger">🚪 خروج</button>
                                     </>
                                 ) : (
                                     <>
@@ -176,13 +170,10 @@ export default function AppLayout({ children }) {
 }
 
 function MenuLink({ href, children, onClick, gold }) {
+    const current = (usePage().url || '/').split('?')[0];
+    const active = !gold && current === href;
     return (
-        <Link href={href} onClick={onClick} style={{
-            display: 'block', padding: '10px 12px', borderRadius: 8,
-            fontSize: 14, color: gold ? '#1a1200' : 'var(--txt)',
-            background: gold ? 'linear-gradient(135deg,var(--gold-1),var(--gold-2))' : 'transparent',
-            fontWeight: gold ? 700 : 400,
-        }}>
+        <Link href={href} onClick={onClick} className={`menu-link${gold ? ' gold' : ''}${active ? ' active' : ''}`}>
             {children}
         </Link>
     );

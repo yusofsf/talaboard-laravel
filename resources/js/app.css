@@ -8,25 +8,52 @@
   --up:#41e1a6; --down:#ff6b78;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
 html, body, #app { min-height: 100%; }
 body {
   font-family: "Vazirmatn", Tahoma, system-ui, sans-serif;
   color: var(--txt);
   background: radial-gradient(900px 600px at 85% -10%, var(--bg-2), transparent 60%),
               linear-gradient(160deg, var(--bg-0), var(--bg-1));
+  background-attachment: fixed;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
 }
 a { color: inherit; text-decoration: none; }
 button { font-family: inherit; }
+::selection { background: var(--gold-glow); color: #fff; }
+
+/* اسکرول‌بار هماهنگ با تم تاریک */
+* { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.18) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+*::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.26); background-clip: padding-box; }
+*::-webkit-scrollbar-track { background: transparent; }
 
 /* ناوبار */
 nav {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; padding: 12px 24px;
-  background: rgba(255,255,255,.03); border-bottom: 1px solid var(--line);
-  position: sticky; top: 0; z-index: 10; backdrop-filter: blur(8px);
+  background: rgba(13,18,38,.72); border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; z-index: 30; backdrop-filter: blur(14px) saturate(140%);
+  box-shadow: 0 6px 24px -16px rgba(0,0,0,.7);
 }
+
+/* آیتم‌های منوی کشویی */
+.menu-link {
+  display: block; padding: 10px 12px; border-radius: 10px;
+  font-size: 14px; color: var(--txt); cursor: pointer;
+  border: none; background: none; width: 100%; text-align: start; font-family: inherit;
+  transition: background .15s, color .15s, transform .08s;
+}
+.menu-link:hover { background: rgba(255,255,255,.07); }
+.menu-link:active { transform: scale(.98); }
+.menu-link.active { background: rgba(246,207,99,.12); color: var(--gold-1); font-weight: 700; }
+.menu-link.gold { color: #1a1200; background: linear-gradient(135deg,var(--gold-1),var(--gold-2)); font-weight: 700; }
+.menu-link.gold:hover { filter: brightness(1.08); }
+.menu-link.danger { color: var(--down); }
+.menu-link.danger:hover { background: rgba(255,107,120,.1); }
 .nav-brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; }
 .nav-brand span { color: var(--gold-1); }
 .nav-brand .ico {
@@ -60,6 +87,7 @@ nav {
 .fcard {
   background: linear-gradient(160deg, var(--card), var(--card-2));
   border: 1px solid var(--line); border-radius: 22px; padding: 32px;
+  box-shadow: 0 18px 40px -28px rgba(0,0,0,.85);
 }
 .fcard h2 { font-size: 22px; font-weight: 800; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .fcard h2 .sub { font-size: 14px; font-weight: 400; color: var(--muted); }
@@ -89,9 +117,10 @@ select option { color: #15192b; background: #fff; }
   display: block; width: 100%; padding: 13px; border-radius: 12px;
   font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer; border: none; margin-top: 4px;
   background: linear-gradient(135deg, var(--gold-1), var(--gold-2));
-  color: #1a1200; transition: filter .2s, transform .1s;
+  color: #1a1200; transition: filter .2s, transform .1s, box-shadow .2s;
+  box-shadow: 0 10px 24px -12px var(--gold-glow);
 }
-.btn:hover { filter: brightness(1.1); }
+.btn:hover { filter: brightness(1.1); box-shadow: 0 14px 30px -12px var(--gold-glow); }
 .btn:active { transform: scale(.98); }
 .btn:disabled { opacity: .55; cursor: not-allowed; filter: none; }
 .btn.btn-outline { background: rgba(255,255,255,.04); border: 1px solid var(--line); color: var(--txt); }
@@ -132,13 +161,16 @@ select option { color: #15192b; background: #fff; }
 .badge.sell-b { background: rgba(255,107,120,.1);color: var(--down); border: 1px solid rgba(255,107,120,.3); }
 
 /* جدول */
-.table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid var(--line); margin-top: 20px; }
+.table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid var(--line); margin-top: 20px; -webkit-overflow-scrolling: touch; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 thead tr { background: rgba(255,255,255,.05); }
-th, td { padding: 12px 14px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+thead th { position: sticky; top: 0; z-index: 1; background: #1a2348; }
+th, td { padding: 13px 14px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
 thead th { color: var(--muted); font-weight: 700; font-size: 13px; }
+tbody tr { transition: background .12s; }
+tbody tr:nth-child(even) td { background: rgba(255,255,255,.018); }
 tbody tr:last-child td { border-bottom: none; }
-tbody tr:hover { background: rgba(255,255,255,.03); }
+tbody tr:hover td { background: rgba(246,207,99,.06); }
 .num { font-variant-numeric: tabular-nums; }
 
 /* خالی */
@@ -151,14 +183,21 @@ tbody tr:hover { background: rgba(255,255,255,.03); }
   padding-bottom: 10px; border-bottom: 1px solid var(--line);
   display: flex; align-items: center; gap: 10px;
 }
+/* خط لهجه‌ی طلایی کنار عنوان بخش (سمت راست در RTL) */
+.section-title::before {
+  content: ''; width: 4px; height: 18px; border-radius: 999px;
+  background: linear-gradient(180deg, var(--gold-1), var(--gold-2)); flex-shrink: 0;
+}
 
 /* تب */
-.tabs { display: flex; border-bottom: 2px solid var(--line); margin-bottom: 24px; }
+.tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--line); margin-bottom: 24px; overflow-x: auto; }
 .tab-btn {
-  padding: 10px 24px; font-family: inherit; font-size: 14px; font-weight: 700;
-  background: none; border: none; cursor: pointer; color: var(--muted);
-  border-bottom: 3px solid transparent; margin-bottom: -2px; transition: color .2s, border-color .2s;
+  padding: 10px 20px; font-family: inherit; font-size: 14px; font-weight: 700;
+  background: none; border: none; cursor: pointer; color: var(--muted); white-space: nowrap;
+  border-bottom: 3px solid transparent; margin-bottom: -2px; border-radius: 8px 8px 0 0;
+  transition: color .2s, border-color .2s, background .2s;
 }
+.tab-btn:hover { color: var(--txt); background: rgba(255,255,255,.04); }
 .tab-btn.active { color: var(--gold-1); border-bottom-color: var(--gold-1); }
 
 @media (max-width: 600px) {

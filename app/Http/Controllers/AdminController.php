@@ -127,8 +127,9 @@ class AdminController extends Controller
                 'approved_at'         => Jalali::format($u->updated_at, false),
             ]);
 
+        // درخواست‌هایی که به نتیجه‌ی نهایی رسیده‌اند (تحویل‌شده یا رد‌شده) از این لیست بسته/حذف می‌شوند
         $deliveryRequests = SilverDeliveryRequest::with('user')
-            ->where('status', '!=', 'delivered')
+            ->whereNotIn('status', ['delivered', 'rejected'])
             ->orderByDesc('created_at')->get()
             ->map(fn ($r) => [
                 'id'             => $r->id,

@@ -86,4 +86,24 @@ class ActivityLogTest extends TestCase
         $this->assertSame('rejected', $delivery->status);
         $this->assertSame('مدارک ناقص', $delivery->admin_note);
     }
+
+    public function test_rejected_delivery_request_is_removed_from_the_admin_dashboard_list(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $user  = User::factory()->create();
+        $pending = SilverDeliveryRequest::create([
+            'user_id' => $user->id, 'metal' => 'gold', 'purity' => '', 'grams' => 5,
+            'recipient_name' => 'x', 'phone' => '0912', 'address' => 'y', 'status' => 'pending',
+        ]);
+        $rejected = SilverDeliveryRequest::create([
+            'user_id' => $user->id, 'metal' => 'gold', 'purity' => '', 'grams' => 3,
+            'recipient_name' => 'x', 'phone' => '0912', 'address' => 'y', 'status' => 'rejected', 'admin_note' => 'x',
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin');
+
+        $response->assertInertia(fn ($page) => $page
+            ->has('deliveryRequests', 1)
+            ->where('deliveryRequests.0.id', $pending->id));
+    }
 }

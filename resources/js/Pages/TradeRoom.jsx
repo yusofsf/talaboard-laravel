@@ -32,7 +32,6 @@ const ITEMS = [
 
 export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalance, goldBalance, silverBalance }) {
     const { errors } = usePage().props;
-    const [tab, setTab] = useState('open');
     const [myFrom, setMyFrom] = useState('');
     const [myTo, setMyTo] = useState('');
     const [item, setItem] = useState('gold');
@@ -180,24 +179,49 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                     </form>
                 </div>
 
-                <div className="tabs no-print">
-                    <button className={`tab-btn${tab === 'open' ? ' active' : ''}`} onClick={() => setTab('open')}>پیشنهادهای باز</button>
-                    <button className={`tab-btn${tab === 'mine' ? ' active' : ''}`} onClick={() => setTab('mine')}>تاریخچه‌ی من</button>
-                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'flex-start' }}>
+                    {/* سمت راست (در RTL فرزند اول): تاریخچه‌ی معاملات من */}
+                    <div style={{ flex: 1, minWidth: 320 }}>
+                        <div className="section-title">📋 تاریخچه‌ی معاملات من</div>
+                        <div className="no-print" style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 18 }}>
+                            <DateRangeFilter from={myFrom} to={myTo} onFromChange={setMyFrom} onToChange={setMyTo} />
+                            {(myFrom || myTo) && <button type="button" className="btn-sm" onClick={() => { setMyFrom(''); setMyTo(''); }}>حذف فیلتر</button>}
+                            <button type="button" className="btn-sm" onClick={() => window.print()} style={{ borderColor: 'rgba(246,207,99,.4)', color: 'var(--gold-1)', background: 'rgba(246,207,99,.08)' }}>
+                                🖨️ چاپ / خروجی PDF
+                            </button>
+                        </div>
 
-                {tab === 'mine' && (
-                    <div className="no-print" style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 18 }}>
-                        <DateRangeFilter from={myFrom} to={myTo} onFromChange={setMyFrom} onToChange={setMyTo} />
-                        {(myFrom || myTo) && <button type="button" className="btn-sm" onClick={() => { setMyFrom(''); setMyTo(''); }}>حذف فیلتر</button>}
-                        <button type="button" className="btn-sm" onClick={() => window.print()} style={{ borderColor: 'rgba(246,207,99,.4)', color: 'var(--gold-1)', background: 'rgba(246,207,99,.08)' }}>
-                            🖨️ چاپ / خروجی PDF
-                        </button>
+                        {filteredMyOffers.length ? (
+                            <>
+                                <div className="table-wrap">
+                                    <table>
+                                        <thead><tr><th>نوع</th><th>مورد</th><th>مقدار</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
+                                        <tbody>
+                                            {myOffersPager.pageItems.map(o => <MyOfferRow key={o.id} o={o} />)}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <Pager page={myOffersPager.page} totalPages={myOffersPager.totalPages} onChange={myOffersPager.setPage} />
+
+                                <div className="table-wrap print-area print-only-block">
+                                    <div className="print-only" style={{ marginBottom: 14, fontWeight: 800, fontSize: 16 }}>تاریخچه‌ی اتاق معاملاتی</div>
+                                    <table>
+                                        <thead><tr><th>نوع</th><th>مورد</th><th>مقدار</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
+                                        <tbody>
+                                            {filteredMyOffers.map(o => <MyOfferRow key={o.id} o={o} />)}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="empty"><div className="ico">📋</div>هنوز معامله‌ای انجام نداده‌اید.</div>
+                        )}
                     </div>
-                )}
 
-                {tab === 'open' && (
-                    <>
-                        <div className="no-print btn-row" style={{ gridTemplateColumns: `repeat(${ITEMS.length}, 1fr)`, marginBottom: 18 }}>
+                    {/* سمت چپ (در RTL فرزند دوم): سفارش‌های خرید و فروش */}
+                    <div className="no-print" style={{ flex: 1, minWidth: 320 }}>
+                        <div className="section-title">🤝 سفارش‌های باز</div>
+                        <div className="btn-row" style={{ gridTemplateColumns: `repeat(${ITEMS.length}, 1fr)`, marginBottom: 18 }}>
                             {ITEMS.map(i => (
                                 <button key={i.key} type="button" onClick={() => {
                                     setItem(i.key);
@@ -214,40 +238,12 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                                 </button>
                             ))}
                         </div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
                             <OfferSection title="🔴 سفارش‌های فروش" offers={itemSellOffers} accept={accept} cancel={cancel} />
                             <OfferSection title="🟢 سفارش‌های خرید" offers={itemBuyOffers} accept={accept} cancel={cancel} />
                         </div>
-                    </>
-                )}
-
-                {tab === 'mine' && (
-                    filteredMyOffers.length ? (
-                        <>
-                            <div className="table-wrap">
-                                <table>
-                                    <thead><tr><th>نوع</th><th>مورد</th><th>مقدار</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
-                                    <tbody>
-                                        {myOffersPager.pageItems.map(o => <MyOfferRow key={o.id} o={o} />)}
-                                    </tbody>
-                                </table>
-                            </div>
-                            <Pager page={myOffersPager.page} totalPages={myOffersPager.totalPages} onChange={myOffersPager.setPage} />
-
-                            <div className="table-wrap print-area print-only-block">
-                                <div className="print-only" style={{ marginBottom: 14, fontWeight: 800, fontSize: 16 }}>تاریخچه‌ی اتاق معاملاتی</div>
-                                <table>
-                                    <thead><tr><th>نوع</th><th>مورد</th><th>مقدار</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
-                                    <tbody>
-                                        {filteredMyOffers.map(o => <MyOfferRow key={o.id} o={o} />)}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </>
-                    ) : (
-                        <div className="empty"><div className="ico">📋</div>هنوز معامله‌ای انجام نداده‌اید.</div>
-                    )
-                )}
+                    </div>
+                </div>
             </div>
         </AppLayout>
     );

@@ -110,13 +110,41 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                     </a>
                 </div>
 
-                {/* فرم ثبت پیشنهاد */}
-                <div className="fcard" style={{ marginBottom: 24 }}>
-                    <h2 style={{ fontSize: 16 }}>ثبت پیشنهاد جدید</h2>
-                    <div style={{ height: 16 }} />
-                    {errors.grams && <div className="alert err">{errors.grams}</div>}
-                    {errors.offer && <div className="alert err">{errors.offer}</div>}
-                    <form onSubmit={submit}>
+                {/* ردیف دو‌ستونه: سفارش‌های باز (راست) + ثبت پیشنهاد جدید (چپ) */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'flex-start', marginBottom: 24 }}>
+                    {/* سمت راست (در RTL فرزند اول): سفارش‌های باز */}
+                    <div className="no-print" style={{ flex: 1, minWidth: 320 }}>
+                        <div className="section-title">🤝 سفارش‌های باز</div>
+                        <div className="btn-row" style={{ gridTemplateColumns: `repeat(${ITEMS.length}, 1fr)`, marginBottom: 18 }}>
+                            {ITEMS.map(i => (
+                                <button key={i.key} type="button" onClick={() => {
+                                    setItem(i.key);
+                                    form.setData(d => ({ ...d, metal: i.metal, purity: i.purity || d.purity }));
+                                }}
+                                    style={{
+                                        padding: '10px', borderRadius: 12, fontFamily: 'inherit', fontSize: 14, fontWeight: 700,
+                                        cursor: 'pointer', border: 'none',
+                                        background: item === i.key ? 'rgba(246,207,99,.2)' : 'rgba(255,255,255,.06)',
+                                        color: item === i.key ? 'var(--gold-1)' : 'var(--muted)',
+                                        outline: item === i.key ? '2px solid var(--gold-1)' : '2px solid transparent',
+                                    }}>
+                                    {i.label}
+                                </button>
+                            ))}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                            <OfferSection title="🔴 سفارش‌های فروش" offers={itemSellOffers} accept={accept} cancel={cancel} />
+                            <OfferSection title="🟢 سفارش‌های خرید" offers={itemBuyOffers} accept={accept} cancel={cancel} />
+                        </div>
+                    </div>
+
+                    {/* سمت چپ (در RTL فرزند دوم): ثبت پیشنهاد جدید */}
+                    <div className="no-print fcard" style={{ flex: 1, minWidth: 320 }}>
+                        <h2 style={{ fontSize: 16 }}>ثبت پیشنهاد جدید</h2>
+                        <div style={{ height: 16 }} />
+                        {errors.grams && <div className="alert err">{errors.grams}</div>}
+                        {errors.offer && <div className="alert err">{errors.offer}</div>}
+                        <form onSubmit={submit}>
                         <div className="btn-row" style={{ marginBottom: 12 }}>
                             {[['gold', 'طلا'], ['silver', 'نقره']].map(([m, label]) => (
                                 <button key={m} type="button" onClick={() => form.setData('metal', m)}
@@ -176,74 +204,45 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                         <button className="btn" type="submit" disabled={form.processing}>
                             {form.processing ? '...' : 'ثبت پیشنهاد'}
                         </button>
-                    </form>
-                </div>
-
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'flex-start' }}>
-                    {/* سمت راست (در RTL فرزند اول): تاریخچه‌ی معاملات من */}
-                    <div style={{ flex: 1, minWidth: 320 }}>
-                        <div className="section-title">📋 تاریخچه‌ی معاملات من</div>
-                        <div className="no-print" style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 18 }}>
-                            <DateRangeFilter from={myFrom} to={myTo} onFromChange={setMyFrom} onToChange={setMyTo} />
-                            {(myFrom || myTo) && <button type="button" className="btn-sm" onClick={() => { setMyFrom(''); setMyTo(''); }}>حذف فیلتر</button>}
-                            <button type="button" className="btn-sm" onClick={() => window.print()} style={{ borderColor: 'rgba(246,207,99,.4)', color: 'var(--gold-1)', background: 'rgba(246,207,99,.08)' }}>
-                                🖨️ چاپ / خروجی PDF
-                            </button>
-                        </div>
-
-                        {filteredMyOffers.length ? (
-                            <>
-                                <div className="table-wrap">
-                                    <table>
-                                        <thead><tr><th>نوع</th><th>مورد</th><th>مقدار</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
-                                        <tbody>
-                                            {myOffersPager.pageItems.map(o => <MyOfferRow key={o.id} o={o} />)}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <Pager page={myOffersPager.page} totalPages={myOffersPager.totalPages} onChange={myOffersPager.setPage} />
-
-                                <div className="table-wrap print-area print-only-block">
-                                    <div className="print-only" style={{ marginBottom: 14, fontWeight: 800, fontSize: 16 }}>تاریخچه‌ی اتاق معاملاتی</div>
-                                    <table>
-                                        <thead><tr><th>نوع</th><th>مورد</th><th>مقدار</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
-                                        <tbody>
-                                            {filteredMyOffers.map(o => <MyOfferRow key={o.id} o={o} />)}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </>
-                        ) : (
-                            <div className="empty"><div className="ico">📋</div>هنوز معامله‌ای انجام نداده‌اید.</div>
-                        )}
-                    </div>
-
-                    {/* سمت چپ (در RTL فرزند دوم): سفارش‌های خرید و فروش */}
-                    <div className="no-print" style={{ flex: 1, minWidth: 320 }}>
-                        <div className="section-title">🤝 سفارش‌های باز</div>
-                        <div className="btn-row" style={{ gridTemplateColumns: `repeat(${ITEMS.length}, 1fr)`, marginBottom: 18 }}>
-                            {ITEMS.map(i => (
-                                <button key={i.key} type="button" onClick={() => {
-                                    setItem(i.key);
-                                    form.setData(d => ({ ...d, metal: i.metal, purity: i.purity || d.purity }));
-                                }}
-                                    style={{
-                                        padding: '10px', borderRadius: 12, fontFamily: 'inherit', fontSize: 14, fontWeight: 700,
-                                        cursor: 'pointer', border: 'none',
-                                        background: item === i.key ? 'rgba(246,207,99,.2)' : 'rgba(255,255,255,.06)',
-                                        color: item === i.key ? 'var(--gold-1)' : 'var(--muted)',
-                                        outline: item === i.key ? '2px solid var(--gold-1)' : '2px solid transparent',
-                                    }}>
-                                    {i.label}
-                                </button>
-                            ))}
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                            <OfferSection title="🔴 سفارش‌های فروش" offers={itemSellOffers} accept={accept} cancel={cancel} />
-                            <OfferSection title="🟢 سفارش‌های خرید" offers={itemBuyOffers} accept={accept} cancel={cancel} />
-                        </div>
+                        </form>
                     </div>
                 </div>
+
+                {/* پایین، تمام‌عرض: تاریخچه‌ی معاملات من */}
+                <div className="section-title">📋 تاریخچه‌ی معاملات من</div>
+                <div className="no-print" style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 18 }}>
+                    <DateRangeFilter from={myFrom} to={myTo} onFromChange={setMyFrom} onToChange={setMyTo} />
+                    {(myFrom || myTo) && <button type="button" className="btn-sm" onClick={() => { setMyFrom(''); setMyTo(''); }}>حذف فیلتر</button>}
+                    <button type="button" className="btn-sm" onClick={() => window.print()} style={{ borderColor: 'rgba(246,207,99,.4)', color: 'var(--gold-1)', background: 'rgba(246,207,99,.08)' }}>
+                        🖨️ چاپ / خروجی PDF
+                    </button>
+                </div>
+
+                {filteredMyOffers.length ? (
+                    <>
+                        <div className="table-wrap">
+                            <table>
+                                <thead><tr><th>نوع</th><th>مورد</th><th>مقدار</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
+                                <tbody>
+                                    {myOffersPager.pageItems.map(o => <MyOfferRow key={o.id} o={o} />)}
+                                </tbody>
+                            </table>
+                        </div>
+                        <Pager page={myOffersPager.page} totalPages={myOffersPager.totalPages} onChange={myOffersPager.setPage} />
+
+                        <div className="table-wrap print-area print-only-block">
+                            <div className="print-only" style={{ marginBottom: 14, fontWeight: 800, fontSize: 16 }}>تاریخچه‌ی اتاق معاملاتی</div>
+                            <table>
+                                <thead><tr><th>نوع</th><th>مورد</th><th>مقدار</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
+                                <tbody>
+                                    {filteredMyOffers.map(o => <MyOfferRow key={o.id} o={o} />)}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
+                ) : (
+                    <div className="empty"><div className="ico">📋</div>هنوز معامله‌ای انجام نداده‌اید.</div>
+                )}
             </div>
         </AppLayout>
     );

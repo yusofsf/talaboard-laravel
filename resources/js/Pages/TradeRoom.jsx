@@ -308,7 +308,7 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                             )}
                             <div className="field">
                                 <label>مقدار ({unit === 'mithqal' ? 'مثقال' : 'گرم'}) — حداقل معادل ۱۰۰ گرم</label>
-                                <input type="number" step="any" min={unit === 'mithqal' ? (100 / M).toFixed(2) : 100} value={form.data.grams}
+                                <input type="number" step="any" min={unit === 'mithqal' ? (Math.ceil((100 / M) * 100) / 100) : 100} value={form.data.grams}
                                     onChange={e => form.setData('grams', e.target.value)} required />
                             </div>
                         </div>

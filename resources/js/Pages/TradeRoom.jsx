@@ -4,23 +4,89 @@ import AppLayout, { faNum } from '../Layouts/AppLayout';
 import DateRangeFilter, { filterByDateRange } from '../Components/DateRangeFilter';
 import Pager, { usePager } from '../Components/Pager';
 
-function MyOfferRow({ o }) {
+function StatusBadge({ o }) {
     return (
-        <tr>
-            <td><span className={`badge ${o.side === 'sell' ? 'sell-b' : 'buy-b'}`}>{o.side === 'sell' ? 'فروش' : 'خرید'}</span></td>
-            <td>{o.item_label}</td>
-            <td className="num">{o.grams}</td>
-            <td className="num">{faNum(o.price_per_gram)}</td>
-            <td className="num">{faNum(o.total)}</td>
-            <td>
-                {o.status === 'completed' && <span className="badge buy-b">تکمیل‌شده</span>}
-                {o.status === 'cancelled' && (o.admin_note
-                    ? <span className="badge sell-b">برگشت داده شد</span>
-                    : <span className="badge silver">لغوشده</span>)}
-                {o.admin_note && <div style={{ fontSize: 11, color: 'var(--down)', marginTop: 4 }}>دلیل: {o.admin_note}</div>}
-            </td>
-            <td style={{ fontSize: 12, color: 'var(--muted)' }}>{o.completed_at || o.created_at}</td>
-        </tr>
+        <>
+            {o.status === 'completed' && <span className="badge buy-b">تکمیل‌شده</span>}
+            {o.status === 'cancelled' && (o.admin_note
+                ? <span className="badge sell-b">برگشت داده شد</span>
+                : <span className="badge silver">لغوشده</span>)}
+        </>
+    );
+}
+
+/** ردیف تاریخچه‌ی معاملات من — اطلاعات اصلی نمایش داده می‌شود، جزئیات (قیمت/تاریخ/کارمزد) در دراپ‌دون. */
+function MyOfferRow({ o, printOnly }) {
+    const [open, setOpen] = useState(false);
+
+    if (printOnly) {
+        return (
+            <tr>
+                <td><span className={`badge ${o.side === 'sell' ? 'sell-b' : 'buy-b'}`}>{o.side === 'sell' ? 'فروش' : 'خرید'}</span></td>
+                <td>{o.item_label}</td>
+                <td className="num">{o.grams}</td>
+                <td className="num">{faNum(o.price_per_gram)}</td>
+                <td className="num">{faNum(o.total)}</td>
+                <td className="num">{o.commission ? faNum(o.commission) : '—'}</td>
+                <td><StatusBadge o={o} />{o.admin_note && <div style={{ fontSize: 11, color: 'var(--down)' }}>دلیل: {o.admin_note}</div>}</td>
+                <td style={{ fontSize: 12 }}>{o.completed_at || o.created_at}</td>
+            </tr>
+        );
+    }
+
+    return (
+        <>
+            <tr>
+                <td><span className={`badge ${o.side === 'sell' ? 'sell-b' : 'buy-b'}`}>{o.side === 'sell' ? 'فروش' : 'خرید'}</span></td>
+                <td>{o.item_label}</td>
+                <td className="num">{o.grams}</td>
+                <td className="num">{faNum(o.total)}</td>
+                <td><StatusBadge o={o} /></td>
+                <td><button type="button" className="btn-sm" onClick={() => setOpen(v => !v)}>جزئیات {open ? '▲' : '▾'}</button></td>
+            </tr>
+            {open && (
+                <tr>
+                    <td colSpan={6} style={{ background: 'rgba(255,255,255,.02)' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, fontSize: 13, color: 'var(--muted)' }}>
+                            <span>قیمت هر گرم: <strong style={{ color: 'var(--txt)' }} className="num">{faNum(o.price_per_gram)}</strong></span>
+                            <span>تاریخ: <strong style={{ color: 'var(--txt)' }}>{o.completed_at || o.created_at}</strong></span>
+                            {o.commission > 0 && <span>کارمزد: <strong style={{ color: 'var(--txt)' }} className="num">{faNum(o.commission)}</strong> تومان</span>}
+                            {o.admin_note && <span style={{ color: 'var(--down)' }}>دلیل: {o.admin_note}</span>}
+                        </div>
+                    </td>
+                </tr>
+            )}
+        </>
+    );
+}
+
+/** ردیف سفارش باز — اطلاعات اصلی + دکمه‌ی عمل؛ تاریخ ثبت در دراپ‌دون. */
+function OfferRow({ o, accept, cancel }) {
+    const [open, setOpen] = useState(false);
+    return (
+        <>
+            <tr>
+                <td>{o.item_label}{o.is_mine && <span className="badge gold" style={{ marginInlineStart: 6 }}>شما</span>}</td>
+                <td className="num">{o.grams}</td>
+                <td className="num">{faNum(o.price_per_gram)}</td>
+                <td className="num" style={{ color: 'var(--gold-1)', fontWeight: 700 }}>{faNum(o.total)}</td>
+                <td>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        {o.is_mine
+                            ? <button onClick={() => cancel(o.id)} className="btn-sm danger">لغو</button>
+                            : <button onClick={() => accept(o.id)} className="btn-sm" style={{ borderColor: 'rgba(65,225,166,.4)', color: 'var(--up)', background: 'rgba(65,225,166,.08)' }}>پذیرفتن</button>}
+                        <button type="button" className="btn-sm" onClick={() => setOpen(v => !v)} title="جزئیات">{open ? '▲' : '▾'}</button>
+                    </div>
+                </td>
+            </tr>
+            {open && (
+                <tr>
+                    <td colSpan={5} style={{ background: 'rgba(0,0,0,.12)' }}>
+                        <span style={{ fontSize: 13, color: 'var(--muted)' }}>تاریخ ثبت: <strong style={{ color: 'var(--txt)' }}>{o.created_at}</strong></span>
+                    </td>
+                </tr>
+            )}
+        </>
     );
 }
 
@@ -239,7 +305,7 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                     <>
                         <div className="table-wrap">
                             <table>
-                                <thead><tr><th>نوع</th><th>مورد</th><th>مقدار</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
+                                <thead><tr><th>نوع</th><th>مورد</th><th>مقدار</th><th>مبلغ کل</th><th>وضعیت</th><th></th></tr></thead>
                                 <tbody>
                                     {myOffersPager.pageItems.map(o => <MyOfferRow key={o.id} o={o} />)}
                                 </tbody>
@@ -250,9 +316,9 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                         <div className="table-wrap print-area print-only-block">
                             <div className="print-only" style={{ marginBottom: 14, fontWeight: 800, fontSize: 16 }}>تاریخچه‌ی اتاق معاملاتی</div>
                             <table>
-                                <thead><tr><th>نوع</th><th>مورد</th><th>مقدار</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
+                                <thead><tr><th>نوع</th><th>مورد</th><th>مقدار</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>کارمزد</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
                                 <tbody>
-                                    {filteredMyOffers.map(o => <MyOfferRow key={o.id} o={o} />)}
+                                    {filteredMyOffers.map(o => <MyOfferRow key={o.id} o={o} printOnly />)}
                                 </tbody>
                             </table>
                         </div>
@@ -274,29 +340,9 @@ function OfferSection({ variant, offers, accept, cancel }) {
             {offers.length ? (
                 <div className="table-wrap" style={{ background: bg, borderColor: border }}>
                     <table>
-                        <thead><tr><th>مورد</th><th>مقدار (گرم)</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>تاریخ</th><th></th></tr></thead>
+                        <thead><tr><th>مورد</th><th>مقدار (گرم)</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th></th></tr></thead>
                         <tbody>
-                            {offers.map(o => (
-                                <tr key={o.id}>
-                                    <td>
-                                        {o.item_label}
-                                        {o.is_mine && <span className="badge gold" style={{ marginInlineStart: 6 }}>شما</span>}
-                                    </td>
-                                    <td className="num">{o.grams}</td>
-                                    <td className="num">{faNum(o.price_per_gram)}</td>
-                                    <td className="num" style={{ color: 'var(--gold-1)', fontWeight: 700 }}>{faNum(o.total)}</td>
-                                    <td style={{ fontSize: 12, color: 'var(--muted)' }}>{o.created_at}</td>
-                                    <td>
-                                        {o.is_mine ? (
-                                            <button onClick={() => cancel(o.id)} className="btn-sm danger">لغو</button>
-                                        ) : (
-                                            <button onClick={() => accept(o.id)} className="btn-sm" style={{ borderColor: 'rgba(65,225,166,.4)', color: 'var(--up)', background: 'rgba(65,225,166,.08)' }}>
-                                                پذیرفتن
-                                            </button>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
+                            {offers.map(o => <OfferRow key={o.id} o={o} accept={accept} cancel={cancel} />)}
                         </tbody>
                     </table>
                 </div>

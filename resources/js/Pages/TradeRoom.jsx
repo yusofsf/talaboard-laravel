@@ -133,8 +133,8 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                             ))}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                            <OfferSection title="🔴 سفارش‌های فروش" offers={itemSellOffers} accept={accept} cancel={cancel} />
-                            <OfferSection title="🟢 سفارش‌های خرید" offers={itemBuyOffers} accept={accept} cancel={cancel} />
+                            <OfferSection variant="sell" offers={itemSellOffers} accept={accept} cancel={cancel} />
+                            <OfferSection variant="buy" offers={itemBuyOffers} accept={accept} cancel={cancel} />
                         </div>
                     </div>
 
@@ -248,12 +248,14 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
     );
 }
 
-function OfferSection({ title, offers, accept, cancel }) {
+function OfferSection({ variant, offers, accept, cancel }) {
+    const isSell = variant === 'sell';
+    const bg = isSell ? 'rgba(255,107,120,.08)' : 'rgba(65,225,166,.08)';
+    const border = isSell ? 'rgba(255,107,120,.3)' : 'rgba(65,225,166,.3)';
     return (
         <div style={{ flex: '1', minWidth: 320 }}>
-            <div className="section-title">{title}</div>
             {offers.length ? (
-                <div className="table-wrap">
+                <div className="table-wrap" style={{ background: bg, borderColor: border }}>
                     <table>
                         <thead><tr><th>مورد</th><th>مقدار (گرم)</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>تاریخ</th><th></th></tr></thead>
                         <tbody>
@@ -282,7 +284,7 @@ function OfferSection({ title, offers, accept, cancel }) {
                     </table>
                 </div>
             ) : (
-                <div className="empty"><div className="ico">🤝</div>سفارش بازی نیست.</div>
+                <div className="empty" style={{ background: bg, border: `1px solid ${border}`, borderRadius: 14, padding: '40px 0' }}><div className="ico">🤝</div>سفارش بازی نیست.</div>
             )}
         </div>
     );

@@ -8,14 +8,22 @@ const STATUS = {
     rejected: ['رد‌شده', 'sell-b'],
 };
 
-export default function Wallet({ balance, txns, withdrawals }) {
+export default function Wallet({ balance, txns, withdrawals, deposits }) {
     const { errors } = usePage().props;
     const [showForm, setShowForm] = useState(false);
     const form = useForm({ amount: '', card_number: '', shaba: '' });
 
+    const [showDepositForm, setShowDepositForm] = useState(false);
+    const depositForm = useForm({ amount: '', note: '' });
+
     function submit(e) {
         e.preventDefault();
         form.post('/wallet/withdraw', { onSuccess: () => { form.reset(); setShowForm(false); } });
+    }
+
+    function submitDeposit(e) {
+        e.preventDefault();
+        depositForm.post('/wallet/deposit', { onSuccess: () => { depositForm.reset(); setShowDepositForm(false); } });
     }
 
     return (
@@ -36,38 +44,89 @@ export default function Wallet({ balance, txns, withdrawals }) {
                     <div style={{ fontSize: 52, opacity: .35 }}>💰</div>
                 </div>
 
-                <div style={{ marginBottom: 28 }}>
-                    <button onClick={() => setShowForm(s => !s)} className="btn" style={{ width: 'auto', padding: '10px 24px' }} disabled={balance <= 0}>
+                <div style={{ marginBottom: 8, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                    <button onClick={() => setShowDepositForm(s => !s)} className="btn" style={{ width: 'auto', padding: '10px 24px' }}>
+                        ➕ {showDepositForm ? 'بستن فرم' : 'افزایش موجودی'}
+                    </button>
+                    <button onClick={() => setShowForm(s => !s)} className="btn-outline btn" style={{ width: 'auto', padding: '10px 24px' }} disabled={balance <= 0}>
                         🏦 {showForm ? 'بستن فرم' : 'درخواست تسویه حساب'}
                     </button>
-                    {balance <= 0 && <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>موجودی کیف پول شما صفر است.</div>}
-
-                    {showForm && (
-                        <div className="fcard" style={{ marginTop: 16, maxWidth: 480 }}>
-                            {Object.values(errors).map((e, i) => <div key={i} className="alert err">{e}</div>)}
-                            <form onSubmit={submit}>
-                                <div className="field">
-                                    <label>مبلغ (تومان) — حداکثر {faNum(balance)}</label>
-                                    <input type="number" min="1000" max={balance} value={form.data.amount}
-                                        onChange={e => form.setData('amount', e.target.value)} required />
-                                </div>
-                                <div className="field">
-                                    <label>شماره کارت</label>
-                                    <input value={form.data.card_number} dir="ltr" placeholder="xxxx-xxxx-xxxx-xxxx"
-                                        onChange={e => form.setData('card_number', e.target.value)} required />
-                                </div>
-                                <div className="field">
-                                    <label>شماره شبا</label>
-                                    <input value={form.data.shaba} dir="ltr" placeholder="IRxxxxxxxxxxxxxxxxxxxxxxxx"
-                                        onChange={e => form.setData('shaba', e.target.value)} required />
-                                </div>
-                                <button className="btn" type="submit" disabled={form.processing}>
-                                    {form.processing ? 'در حال ارسال...' : 'ثبت درخواست'}
-                                </button>
-                            </form>
-                        </div>
-                    )}
                 </div>
+                {balance <= 0 && <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 20 }}>موجودی کیف پول شما برای تسویه حساب صفر است.</div>}
+
+                {showDepositForm && (
+                    <div className="fcard" style={{ marginBottom: 28, maxWidth: 480 }}>
+                        <div className="alert info" style={{ marginBottom: 16 }}>
+                            فعلاً افزایش موجودی به‌صورت دستی و با بررسی ادمین انجام می‌شود. به‌زودی به درگاه پرداخت آنلاین متصل خواهد شد.
+                        </div>
+                        {Object.values(errors).map((e, i) => <div key={i} className="alert err">{e}</div>)}
+                        <form onSubmit={submitDeposit}>
+                            <div className="field">
+                                <label>مبلغ (تومان)</label>
+                                <input type="number" min="1000" value={depositForm.data.amount}
+                                    onChange={e => depositForm.setData('amount', e.target.value)} required />
+                            </div>
+                            <div className="field">
+                                <label>توضیح / شماره پیگیری واریز (اختیاری)</label>
+                                <input value={depositForm.data.note} onChange={e => depositForm.setData('note', e.target.value)} placeholder="مثلاً شماره پیگیری کارت‌به‌کارت" />
+                            </div>
+                            <button className="btn" type="submit" disabled={depositForm.processing}>
+                                {depositForm.processing ? 'در حال ارسال...' : 'ثبت درخواست'}
+                            </button>
+                        </form>
+                    </div>
+                )}
+
+                {showForm && (
+                    <div className="fcard" style={{ marginBottom: 28, maxWidth: 480 }}>
+                        {Object.values(errors).map((e, i) => <div key={i} className="alert err">{e}</div>)}
+                        <form onSubmit={submit}>
+                            <div className="field">
+                                <label>مبلغ (تومان) — حداکثر {faNum(balance)}</label>
+                                <input type="number" min="1000" max={balance} value={form.data.amount}
+                                    onChange={e => form.setData('amount', e.target.value)} required />
+                            </div>
+                            <div className="field">
+                                <label>شماره کارت</label>
+                                <input value={form.data.card_number} dir="ltr" placeholder="xxxx-xxxx-xxxx-xxxx"
+                                    onChange={e => form.setData('card_number', e.target.value)} required />
+                            </div>
+                            <div className="field">
+                                <label>شماره شبا</label>
+                                <input value={form.data.shaba} dir="ltr" placeholder="IRxxxxxxxxxxxxxxxxxxxxxxxx"
+                                    onChange={e => form.setData('shaba', e.target.value)} required />
+                            </div>
+                            <button className="btn" type="submit" disabled={form.processing}>
+                                {form.processing ? 'در حال ارسال...' : 'ثبت درخواست'}
+                            </button>
+                        </form>
+                    </div>
+                )}
+
+                {deposits?.length > 0 && (
+                    <>
+                        <div className="section-title">درخواست‌های افزایش موجودی</div>
+                        <div className="table-wrap" style={{ marginBottom: 28 }}>
+                            <table>
+                                <thead><tr><th>تاریخ</th><th>مبلغ</th><th>توضیح</th><th>وضعیت</th><th>یادداشت ادمین</th></tr></thead>
+                                <tbody>
+                                    {deposits.map(d => {
+                                        const [label, cls] = STATUS[d.status] || [d.status, 'silver'];
+                                        return (
+                                            <tr key={d.id}>
+                                                <td style={{ fontSize: 12, color: 'var(--muted)' }}>{d.created_at}</td>
+                                                <td className="num">{faNum(d.amount)}</td>
+                                                <td style={{ color: 'var(--muted)', fontSize: 13 }}>{d.note || '—'}</td>
+                                                <td><span className={`badge ${cls}`}>{label}</span></td>
+                                                <td style={{ color: 'var(--muted)', fontSize: 13 }}>{d.admin_note || '—'}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
+                )}
 
                 {withdrawals.length > 0 && (
                     <>

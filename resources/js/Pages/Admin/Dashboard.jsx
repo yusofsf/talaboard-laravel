@@ -297,6 +297,36 @@ function WithdrawalRow({ w, printOnly, withdrawalNote, setWithdrawalNote, withdr
     );
 }
 
+function DepositRow({ d, printOnly, depositNote, setDepositNote, depositReason, setDepositReason, approveDeposit, rejectDeposit }) {
+    return (
+        <tr>
+            <td><strong>{d.user_name}</strong></td>
+            <td className="num" dir="ltr" style={{ fontSize: 13 }}>{d.user_phone}</td>
+            <td className="num" style={{ color: 'var(--gold-1)', fontWeight: 700 }}>{faNum(d.amount)}</td>
+            <td style={{ color: 'var(--muted)', fontSize: 13 }}>{d.note || '—'}</td>
+            <td style={{ fontSize: 12, color: 'var(--muted)' }}>{d.created_at}</td>
+            {!printOnly && (
+                <td>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 200 }}>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                            <input placeholder="توضیح تأیید (اختیاری)" value={depositNote[d.id] || ''}
+                                onChange={e => setDepositNote(s => ({ ...s, [d.id]: e.target.value }))}
+                                style={{ flex: 1, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '5px 8px', fontFamily: 'inherit', fontSize: 12 }} />
+                            <button onClick={() => approveDeposit(d.id)} className="btn-sm" style={{ borderColor: 'rgba(65,225,166,.4)', color: 'var(--up)', background: 'rgba(65,225,166,.08)' }}>تأیید</button>
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                            <input placeholder="دلیل رد (الزامی)" value={depositReason[d.id] || ''}
+                                onChange={e => setDepositReason(s => ({ ...s, [d.id]: e.target.value }))}
+                                style={{ flex: 1, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '5px 8px', fontFamily: 'inherit', fontSize: 12 }} />
+                            <button onClick={() => rejectDeposit(d.id)} className="btn-sm danger">رد</button>
+                        </div>
+                    </div>
+                </td>
+            )}
+        </tr>
+    );
+}
+
 function AllTradeRow({ t, printOnly, rejectingId, setRejectingId, rejectReason, setRejectReason, submitTradeReject }) {
     const rejected = t.status === 'rejected';
     return (
@@ -346,7 +376,7 @@ function LogRow({ l }) {
     );
 }
 
-export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApplications, vipMembers, deliveryRequests, withdrawalRequests, allTrades, activityLogs, tickets }) {
+export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApplications, vipMembers, deliveryRequests, withdrawalRequests, depositRequests, allTrades, activityLogs, tickets }) {
     const { auth } = usePage().props;
     const [tab, setTab] = useState('users');
 
@@ -355,6 +385,8 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     const [memberMsg, setMemberMsg] = useState({});
     const [withdrawalReason, setWithdrawalReason] = useState({});
     const [withdrawalNote, setWithdrawalNote] = useState({});
+    const [depositReason, setDepositReason] = useState({});
+    const [depositNote, setDepositNote] = useState({});
     const [deliveryNote, setDeliveryNote] = useState({});
     const [tradeFrom, setTradeFrom] = useState('');
     const [tradeTo, setTradeTo] = useState('');
@@ -366,6 +398,8 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     const [deliveryTo, setDeliveryTo] = useState('');
     const [withdrawalsFrom, setWithdrawalsFrom] = useState('');
     const [withdrawalsTo, setWithdrawalsTo] = useState('');
+    const [depositsFrom, setDepositsFrom] = useState('');
+    const [depositsTo, setDepositsTo] = useState('');
     const [rejectingId, setRejectingId] = useState(null);
     const [rejectReason, setRejectReason] = useState('');
     const [logCat, setLogCat] = useState('all');
@@ -383,6 +417,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     const [vipQ, setVipQ] = useState('');
     const [deliveryQ, setDeliveryQ] = useState('');
     const [withdrawalsQ, setWithdrawalsQ] = useState('');
+    const [depositsQ, setDepositsQ] = useState('');
     const [logsQ, setLogsQ] = useState('');
     const [ticketsQ, setTicketsQ] = useState('');
 
@@ -406,6 +441,10 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
         () => filterBySearch(filterByDateRange(withdrawalRequests || [], withdrawalsFrom, withdrawalsTo), withdrawalsQ, ['user_name', 'user_phone', 'card_number', 'shaba']),
         [withdrawalRequests, withdrawalsFrom, withdrawalsTo, withdrawalsQ]
     );
+    const filteredDepositRequests = useMemo(
+        () => filterBySearch(filterByDateRange(depositRequests || [], depositsFrom, depositsTo), depositsQ, ['user_name', 'user_phone', 'note']),
+        [depositRequests, depositsFrom, depositsTo, depositsQ]
+    );
 
     const filteredLogs = useMemo(() => filterBySearch(filterByDateRange(
         (activityLogs || []).filter(l => logCat === 'all' || l.category === logCat),
@@ -422,6 +461,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     const vipPager = usePager(filteredVipMembers, vipQ);
     const deliveryPager = usePager(filteredDeliveryRequests, `${deliveryFrom}|${deliveryTo}|${deliveryQ}`);
     const withdrawalsPager = usePager(filteredWithdrawalRequests, `${withdrawalsFrom}|${withdrawalsTo}|${withdrawalsQ}`);
+    const depositsPager = usePager(filteredDepositRequests, `${depositsFrom}|${depositsTo}|${depositsQ}`);
     const logsPager = usePager(filteredLogs, `${logCat}|${logFrom}|${logTo}|${logsQ}`);
     const ticketsPager = usePager(filteredTickets, ticketsQ);
 
@@ -490,6 +530,17 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
         router.post(`/admin/withdrawals/${id}/reject`, { reason }, { preserveScroll: true });
     }
 
+    function approveDeposit(id) {
+        if (!confirm('افزایش موجودی تأیید شود؟ مبلغ به کیف پول کاربر اضافه می‌شود.')) return;
+        router.post(`/admin/deposits/${id}/approve`, { note: (depositNote[id] || '').trim() }, { preserveScroll: true });
+    }
+
+    function rejectDeposit(id) {
+        const reason = depositReason[id];
+        if (!reason || !reason.trim()) { alert('دلیل رد را وارد کنید.'); return; }
+        router.post(`/admin/deposits/${id}/reject`, { reason }, { preserveScroll: true });
+    }
+
     const TABS = [
         ['users', 'کاربران'],
         ['txns', 'معاملات'],
@@ -500,6 +551,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
         ['vip', `عضویت‌های ویژه${vipMembers?.length ? ` (${vipMembers.length})` : ''}`],
         ['delivery', `تحویل فیزیکی${deliveryRequests?.length ? ` (${deliveryRequests.length})` : ''}`],
         ['withdrawals', `تسویه حساب${withdrawalRequests?.length ? ` (${withdrawalRequests.length})` : ''}`],
+        ['deposits', `افزایش موجودی${depositRequests?.length ? ` (${depositRequests.length})` : ''}`],
         ['tickets', `تیکت‌ها${tickets?.filter(t => t.status === 'open').length ? ` (${tickets.filter(t => t.status === 'open').length})` : ''}`],
         ['logs', 'گزارش فعالیت'],
     ];
@@ -962,6 +1014,45 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                                 <thead><tr><th>کاربر</th><th>موبایل</th><th>مبلغ</th><th>شماره کارت</th><th>شماره شبا</th><th>تاریخ</th></tr></thead>
                                 <tbody>
                                     {filteredWithdrawalRequests.map(w => <WithdrawalRow key={w.id} w={w} printOnly />)}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
+                )}
+
+                {/* افزایش موجودی */}
+                {tab === 'deposits' && (
+                    <>
+                        <div className="no-print" style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 14 }}>
+                            <SearchBox value={depositsQ} onChange={setDepositsQ} placeholder="🔍 جستجو در کاربر، موبایل، توضیح..." />
+                            <DateRangeFilter from={depositsFrom} to={depositsTo} onFromChange={setDepositsFrom} onToChange={setDepositsTo} />
+                            {(depositsFrom || depositsTo) && <button type="button" className="btn-sm" onClick={() => { setDepositsFrom(''); setDepositsTo(''); }}>حذف فیلتر تاریخ</button>}
+                            <button type="button" className="btn-sm gold" onClick={() => window.print()}>🖨️ چاپ / خروجی PDF</button>
+                        </div>
+                        {filteredDepositRequests.length ? (
+                        <div className="table-wrap">
+                            <table>
+                                <thead><tr><th>کاربر</th><th>موبایل</th><th>مبلغ</th><th>توضیح</th><th>تاریخ</th><th></th></tr></thead>
+                                <tbody>
+                                    {depositsPager.pageItems.map(d => (
+                                        <DepositRow key={d.id} d={d} depositNote={depositNote} setDepositNote={setDepositNote}
+                                            depositReason={depositReason} setDepositReason={setDepositReason}
+                                            approveDeposit={approveDeposit} rejectDeposit={rejectDeposit} />
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        ) : (
+                            <div className="empty"><div className="ico">➕</div>درخواست افزایش موجودی در انتظار بررسی نیست.</div>
+                        )}
+                        <Pager page={depositsPager.page} totalPages={depositsPager.totalPages} onChange={depositsPager.setPage} />
+
+                        <div className="table-wrap print-area print-only-block">
+                            <div className="print-only" style={{ marginBottom: 14, fontWeight: 800, fontSize: 16 }}>درخواست‌های افزایش موجودی</div>
+                            <table>
+                                <thead><tr><th>کاربر</th><th>موبایل</th><th>مبلغ</th><th>توضیح</th><th>تاریخ</th></tr></thead>
+                                <tbody>
+                                    {filteredDepositRequests.map(d => <DepositRow key={d.id} d={d} printOnly />)}
                                 </tbody>
                             </table>
                         </div>

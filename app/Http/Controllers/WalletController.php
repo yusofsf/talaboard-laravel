@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Helpers\Jalali;
 use App\Models\ActivityLog;
+use App\Models\DepositRequest;
 use App\Models\Notification;
 use App\Models\User;
 use App\Models\WalletTransaction;
@@ -40,11 +41,68 @@ class WalletController extends Controller
                 'created_at'  => Jalali::format($w->created_at),
             ]);
 
+        $deposits = DepositRequest::where('user_id', $user->id)
+            ->orderByDesc('created_at')->get()
+            ->map(fn ($d) => [
+                'id'         => $d->id,
+                'amount'     => $d->amount,
+                'note'       => $d->note,
+                'status'     => $d->status,
+                'admin_note' => $d->admin_note,
+                'created_at' => Jalali::format($d->created_at),
+            ]);
+
         return Inertia::render('Wallet', [
             'balance'     => $user->walletBalance(),
             'txns'        => $txns,
             'withdrawals' => $withdrawals,
+            'deposits'    => $deposits,
         ]);
+    }
+
+    /** درخواست افزایش موجودی — فعلاً واریز دستی (شماره پیگیری/توضیح)، بررسی و تأیید توسط ادمین. بعداً به درگاه پرداخت متصل می‌شود. */
+    public function requestDeposit(Request $request)
+    {
+        $user = $request->user();
+
+        $request->validate([
+            'amount' => 'required|integer|min:1000',
+            'note'   => 'nullable|string|max:200',
+        ]);
+
+        $admins = User::where('is_admin', true)->get();
+
+        $deposit = DepositRequest::create([
+            'user_id' => $user->id,
+            'amount'  => $request->amount,
+            'note'    => $request->note,
+            'status'  => 'pending',
+        ]);
+
+        Notification::create([
+            'user_id' => $user->id,
+            'title'   => 'درخواست افزایش موجودی ثبت شد',
+            'body'    => number_format($request->amount) . ' تومان — تاریخ: ' . Jalali::now() . ' — در حال بررسی.',
+            'type'    => 'wallet',
+        ]);
+
+        foreach ($admins as $admin) {
+            Notification::create([
+                'user_id' => $admin->id,
+                'title'   => "درخواست افزایش موجودی — {$user->name}",
+                'body'    => number_format($request->amount) . ' تومان — تاریخ: ' . Jalali::now(),
+                'type'    => 'wallet',
+            ]);
+        }
+
+        ActivityLog::record('deposit_request', 'wallet',
+            "درخواست افزایش موجودی " . number_format($request->amount) . " تومان — کاربر: {$user->name}", $user->id);
+
+        try {
+            $this->sms->send($user->phone, 'درخواست افزایش موجودی ' . number_format($request->amount) . ' تومانی شما ثبت شد و در حال بررسی است.');
+        } catch (\Exception) {}
+
+        return back()->with('success', 'درخواست افزایش موجودی شما ثبت شد و پس از تأیید ادمین به کیف پول شما اضافه می‌شود.');
     }
 
     public function requestWithdrawal(Request $request)

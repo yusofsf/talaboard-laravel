@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Helpers\Jalali;
 use App\Models\ActivityLog;
+use App\Models\DepositRequest;
 use App\Models\GoldLedger;
 use App\Models\Notification;
 use App\Models\SilverDeliveryRequest;
@@ -159,6 +160,20 @@ class AdminController extends Controller
                 'date_raw'    => $w->created_at->format('Y-m-d'),
             ]);
 
+        $depositRequests = DepositRequest::with('user')
+            ->where('status', 'pending')
+            ->orderByDesc('created_at')->get()
+            ->map(fn ($d) => [
+                'id'         => $d->id,
+                'user_name'  => $d->user?->name,
+                'user_phone' => $d->user?->phone,
+                'amount'     => $d->amount,
+                'note'       => $d->note,
+                'status'     => $d->status,
+                'created_at' => Jalali::format($d->created_at),
+                'date_raw'   => $d->created_at->format('Y-m-d'),
+            ]);
+
         $allTrades = $this->allTradesHistory();
 
         $activityLogs = ActivityLog::with('user')->orderByDesc('id')->limit(400)->get()
@@ -185,7 +200,7 @@ class AdminController extends Controller
                 'date_raw'   => $t->created_at->format('Y-m-d'),
             ]);
 
-        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'stats', 'memberApplications', 'vipMembers', 'deliveryRequests', 'withdrawalRequests', 'allTrades', 'activityLogs', 'tickets'));
+        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'stats', 'memberApplications', 'vipMembers', 'deliveryRequests', 'withdrawalRequests', 'depositRequests', 'allTrades', 'activityLogs', 'tickets'));
     }
 
     /** ریز معاملات یک کاربر خاص (فروشگاه + اتاق معاملاتی) برای مشاهده و خروجی PDF ادمین. */
@@ -957,6 +972,65 @@ class AdminController extends Controller
 
         try {
             $this->sms->send($withdrawal->user->phone, "درخواست تسویه حساب شما رد شد. دلیل: {$request->reason}");
+        } catch (\Exception) {}
+
+        return back()->with('success', 'درخواست رد شد.');
+    }
+
+    public function depositApprove(Request $request, int $id)
+    {
+        $request->validate(['note' => 'nullable|string|max:300']);
+        $note = trim((string) $request->input('note', ''));
+
+        $deposit = DepositRequest::with('user')->findOrFail($id);
+        $deposit->update(['status' => 'approved', 'admin_note' => $note !== '' ? $note : null]);
+
+        WalletTransaction::create([
+            'user_id'     => $deposit->user_id,
+            'amount'      => $deposit->amount,
+            'type'        => 'deposit',
+            'description' => "تأیید درخواست افزایش موجودی #{$deposit->id}",
+        ]);
+
+        $body = number_format($deposit->amount) . ' تومان به کیف پول شما واریز شد. تاریخ: ' . Jalali::now();
+        if ($note !== '') $body .= "\nتوضیح ادمین: {$note}";
+
+        Notification::create([
+            'user_id' => $deposit->user_id,
+            'title'   => 'افزایش موجودی تأیید شد',
+            'body'    => $body,
+            'type'    => 'wallet',
+        ]);
+
+        $this->notifyOtherAdmins($request, 'تأیید افزایش موجودی توسط ادمین',
+            "{$request->user()->name} افزایش موجودی " . number_format($deposit->amount) . " تومانی «{$deposit->user?->name}» را تأیید کرد." . ($note !== '' ? " توضیح: {$note}" : '') . ' تاریخ: ' . Jalali::now());
+
+        try {
+            $this->sms->send($deposit->user->phone, 'افزایش موجودی ' . number_format($deposit->amount) . ' تومانی شما تأیید و واریز شد.');
+        } catch (\Exception) {}
+
+        return back()->with('success', 'افزایش موجودی تأیید شد.');
+    }
+
+    public function depositReject(Request $request, int $id)
+    {
+        $request->validate(['reason' => 'required|string|max:300']);
+
+        $deposit = DepositRequest::with('user')->findOrFail($id);
+        $deposit->update(['status' => 'rejected', 'admin_note' => $request->reason]);
+
+        Notification::create([
+            'user_id' => $deposit->user_id,
+            'title'   => 'درخواست افزایش موجودی رد شد',
+            'body'    => "دلیل: {$request->reason}\nتاریخ: " . Jalali::now(),
+            'type'    => 'wallet',
+        ]);
+
+        $this->notifyOtherAdmins($request, 'رد افزایش موجودی توسط ادمین',
+            "{$request->user()->name} درخواست افزایش موجودی «{$deposit->user?->name}» را رد کرد. دلیل: {$request->reason}. تاریخ: " . Jalali::now());
+
+        try {
+            $this->sms->send($deposit->user->phone, "درخواست افزایش موجودی شما رد شد. دلیل: {$request->reason}");
         } catch (\Exception) {}
 
         return back()->with('success', 'درخواست رد شد.');

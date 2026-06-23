@@ -51,6 +51,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/wallet', [WalletController::class, 'index'])->name('wallet');
     Route::post('/wallet/withdraw', [WalletController::class, 'requestWithdrawal'])->name('wallet.withdraw');
+    Route::post('/wallet/deposit', [WalletController::class, 'requestDeposit'])->name('wallet.deposit');
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory');
     Route::get('/chart', fn () => \Inertia\Inertia::render('Chart'))->name('chart');
 
@@ -95,6 +96,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/delivery/{id}/update', [AdminController::class, 'deliveryUpdate'])->name('delivery.update');
     Route::post('/withdrawals/{id}/approve', [AdminController::class, 'withdrawalApprove'])->name('withdrawals.approve');
     Route::post('/withdrawals/{id}/reject', [AdminController::class, 'withdrawalReject'])->name('withdrawals.reject');
+    Route::post('/deposits/{id}/approve', [AdminController::class, 'depositApprove'])->name('deposits.approve');
+    Route::post('/deposits/{id}/reject', [AdminController::class, 'depositReject'])->name('deposits.reject');
 
     Route::put('/users/{uid}', [AdminController::class, 'userUpdate'])->name('users.update');
     Route::delete('/users/{uid}', [AdminController::class, 'userDestroy'])->name('users.destroy');

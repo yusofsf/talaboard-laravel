@@ -43,6 +43,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
     Route::post('/profile/info', [ProfileController::class, 'updateInfo'])->name('profile.info');
     Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+    Route::post('/profile/bank-cards', [ProfileController::class, 'storeBankCard'])->name('profile.bank-cards.store');
+    Route::delete('/profile/bank-cards/{id}', [ProfileController::class, 'destroyBankCard'])->name('profile.bank-cards.destroy');
 
     Route::get('/history', [HistoryController::class, 'index'])->name('history');
 

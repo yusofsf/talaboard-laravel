@@ -13,7 +13,85 @@ function pretty(str) {
     return (neg ? '-' : '') + FA(grouped + (decPart !== undefined ? '.' + FA(decPart) : ''));
 }
 
+const METALS = [
+    { key: 'gold',       label: 'طلا (گرم)',        priceField: ['gold', 'geram'] },
+    { key: 'silver_999', label: 'نقره ۹۹۹/۹ (گرم)', priceField: ['silver', 'gram_999'] },
+    { key: 'silver_995', label: 'نقره ۹۹۵ (گرم)',   priceField: ['silver', 'gram_995'] },
+];
+
+function PriceCalculator() {
+    const [prices, setPrices] = useState(null);
+    const [metal, setMetal] = useState('gold');
+    const [pricePerGram, setPricePerGram] = useState('');
+    const [grams, setGrams] = useState('');
+    const [feePercent, setFeePercent] = useState('0');
+
+    useEffect(() => {
+        fetch('/api/prices').then(r => r.json()).then(setPrices).catch(() => {});
+    }, []);
+
+    useEffect(() => {
+        if (!prices) return;
+        const m = METALS.find(x => x.key === metal);
+        const v = prices?.[m.priceField[0]]?.[m.priceField[1]];
+        if (typeof v === 'number') setPricePerGram(String(v));
+    }, [prices, metal]);
+
+    const base = (parseFloat(pricePerGram) || 0) * (parseFloat(grams) || 0);
+    const feeAmount = base * ((parseFloat(feePercent) || 0) / 100);
+    const total = base + feeAmount;
+
+    return (
+        <div className="fcard">
+            <h2>💰 محاسبه قیمت طلا و نقره</h2>
+            <div style={{ height: 16 }} />
+
+            <div className="field">
+                <label>نوع فلز</label>
+                <select value={metal} onChange={e => setMetal(e.target.value)}
+                    style={{ background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 12, padding: '11px 14px', fontFamily: 'inherit', fontSize: 15, width: '100%' }}>
+                    {METALS.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}
+                </select>
+            </div>
+
+            <div className="field">
+                <label>قیمت هر گرم (تومان) — از تابلوی قیمت پر شده، قابل ویرایش</label>
+                <input type="number" min="0" value={pricePerGram} onChange={e => setPricePerGram(e.target.value)} />
+            </div>
+
+            <div className="field">
+                <label>مقدار (گرم)</label>
+                <input type="number" min="0" step="any" value={grams} onChange={e => setGrams(e.target.value)} />
+            </div>
+
+            <div className="field">
+                <label>کارمزد / سود (٪)</label>
+                <input type="number" min="0" step="any" value={feePercent} onChange={e => setFeePercent(e.target.value)} />
+            </div>
+
+            <div style={{ background: 'rgba(255,255,255,.04)', border: '1px solid var(--line)', borderRadius: 12, padding: '14px 16px' }}>
+                <Row label="مبلغ پایه" value={base} />
+                <Row label={`کارمزد / سود (${feePercent || 0}٪)`} value={feeAmount} />
+                <hr style={{ border: 'none', borderTop: '1px solid var(--line)', margin: '8px 0' }} />
+                <Row label="مبلغ نهایی" value={total} big />
+            </div>
+        </div>
+    );
+}
+
+function Row({ label, value, big }) {
+    return (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: big ? 0 : 6 }}>
+            <span style={{ color: 'var(--muted)', fontSize: big ? 14 : 13 }}>{label}</span>
+            <span style={{ fontWeight: 800, fontSize: big ? 20 : 14, color: big ? 'var(--gold-1)' : 'var(--txt)' }}>
+                {pretty(String(Math.round(value))) } <span style={{ fontSize: 11, fontWeight: 400 }}>تومان</span>
+            </span>
+        </div>
+    );
+}
+
 export default function Calculator() {
+    const [tab, setTab] = useState('calc');
     const [display, setDisplay] = useState('0');   // عملوند فعلی (رشته)
     const [acc, setAcc] = useState(null);           // انباشته
     const [op, setOp] = useState(null);             // عملگر در انتظار
@@ -115,6 +193,14 @@ export default function Calculator() {
     return (
         <AppLayout>
             <div className="page">
+                <div className="tabs no-print">
+                    <button className={`tab-btn${tab === 'calc' ? ' active' : ''}`} onClick={() => setTab('calc')}>🧮 ماشین حساب</button>
+                    <button className={`tab-btn${tab === 'price' ? ' active' : ''}`} onClick={() => setTab('price')}>💰 محاسبه قیمت طلا و نقره</button>
+                </div>
+
+                {tab === 'price' && <PriceCalculator />}
+
+                {tab === 'calc' && (
                 <div className="fcard">
                     <h2>🧮 ماشین حساب</h2>
                     <div style={{ height: 16 }} />
@@ -167,6 +253,7 @@ export default function Calculator() {
                         با صفحه‌کلید هم کار می‌کند: اعداد، + − × ÷، Enter، Backspace، Esc
                     </p>
                 </div>
+                )}
             </div>
 
             <style>{`

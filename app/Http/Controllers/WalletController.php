@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Helpers\Jalali;
 use App\Models\ActivityLog;
+use App\Models\BankCard;
 use App\Models\DepositRequest;
 use App\Models\Notification;
 use App\Models\User;
@@ -52,11 +53,14 @@ class WalletController extends Controller
                 'created_at' => Jalali::format($d->created_at),
             ]);
 
+        $bankCards = $user->bankCards()->get(['id', 'bank_name', 'card_number', 'shaba']);
+
         return Inertia::render('Wallet', [
             'balance'     => $user->walletBalance(),
             'txns'        => $txns,
             'withdrawals' => $withdrawals,
             'deposits'    => $deposits,
+            'bankCards'   => $bankCards,
         ]);
     }
 
@@ -110,10 +114,14 @@ class WalletController extends Controller
         $user = $request->user();
 
         $request->validate([
-            'amount'      => 'required|integer|min:1000',
-            'card_number' => 'required|string|max:30',
-            'shaba'       => 'required|string|max:30',
+            'amount'       => 'required|integer|min:1000',
+            'bank_card_id' => 'required|exists:bank_cards,id',
         ]);
+
+        $card = BankCard::where('user_id', $user->id)->where('id', $request->bank_card_id)->first();
+        if (!$card) {
+            return back()->withErrors(['bank_card_id' => 'کارت بانکی انتخاب‌شده معتبر نیست.']);
+        }
 
         if ($user->walletBalance() <= 0) {
             return back()->withErrors(['amount' => 'موجودی کیف پول شما صفر است.']);
@@ -124,12 +132,12 @@ class WalletController extends Controller
 
         $admins = User::where('is_admin', true)->get();
 
-        DB::transaction(function () use ($user, $request, $admins) {
+        DB::transaction(function () use ($user, $request, $admins, $card) {
             $withdrawal = WithdrawalRequest::create([
                 'user_id'     => $user->id,
                 'amount'      => $request->amount,
-                'card_number' => $request->card_number,
-                'shaba'       => $request->shaba,
+                'card_number' => $card->card_number,
+                'shaba'       => $card->shaba,
                 'status'      => 'pending',
             ]);
 

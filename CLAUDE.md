@@ -194,6 +194,14 @@ A user replying to their own ticket flips `status` back to `open` (even if it wa
 
 `SilverDeliveryController` (handles gold *and* silver despite the class name — kept for historical reasons) and the withdrawal-request flow in `WalletController` are both embedded directly into `Inventory.jsx` and `Wallet.jsx` respectively as inline forms + history tables, not separate routed pages. If you're tempted to give them their own page, that was explicitly undone once already per a prior request ("تو موجودی انبار باشه" — keep it in inventory).
 
+### Withdrawals go through saved bank cards, not free-text fields
+
+`BankCard` (`profile/bank-cards` CRUD in `ProfileController`) lets a user save card number/account number/shaba once; `WalletController::requestWithdrawal()` takes a `bank_card_id` instead of typing card details every time, validates the card belongs to the requesting user, then **copies** `card_number`/`shaba` onto the `WithdrawalRequest` row at creation time (not a foreign key) — so the historical request keeps the values used even if the card is later deleted, and the existing admin-side withdrawal review UI (`WithdrawalRow` in `Admin/Dashboard.jsx`) needed no changes. If a user has no saved card, `Wallet.jsx` shows a prompt linking to `/profile` instead of the withdrawal form.
+
+### Gold/silver price calculator
+
+The second tab of `Calculator.jsx` (`💰 محاسبه قیمت طلا و نقره`) fetches the same `/api/prices` JSON endpoint `Home.jsx` uses, lets the user pick a metal (gold gram / silver 999 gram / silver 995 gram), pre-fills "price per gram" from the live sell price (editable), takes a grams amount and a fee/profit percentage, and computes base/fee/total. It's read-only/informational — doesn't create a `Transaction` or touch any ledger; for an actual trade the user still goes through `/trade/{item}`.
+
 ### Wallet deposits are manual-review placeholders for a future payment gateway
 
 `WalletController::requestDeposit()` / `DepositRequest` is the deposit-side mirror of the existing withdrawal flow, but **doesn't** debit/credit anything at request time — unlike withdrawals (which escrow immediately per the convention above), a deposit request has no funds to escrow yet, since the user hasn't actually paid through the system. The wallet only gets credited (`WalletTransaction` type `deposit`) when an admin approves it (`AdminController::depositApprove`), at which point money is assumed to have arrived by other means (bank transfer, referenced via the free-text `note` field). This whole flow exists explicitly as a stand-in until a real payment gateway is wired up — when that happens, `requestDeposit` should be replaced by a gateway callback that credits the wallet directly, and this manual admin-approval path can either be removed or kept as a fallback for manual transfers.

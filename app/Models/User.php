@@ -46,6 +46,11 @@ class User extends Authenticatable
         return $this->hasMany(Ticket::class);
     }
 
+    public function bankCards()
+    {
+        return $this->hasMany(BankCard::class)->orderByDesc('created_at');
+    }
+
     public function walletBalance(): int
     {
         return (int) $this->walletTransactions()->sum('amount');

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useForm, usePage } from '@inertiajs/react';
+import { Link, useForm, usePage } from '@inertiajs/react';
 import AppLayout, { faNum } from '../Layouts/AppLayout';
 
 const STATUS = {
@@ -8,10 +8,10 @@ const STATUS = {
     rejected: ['رد‌شده', 'sell-b'],
 };
 
-export default function Wallet({ balance, txns, withdrawals, deposits }) {
+export default function Wallet({ balance, txns, withdrawals, deposits, bankCards }) {
     const { errors } = usePage().props;
     const [showForm, setShowForm] = useState(false);
-    const form = useForm({ amount: '', card_number: '', shaba: '' });
+    const form = useForm({ amount: '', bank_card_id: '' });
 
     const [showDepositForm, setShowDepositForm] = useState(false);
     const depositForm = useForm({ amount: '', note: '' });
@@ -80,26 +80,32 @@ export default function Wallet({ balance, txns, withdrawals, deposits }) {
                 {showForm && (
                     <div className="fcard" style={{ marginBottom: 28, maxWidth: 480 }}>
                         {Object.values(errors).map((e, i) => <div key={i} className="alert err">{e}</div>)}
-                        <form onSubmit={submit}>
-                            <div className="field">
-                                <label>مبلغ (تومان) — حداکثر {faNum(balance)}</label>
-                                <input type="number" min="1000" max={balance} value={form.data.amount}
-                                    onChange={e => form.setData('amount', e.target.value)} required />
+                        {bankCards?.length ? (
+                            <form onSubmit={submit}>
+                                <div className="field">
+                                    <label>مبلغ (تومان) — حداکثر {faNum(balance)}</label>
+                                    <input type="number" min="1000" max={balance} value={form.data.amount}
+                                        onChange={e => form.setData('amount', e.target.value)} required />
+                                </div>
+                                <div className="field">
+                                    <label>کارت بانکی</label>
+                                    <select value={form.data.bank_card_id} onChange={e => form.setData('bank_card_id', e.target.value)} required
+                                        style={{ background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 12, padding: '11px 14px', fontFamily: 'inherit', fontSize: 15, width: '100%' }}>
+                                        <option value="">— انتخاب کارت —</option>
+                                        {bankCards.map(c => (
+                                            <option key={c.id} value={c.id}>{c.bank_name || 'کارت'} — {c.card_number}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <button className="btn" type="submit" disabled={form.processing}>
+                                    {form.processing ? 'در حال ارسال...' : 'ثبت درخواست'}
+                                </button>
+                            </form>
+                        ) : (
+                            <div className="alert info">
+                                ابتدا باید یک کارت بانکی ثبت کنید. <Link href="/profile" style={{ color: 'var(--gold-1)', fontWeight: 700 }}>افزودن کارت بانکی در پروفایل</Link>
                             </div>
-                            <div className="field">
-                                <label>شماره کارت</label>
-                                <input value={form.data.card_number} dir="ltr" placeholder="xxxx-xxxx-xxxx-xxxx"
-                                    onChange={e => form.setData('card_number', e.target.value)} required />
-                            </div>
-                            <div className="field">
-                                <label>شماره شبا</label>
-                                <input value={form.data.shaba} dir="ltr" placeholder="IRxxxxxxxxxxxxxxxxxxxxxxxx"
-                                    onChange={e => form.setData('shaba', e.target.value)} required />
-                            </div>
-                            <button className="btn" type="submit" disabled={form.processing}>
-                                {form.processing ? 'در حال ارسال...' : 'ثبت درخواست'}
-                            </button>
-                        </form>
+                        )}
                     </div>
                 )}
 

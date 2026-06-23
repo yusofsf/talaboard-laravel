@@ -47,6 +47,7 @@ class DepositRequestTest extends TestCase
         $userNotif = Notification::where('user_id', $user->id)->first();
         $this->assertNotNull($userNotif);
         $this->assertStringNotContainsString('مدیر اول', $userNotif->body);
+        $this->assertStringContainsString('توسط ادمین', $userNotif->body);
 
         $adminNotif = Notification::where('user_id', $otherAdmin->id)->first();
         $this->assertNotNull($adminNotif);

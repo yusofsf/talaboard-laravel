@@ -992,7 +992,7 @@ class AdminController extends Controller
             'description' => "تأیید درخواست افزایش موجودی #{$deposit->id}",
         ]);
 
-        $body = number_format($deposit->amount) . ' تومان به کیف پول شما واریز شد. تاریخ: ' . Jalali::now();
+        $body = number_format($deposit->amount) . " تومان توسط ادمین به کیف پول شما واریز شد. تاریخ: " . Jalali::now();
         if ($note !== '') $body .= "\nتوضیح ادمین: {$note}";
 
         Notification::create([

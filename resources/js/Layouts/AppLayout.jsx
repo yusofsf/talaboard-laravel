@@ -161,6 +161,13 @@ export default function AppLayout({ children }) {
                         <span dir="ltr">info@metalsp.ir</span>
                     </a>
                 </div>
+                <div style={{ display: 'inline-flex', alignItems: 'flex-start', gap: 6, color: 'var(--muted)', fontSize: 13, marginBottom: 12, maxWidth: 520, textAlign: 'start' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0Z" />
+                        <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    <span>مشهد، بازار امام رضا، طبقه فوقانی بانک ملی، پلاک ۱/۶۳۹</span>
+                </div>
                 <div style={{ fontSize: 12, color: 'var(--muted)', opacity: .7 }}>
                     آبشده صفرپور — تمامی حقوق محفوظ است
                 </div>

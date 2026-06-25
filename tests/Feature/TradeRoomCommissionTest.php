@@ -71,6 +71,26 @@ class TradeRoomCommissionTest extends TestCase
         $this->assertTrue(Notification::where('user_id', $admin->id)->where('title', 'معامله‌ی جدید در اتاق معاملاتی')->exists());
     }
 
+    public function test_accepted_offer_appears_in_the_acceptors_trade_room_history_with_flipped_side(): void
+    {
+        Setting::put('trade_room_commission_percent', 0);
+        $seller = User::factory()->vip()->create();
+        $buyer  = User::factory()->vip()->create();
+        \App\Models\GoldLedger::create(['user_id' => $seller->id, 'grams' => 100, 'type' => 'admin_adjust', 'description' => 'seed']);
+        $this->fund($buyer, 1_000_000);
+
+        $this->actingAs($seller)->post('/trade-room', ['metal' => 'gold', 'side' => 'sell', 'grams' => 100, 'price_per_gram' => 1000]);
+        $offer = TradeRoomOffer::first();
+        $this->actingAs($buyer)->post("/trade-room/{$offer->id}/accept")->assertRedirect();
+
+        // در تاریخچه‌ی خریدار (پذیرنده) باید نمایش داده شود و نوع آن «خرید» باشد (نه فروشِ پیشنهاد)
+        $this->actingAs($buyer)->get('/trade-room')->assertInertia(fn ($page) => $page
+            ->has('myOffers', 1)
+            ->where('myOffers.0.id', $offer->id)
+            ->where('myOffers.0.view_side', 'buy')
+            ->where('myOffers.0.role', 'پذیرنده'));
+    }
+
     public function test_admin_can_change_the_commission_percent(): void
     {
         $admin = User::factory()->admin()->create();

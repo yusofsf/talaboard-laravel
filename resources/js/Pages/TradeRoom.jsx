@@ -18,16 +18,19 @@ function StatusBadge({ o }) {
 /** ردیف تاریخچه‌ی معاملات من — اطلاعات اصلی نمایش داده می‌شود، جزئیات (قیمت/تاریخ/کارمزد) در دراپ‌دون. */
 function MyOfferRow({ o, printOnly }) {
     const [open, setOpen] = useState(false);
+    const vs = o.view_side || o.side; // نوع از دید کاربر (پذیرنده برعکس پیشنهاددهنده)
+    const priceUnit = o.unit === 'عدد' ? 'عدد' : 'گرم';
 
     if (printOnly) {
         return (
             <tr>
-                <td><span className={`badge ${o.side === 'sell' ? 'sell-b' : 'buy-b'}`}>{o.side === 'sell' ? 'فروش' : 'خرید'}</span></td>
+                <td><span className={`badge ${vs === 'sell' ? 'sell-b' : 'buy-b'}`}>{vs === 'sell' ? 'فروش' : 'خرید'}</span></td>
                 <td>{o.item_label}</td>
                 <td className="num">{o.grams}</td>
                 <td className="num">{faNum(o.price_per_gram)}</td>
                 <td className="num">{faNum(o.total)}</td>
                 <td className="num">{o.commission ? faNum(o.commission) : '—'}</td>
+                <td>{o.role || '—'}</td>
                 <td><StatusBadge o={o} />{o.admin_note && <div style={{ fontSize: 11, color: 'var(--down)' }}>دلیل: {o.admin_note}</div>}</td>
                 <td style={{ fontSize: 12 }}>{o.completed_at || o.created_at}</td>
             </tr>
@@ -37,7 +40,7 @@ function MyOfferRow({ o, printOnly }) {
     return (
         <>
             <tr>
-                <td><span className={`badge ${o.side === 'sell' ? 'sell-b' : 'buy-b'}`}>{o.side === 'sell' ? 'فروش' : 'خرید'}</span></td>
+                <td><span className={`badge ${vs === 'sell' ? 'sell-b' : 'buy-b'}`}>{vs === 'sell' ? 'فروش' : 'خرید'}</span></td>
                 <td>{o.item_label}</td>
                 <td className="num">{o.grams}</td>
                 <td className="num">{faNum(o.total)}</td>
@@ -48,7 +51,8 @@ function MyOfferRow({ o, printOnly }) {
                 <tr>
                     <td colSpan={6} style={{ background: 'rgba(255,255,255,.02)' }}>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, fontSize: 13, color: 'var(--muted)' }}>
-                            <span>قیمت هر گرم: <strong style={{ color: 'var(--txt)' }} className="num">{faNum(o.price_per_gram)}</strong></span>
+                            {o.role && <span>نقش شما: <strong style={{ color: 'var(--txt)' }}>{o.role}</strong></span>}
+                            <span>قیمت هر {priceUnit}: <strong style={{ color: 'var(--txt)' }} className="num">{faNum(o.price_per_gram)}</strong></span>
                             <span>تاریخ: <strong style={{ color: 'var(--txt)' }}>{o.completed_at || o.created_at}</strong></span>
                             {o.commission > 0 && <span>کارمزد: <strong style={{ color: 'var(--txt)' }} className="num">{faNum(o.commission)}</strong> تومان</span>}
                             {o.admin_note && <span style={{ color: 'var(--down)' }}>دلیل: {o.admin_note}</span>}
@@ -400,7 +404,7 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                         <div className="table-wrap print-area print-only-block">
                             <div className="print-only" style={{ marginBottom: 14, fontWeight: 800, fontSize: 16 }}>تاریخچه‌ی اتاق معاملاتی</div>
                             <table>
-                                <thead><tr><th>نوع</th><th>مورد</th><th>مقدار</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>کارمزد</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
+                                <thead><tr><th>نوع</th><th>مورد</th><th>مقدار</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th>کارمزد</th><th>نقش</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
                                 <tbody>
                                     {filteredMyOffers.map(o => <MyOfferRow key={o.id} o={o} printOnly />)}
                                 </tbody>

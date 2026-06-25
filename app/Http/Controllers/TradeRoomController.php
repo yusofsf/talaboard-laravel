@@ -39,9 +39,11 @@ class TradeRoomController extends Controller
             ->get()
             ->map(fn ($o) => $this->present($o, $request->user()));
 
+        // تاریخچه‌ی من: هم پیشنهادهایی که خودم گذاشته‌ام و هم پیشنهادهایی که پذیرفته‌ام (طرف مقابل)
+        $uid = $request->user()->id;
         $myOffers = TradeRoomOffer::with(['user', 'counterparty'])
-            ->where('user_id', $request->user()->id)
             ->where('status', '!=', 'open')
+            ->where(fn ($q) => $q->where('user_id', $uid)->orWhere('counterparty_id', $uid))
             ->orderByDesc('updated_at')
             ->limit(50)
             ->get()
@@ -317,6 +319,10 @@ class TradeRoomController extends Controller
             ? self::COIN_LABEL[$o->item]
             : ($o->metal === 'gold' ? 'طلا (گرم)' : self::PURITY_LABEL[$o->purity]);
 
+        // نوع معامله از دید بیننده: اگر پیشنهاددهنده باشد همان side پیشنهاد، اگر پذیرنده باشد برعکس می‌شود.
+        $isOfferer  = $o->user_id === $viewer->id;
+        $viewerSell = ($o->side === 'sell') === $isOfferer;
+
         return [
             'id'             => $o->id,
             'metal'          => $o->metal,
@@ -324,6 +330,8 @@ class TradeRoomController extends Controller
             'is_coin'        => $isCoin,
             'unit'           => $isCoin ? 'عدد' : 'گرم',
             'side'           => $o->side,
+            'view_side'      => $viewerSell ? 'sell' : 'buy',
+            'role'           => $o->counterparty_id ? ($isOfferer ? 'پیشنهاددهنده' : 'پذیرنده') : null,
             'purity'         => $o->purity,
             'item_label'     => $itemLabel,
             'grams'          => $isCoin ? (int) $o->grams : (float) $o->grams,

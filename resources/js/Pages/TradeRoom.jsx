@@ -94,6 +94,9 @@ const ITEMS = [
     { key: 'gold',      label: 'طلا',         metal: 'gold',   purity: '' },
     { key: 'silver999', label: 'نقره ۹۹۹/۹',  metal: 'silver', purity: '999' },
     { key: 'silver995', label: 'نقره ۹۹۵',    metal: 'silver', purity: '995' },
+    { key: 'bahar',     label: 'سکه تمام',    metal: 'coin',   coin: 'bahar' },
+    { key: 'nim',       label: 'نیم سکه',      metal: 'coin',   coin: 'nim' },
+    { key: 'rob',       label: 'ربع سکه',      metal: 'coin',   coin: 'rob' },
 ];
 
 export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalance, goldBalance, silverBalance, commissionPercent, mithqalGrams }) {
@@ -103,12 +106,21 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
     const [myTo, setMyTo] = useState('');
     const [item, setItem] = useState('gold');
     const [unit, setUnit] = useState('gram'); // gram | mithqal — فقط واحد ورودی فرم
-    const form = useForm({ metal: 'silver', side: 'sell', purity: '999', grams: '', price_per_gram: '' });
+    const form = useForm({ metal: 'silver', side: 'sell', purity: '999', item: '', grams: '', price_per_gram: '' });
+    const isCoinForm = form.data.metal === 'coin';
 
-    // اگر از تابلوی قیمت با پارامتر آمده باشد، فلز/عیار/واحد و آیتم را پیش‌انتخاب کن
+    // اگر از تابلوی قیمت با پارامتر آمده باشد، فلز/عیار/واحد/سکه و آیتم را پیش‌انتخاب کن
     useEffect(() => {
         const q = new URLSearchParams(window.location.search);
         const metal = q.get('metal');
+        if (metal === 'coin') {
+            const ci = q.get('item');
+            if (['bahar', 'nim', 'rob'].includes(ci)) {
+                form.setData(d => ({ ...d, metal: 'coin', item: ci }));
+                setItem(ci);
+            }
+            return;
+        }
         if (metal !== 'gold' && metal !== 'silver') return;
         const purity = q.get('purity') === '995' ? '995' : '999';
         if (q.get('unit') === 'mithqal') setUnit('mithqal');
@@ -126,20 +138,28 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
     // (فروش = قیمت فروش، خرید = قیمت خرید؛ برای مثقال، قیمت گرم × ضریب مثقال)
     useEffect(() => {
         if (!prices) return;
-        const { metal, side, purity } = form.data;
-        const gramKey = metal === 'gold' ? 'geram' : `gram_${purity}`;
-        const group = metal === 'gold'
-            ? (side === 'buy' ? 'gold_buy' : 'gold')
-            : (side === 'buy' ? 'silver_buy' : 'silver');
-        const v = prices?.[group]?.[gramKey];
+        const { metal, side, purity, item: coin } = form.data;
+        let group, key;
+        if (metal === 'coin') {
+            group = side === 'buy' ? 'gold_buy' : 'gold';
+            key = coin;
+        } else {
+            key = metal === 'gold' ? 'geram' : `gram_${purity}`;
+            group = metal === 'gold'
+                ? (side === 'buy' ? 'gold_buy' : 'gold')
+                : (side === 'buy' ? 'silver_buy' : 'silver');
+        }
+        const v = prices?.[group]?.[key];
         if (typeof v === 'number' && v > 0) {
-            const perUnit = unit === 'mithqal' ? v * M : v;
+            const perUnit = (metal !== 'coin' && unit === 'mithqal') ? v * M : v;
             form.setData('price_per_gram', String(Math.round(perUnit)));
         }
-    }, [prices, form.data.metal, form.data.side, form.data.purity, unit]);
+    }, [prices, form.data.metal, form.data.side, form.data.purity, form.data.item, unit]);
 
-    const activeItem = ITEMS.find(i => i.key === item);
-    const matchesItem = o => o.metal === activeItem.metal && (activeItem.metal === 'gold' || o.purity === activeItem.purity);
+    const activeItem = ITEMS.find(i => i.key === item) || ITEMS[0];
+    const matchesItem = o => activeItem.metal === 'coin'
+        ? (o.metal === 'coin' && o.item === activeItem.coin)
+        : (o.metal === activeItem.metal && (activeItem.metal === 'gold' || o.purity === activeItem.purity));
     const itemSellOffers = useMemo(() => sellOffers.filter(matchesItem), [sellOffers, item]);
     const itemBuyOffers = useMemo(() => buyOffers.filter(matchesItem), [buyOffers, item]);
 
@@ -155,10 +175,10 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
 
     function submit(e) {
         e.preventDefault();
-        // اگر واحد مثقال است، مقدار و قیمت به گرم تبدیل می‌شوند (در سرور همه‌چیز گرمی ذخیره می‌شود)
+        // سکه: واحد عددی، بدون تبدیل. طلا/نقره با واحد مثقال → تبدیل به گرم (در سرور همه‌چیز گرمی ذخیره می‌شود)
         const qty = parseFloat(form.data.grams) || 0;
         const perUnit = parseInt(form.data.price_per_gram, 10) || 0;
-        const payload = unit === 'mithqal'
+        const payload = (!isCoinForm && unit === 'mithqal')
             ? { ...form.data, grams: +(qty * M).toFixed(4), price_per_gram: Math.round(perUnit / M) }
             : form.data;
         form.transform(() => payload).post('/trade-room', {
@@ -181,7 +201,7 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
             <div className="page-wide">
                 <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>🤝 اتاق معاملاتی</h2>
                 <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 20 }}>
-                    خرید و فروش طلا و نقره بین اعضای ویژه — مستقیماً با یکدیگر، بدون واسطه‌ی فروشگاه. هر دو طرف معامله باید عضو ویژه باشند.
+                    خرید و فروش طلا، نقره و سکه بین اعضای ویژه — مستقیماً با یکدیگر، بدون واسطه‌ی فروشگاه. هر دو طرف معامله باید عضو ویژه باشند.
                 </p>
 
                 {/* موجودی */}
@@ -223,11 +243,11 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'flex-start', marginBottom: 24 }}>
                     {/* سمت راست (در RTL فرزند اول): سفارش‌های باز */}
                     <div className="no-print" style={{ flex: 1, minWidth: 320 }}>
-                        <div className="btn-row" style={{ gridTemplateColumns: `repeat(${ITEMS.length}, 1fr)`, marginBottom: 18 }}>
+                        <div className="btn-row" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 18 }}>
                             {ITEMS.map(i => (
                                 <button key={i.key} type="button" onClick={() => {
                                     setItem(i.key);
-                                    form.setData(d => ({ ...d, metal: i.metal, purity: i.purity || d.purity }));
+                                    form.setData(d => ({ ...d, metal: i.metal, purity: i.metal === 'silver' ? (i.purity || d.purity) : '', item: i.metal === 'coin' ? i.coin : '' }));
                                 }}
                                     style={{
                                         padding: '10px', borderRadius: 12, fontFamily: 'inherit', fontSize: 14, fontWeight: 700,
@@ -241,8 +261,8 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                             ))}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                            <OfferSection variant="sell" offers={itemSellOffers} accept={accept} cancel={cancel} />
-                            <OfferSection variant="buy" offers={itemBuyOffers} accept={accept} cancel={cancel} />
+                            <OfferSection variant="sell" qtyHeader={activeItem.metal === 'coin' ? 'تعداد' : 'مقدار (گرم)'} offers={itemSellOffers} accept={accept} cancel={cancel} />
+                            <OfferSection variant="buy" qtyHeader={activeItem.metal === 'coin' ? 'تعداد' : 'مقدار (گرم)'} offers={itemBuyOffers} accept={accept} cancel={cancel} />
                         </div>
                     </div>
 
@@ -253,9 +273,13 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                         {errors.grams && <div className="alert err">{errors.grams}</div>}
                         {errors.offer && <div className="alert err">{errors.offer}</div>}
                         <form onSubmit={submit}>
-                        <div className="btn-row" style={{ marginBottom: 12 }}>
-                            {[['gold', 'طلا'], ['silver', 'نقره']].map(([m, label]) => (
-                                <button key={m} type="button" onClick={() => form.setData('metal', m)}
+                        <div className="btn-row" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 12 }}>
+                            {[['gold', 'طلا'], ['silver', 'نقره'], ['coin', 'سکه']].map(([m, label]) => (
+                                <button key={m} type="button" onClick={() => form.setData(d => ({
+                                    ...d, metal: m,
+                                    purity: m === 'silver' ? (d.purity || '999') : '',
+                                    item: m === 'coin' ? (d.item || 'bahar') : '',
+                                }))}
                                     style={{
                                         padding: '10px', borderRadius: 12, fontFamily: 'inherit', fontSize: 14, fontWeight: 700,
                                         cursor: 'pointer', border: 'none',
@@ -281,21 +305,23 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                                 </button>
                             ))}
                         </div>
-                        <div className="btn-row" style={{ marginBottom: 16 }}>
-                            {[['gram', 'گرم'], ['mithqal', 'مثقال']].map(([u, label]) => (
-                                <button key={u} type="button" onClick={() => setUnit(u)}
-                                    style={{
-                                        padding: '10px', borderRadius: 12, fontFamily: 'inherit', fontSize: 14, fontWeight: 700,
-                                        cursor: 'pointer', border: 'none',
-                                        background: unit === u ? 'rgba(246,207,99,.2)' : 'rgba(255,255,255,.06)',
-                                        color: unit === u ? 'var(--gold-1)' : 'var(--muted)',
-                                        outline: unit === u ? '2px solid var(--gold-1)' : '2px solid transparent',
-                                    }}>
-                                    واحد: {label}
-                                </button>
-                            ))}
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: form.data.metal === 'silver' ? '1fr 1fr' : '1fr', gap: 12 }}>
+                        {!isCoinForm && (
+                            <div className="btn-row" style={{ marginBottom: 16 }}>
+                                {[['gram', 'گرم'], ['mithqal', 'مثقال']].map(([u, label]) => (
+                                    <button key={u} type="button" onClick={() => setUnit(u)}
+                                        style={{
+                                            padding: '10px', borderRadius: 12, fontFamily: 'inherit', fontSize: 14, fontWeight: 700,
+                                            cursor: 'pointer', border: 'none',
+                                            background: unit === u ? 'rgba(246,207,99,.2)' : 'rgba(255,255,255,.06)',
+                                            color: unit === u ? 'var(--gold-1)' : 'var(--muted)',
+                                            outline: unit === u ? '2px solid var(--gold-1)' : '2px solid transparent',
+                                        }}>
+                                        واحد: {label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                        <div style={{ display: 'grid', gridTemplateColumns: (form.data.metal === 'silver' || isCoinForm) ? '1fr 1fr' : '1fr', gap: 12 }}>
                             {form.data.metal === 'silver' && (
                                 <div className="field">
                                     <label>عیار</label>
@@ -306,14 +332,28 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                                     </select>
                                 </div>
                             )}
+                            {isCoinForm && (
+                                <div className="field">
+                                    <label>نوع سکه</label>
+                                    <select value={form.data.item} onChange={e => form.setData('item', e.target.value)}
+                                        style={{ background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 12, padding: '11px 14px', fontFamily: 'inherit', fontSize: 15, width: '100%' }}>
+                                        <option value="bahar">سکه تمام</option>
+                                        <option value="nim">نیم سکه</option>
+                                        <option value="rob">ربع سکه</option>
+                                    </select>
+                                </div>
+                            )}
                             <div className="field">
-                                <label>مقدار ({unit === 'mithqal' ? 'مثقال' : 'گرم'}) — حداقل معادل ۱۰۰ گرم</label>
-                                <input type="number" step="any" min={unit === 'mithqal' ? (Math.ceil((100 / M) * 100) / 100) : 100} value={form.data.grams}
+                                <label>{isCoinForm ? 'تعداد (عدد)' : `مقدار (${unit === 'mithqal' ? 'مثقال' : 'گرم'}) — حداقل معادل ۱۰۰ گرم`}</label>
+                                <input type="number"
+                                    step={isCoinForm ? 1 : 'any'}
+                                    min={isCoinForm ? 1 : (unit === 'mithqal' ? (Math.ceil((100 / M) * 100) / 100) : 100)}
+                                    value={form.data.grams}
                                     onChange={e => form.setData('grams', e.target.value)} required />
                             </div>
                         </div>
                         <div className="field">
-                            <label>قیمت هر {unit === 'mithqal' ? 'مثقال' : 'گرم'} (تومان) — پیش‌فرض از قیمت لحظه‌ای سایت، قابل ویرایش</label>
+                            <label>قیمت هر {isCoinForm ? 'عدد' : (unit === 'mithqal' ? 'مثقال' : 'گرم')} (تومان) — پیش‌فرض از قیمت لحظه‌ای سایت، قابل ویرایش</label>
                             <input type="number" min="1" value={form.data.price_per_gram}
                                 onChange={e => form.setData('price_per_gram', e.target.value)} required />
                         </div>
@@ -375,16 +415,17 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
     );
 }
 
-function OfferSection({ variant, offers, accept, cancel }) {
+function OfferSection({ variant, qtyHeader = 'مقدار (گرم)', offers, accept, cancel }) {
     const isSell = variant === 'sell';
     const bg = isSell ? 'rgba(255,107,120,.08)' : 'rgba(65,225,166,.08)';
     const border = isSell ? 'rgba(255,107,120,.3)' : 'rgba(65,225,166,.3)';
+    const priceHeader = qtyHeader === 'تعداد' ? 'قیمت هر عدد' : 'قیمت هر گرم';
     return (
         <div style={{ flex: '1', minWidth: 320 }}>
             {offers.length ? (
                 <div className="table-wrap" style={{ background: bg, borderColor: border }}>
                     <table>
-                        <thead><tr><th>مورد</th><th>مقدار (گرم)</th><th>قیمت هر گرم</th><th>مبلغ کل</th><th></th></tr></thead>
+                        <thead><tr><th>مورد</th><th>{qtyHeader}</th><th>{priceHeader}</th><th>مبلغ کل</th><th></th></tr></thead>
                         <tbody>
                             {offers.map(o => <OfferRow key={o.id} o={o} accept={accept} cancel={cancel} />)}
                         </tbody>

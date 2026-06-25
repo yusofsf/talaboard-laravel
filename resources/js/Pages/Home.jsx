@@ -126,6 +126,9 @@ const ROOM_META = {
     mithqal_999: 'metal=silver&purity=999&unit=mithqal',
     gram_995:    'metal=silver&purity=995&unit=gram',
     mithqal_995: 'metal=silver&purity=995&unit=mithqal',
+    bahar:       'metal=coin&item=bahar',
+    nim:         'metal=coin&item=nim',
+    rob:         'metal=coin&item=rob',
 };
 
 export default function Home({ prices: initial, refreshSeconds }) {

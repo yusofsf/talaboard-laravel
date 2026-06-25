@@ -232,8 +232,9 @@ class AdminController extends Controller
             ]);
 
         // معاملات اتاق معاملاتی که این کاربر در آن‌ها پیشنهاددهنده یا طرف مقابل بوده
+        // (سکه‌ها به‌صورت Transaction در بخش فروشگاه می‌آیند، اینجا حذف می‌شوند تا دوبار شمرده نشوند)
         $room = TradeRoomOffer::with(['user', 'counterparty'])
-            ->where('status', 'completed')
+            ->where('status', 'completed')->where('metal', '!=', 'coin')
             ->where(fn ($q) => $q->where('user_id', $uid)->orWhere('counterparty_id', $uid))
             ->orderByDesc('completed_at')->get()
             ->map(function ($o) use ($uid) {
@@ -389,7 +390,9 @@ class AdminController extends Controller
         ]);
 
         // معاملات تکمیل‌شده + معاملاتی که ادمین برگشت زده (cancelled با یادداشت ادمین)
+        // سکه‌ها از این لیست کنار گذاشته می‌شوند چون به‌صورت ردیف Transaction در بخش فروشگاه نمایش داده می‌شوند (جلوگیری از شمارش دوگانه).
         $room = TradeRoomOffer::with(['user', 'counterparty'])
+            ->where('metal', '!=', 'coin')
             ->where(fn ($q) => $q->where('status', 'completed')
                 ->orWhere(fn ($q2) => $q2->where('status', 'cancelled')->whereNotNull('admin_note')))
             ->get()

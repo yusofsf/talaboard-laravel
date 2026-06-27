@@ -413,7 +413,7 @@ export default function Home({ prices: initial, refreshSeconds }) {
 
                     {/* نرخ برابری طلا به نقره */}
                     <div className="tv-ratio-bar">
-                        <span className="r-label">نرخ برابری طلا / نقره ۹۹۹</span>
+                        <span className="r-label">نرخ برابری طلا / نقره</span>
                         <span className="r-val">{ratio}</span>
                         <span>گرم نقره به ازای هر گرم طلا</span>
                     </div>

@@ -26,7 +26,8 @@
 <meta name="twitter:image" content="https://metalsp.ir/logo.jpg">
 <meta name="theme-color" content="#0b0e14">
 
-{{-- داده‌ی ساختاریافته برای گوگل (JewelryStore) --}}
+{{-- داده‌ی ساختاریافته برای گوگل (JewelryStore) — verbatim تا Blade مقادیر @context/@type را دستکاری نکند --}}
+@verbatim
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -43,6 +44,7 @@
   "knowsAbout": ["طلا", "نقره", "نقره آبشده", "سکه", "نیم سکه", "ربع سکه", "سکه تمام", "ساچمه نقره", "نقره عیار ۹۹۹", "نقره عیار ۹۹۵"]
 }
 </script>
+@endverbatim
 
 <link rel="icon" href="/logo.jpg" type="image/jpeg">
 <link rel="apple-touch-icon" href="/logo.jpg">

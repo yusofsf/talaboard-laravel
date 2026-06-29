@@ -1,2 +1,17 @@
 User-agent: *
-Disallow:
+Allow: /
+Disallow: /admin
+Disallow: /profile
+Disallow: /wallet
+Disallow: /inventory
+Disallow: /history
+Disallow: /notifications
+Disallow: /membership
+Disallow: /tickets
+Disallow: /trade-room
+Disallow: /verify-otp
+Disallow: /reset-password
+Disallow: /forgot-password
+Disallow: /api/
+
+Sitemap: https://metalsp.ir/sitemap.xml

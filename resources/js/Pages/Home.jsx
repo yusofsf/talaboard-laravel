@@ -348,13 +348,22 @@ export default function Home({ prices: initial, refreshSeconds }) {
                 @media (max-width:360px){
                   .tv-grid{grid-template-columns:1fr}
                 }
+                .tv-seo{max-width:1100px;margin:18px auto 28px;padding:18px 20px;
+                  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);
+                  border-radius:14px;color:#aab3c4;font-size:13px;line-height:2;text-align:justify}
+                .tv-seo h2{font-size:15px;color:#d7deea;margin:0 0 10px}
+                .tv-seo p{margin:0 0 10px}
+                .tv-seo strong{color:#c9d2e0;font-weight:600}
+                .tv-seo a{color:#e6b800;text-decoration:none}
+                .tv-seo a:hover{text-decoration:underline}
+                .tv-seo-tags{font-size:12px;color:#6b7488}
             `}</style>
 
             <div className="tv-wrap">
                 <header>
                     <div className="tv-headright">
-                        <div className="tv-htitle">تابلوی قیمت لحظه‌ای</div>
-                        <div className="tv-hsub">طلا، سکه، نقره و دلار</div>
+                        <h1 className="tv-htitle">قیمت لحظه‌ای طلا، نقره و سکه</h1>
+                        <div className="tv-hsub">خرید و فروش آنلاین در آبشده صفرپور</div>
                     </div>
 
                     <div className="tv-brandc">
@@ -437,6 +446,32 @@ export default function Home({ prices: initial, refreshSeconds }) {
                         </div>
                     </div>
                 </main>
+
+                {/* بخش سئو — متن قابل‌خزش برای گوگل (کلمات کلیدی + لینک داخلی) */}
+                <section className="tv-seo">
+                    <h2>خرید و فروش آنلاین طلا، نقره و سکه</h2>
+                    <p>
+                        <strong>آبشده صفرپور</strong> مرجع <strong>قیمت لحظه‌ای طلا، نقره و سکه</strong> و
+                        محل مطمئن <strong>خرید نقره</strong> و <strong>فروش نقره</strong>، <strong>خرید طلا</strong> و
+                        <strong> فروش طلا</strong>، و خرید و فروش انواع <strong>سکه</strong> است. در این تابلو
+                        نرخ روز <strong>نقره آبشده</strong>، <strong>نقره عیار ۹۹۹</strong> و <strong>نقره عیار ۹۹۵</strong>
+                        (عیار ۹۹۹ و عیار ۹۹۵)، <strong>ساچمه نقره</strong>، <strong>سکه تمام</strong> (بهار آزادی)،
+                        <strong> نیم سکه</strong> و <strong>ربع سکه</strong> به‌صورت زنده نمایش داده می‌شود.
+                    </p>
+                    <p>
+                        برای <Link href="/trade/geram">خرید و فروش طلای آبشده</Link>،
+                        <Link href="/trade/gram_999"> خرید و فروش نقره عیار ۹۹۹</Link>،
+                        <Link href="/trade/gram_995"> نقره عیار ۹۹۵</Link>،
+                        <Link href="/trade/bahar"> سکه تمام بهار آزادی</Link>،
+                        <Link href="/trade/nim"> نیم سکه</Link> و
+                        <Link href="/trade/rob"> ربع سکه</Link> می‌توانید همین حالا با بهترین قیمت اقدام کنید.
+                    </p>
+                    <p className="tv-seo-tags">
+                        نقره، طلا، خرید نقره، خرید طلا، فروش نقره، فروش طلا، سکه، خرید سکه، فروش سکه،
+                        سکه تمام، ربع سکه، نیم سکه، ساچمه، صفرپور، نقره آبشده، نقره عیار، نقره عیار ۹۹۵،
+                        نقره عیار ۹۹۹، عیار ۹۹۵، عیار ۹۹۹.
+                    </p>
+                </section>
             </div>
         </>
     );

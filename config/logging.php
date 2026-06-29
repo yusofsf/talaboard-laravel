@@ -74,6 +74,16 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // گزارش درخواست‌ها (هر اقدام کاربر/ادمین) — فایل جدا: storage/logs/access-YYYY-MM-DD.log
+        // توسط میدل‌ویر LogRequest نوشته می‌شود؛ هر درخواست تغییردهنده (POST/PUT/PATCH/DELETE) را ثبت می‌کند.
+        'access' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/access.log'),
+            'level' => 'info',
+            'days' => env('ACCESS_LOG_DAYS', 90),
+            'replace_placeholders' => true,
+        ],
+
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),

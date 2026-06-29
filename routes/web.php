@@ -20,6 +20,15 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/api/prices', [HomeController::class, 'prices'])->name('prices.api');
 Route::get('/calculator', fn () => \Inertia\Inertia::render('Calculator'))->name('calculator');
 
+// سئو: sitemap و robots از طریق روت سرو می‌شوند تا مستقل از سیملینکِ public_html کار کنند
+// (در پروداکشن public_html جداست؛ فایل استاتیک بدون سیملینک ۴۰۴ می‌شد و گوگل «could not be read» می‌داد)
+Route::get('/sitemap.xml', fn () => response()->file(public_path('sitemap.xml'), [
+    'Content-Type' => 'application/xml; charset=UTF-8',
+]))->name('sitemap');
+Route::get('/robots.txt', fn () => response()->file(public_path('robots.txt'), [
+    'Content-Type' => 'text/plain; charset=UTF-8',
+]))->name('robots');
+
 // احراز هویت
 Route::middleware('guest')->group(function () {
     Route::get('/register', [AuthController::class, 'registerForm'])->name('register');

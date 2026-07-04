@@ -1,54 +1,71 @@
+@php
+    $siteUrl = rtrim(config('seo.url'), '/');
+    $siteName = config('seo.site_name');
+    $logo = $siteUrl . config('seo.logo');
+    $page = $page ?? [];
+    $props = $page['props'] ?? [];
+    $hasSeo = isset($props['seo']) && is_array($props['seo']);
+    $seo = array_replace(config('seo.default'), $hasSeo ? $props['seo'] : [
+        'robots' => 'noindex, nofollow',
+    ]);
+    $canonical = $seo['canonical'] ?? url()->current();
+    $title = $seo['title'] ?? config('seo.default.title');
+    $description = $seo['description'] ?? config('seo.default.description');
+    $schema = $seo['schema'] ?? [];
+@endphp
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title inertia>آبشده صفرپور | قیمت لحظه‌ای طلا، نقره و سکه</title>
+<title inertia>{{ $title }}</title>
+<meta name="description" content="{{ $description }}">
+<meta name="author" content="{{ $siteName }}">
+<meta name="robots" content="{{ $seo['robots'] ?? 'index, follow, max-image-preview:large' }}">
+<link rel="canonical" href="{{ $canonical }}">
+<link rel="alternate" hreflang="fa-IR" href="{{ $canonical }}">
 
-{{-- سئو: توضیحات و کلمات کلیدی پیش‌فرض برای همه‌ی صفحات (تک‌کسب‌وکار) --}}
-<meta name="description" content="آبشده صفرپور: قیمت لحظه‌ای و خرید و فروش آنلاین طلا، نقره آبشده و سکه. نقره عیار ۹۹۹ و ۹۹۵، سکه تمام بهار آزادی، نیم سکه، ربع سکه و ساچمه نقره با بهترین نرخ.">
-<meta name="keywords" content="نقره, طلا, خرید نقره, خرید طلا, فروش نقره, فروش طلا, سکه, خرید سکه, فروش سکه, سکه تمام, بهار آزادی, نیم سکه, ربع سکه, ساچمه, ساچمه نقره, صفرپور, آبشده صفرپور, نقره آبشده, نقره عیار, نقره عیار ۹۹۵, نقره عیار ۹۹۹, عیار ۹۹۵, عیار ۹۹۹, قیمت لحظه‌ای طلا, قیمت نقره, قیمت طلا, قیمت سکه">
-<meta name="author" content="آبشده صفرپور">
-<meta name="robots" content="index, follow">
-<link rel="canonical" href="https://metalsp.ir/">
-
-{{-- Open Graph / شبکه‌های اجتماعی --}}
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="آبشده صفرپور">
-<meta property="og:title" content="آبشده صفرپور | قیمت لحظه‌ای طلا، نقره و سکه">
-<meta property="og:description" content="قیمت لحظه‌ای و خرید و فروش آنلاین طلا، نقره آبشده (عیار ۹۹۹ و ۹۹۵)، سکه تمام، نیم سکه، ربع سکه و ساچمه نقره.">
-<meta property="og:url" content="https://metalsp.ir/">
-<meta property="og:image" content="https://metalsp.ir/logo.jpg">
-<meta property="og:locale" content="fa_IR">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="آبشده صفرپور | قیمت لحظه‌ای طلا، نقره و سکه">
-<meta name="twitter:description" content="قیمت لحظه‌ای و خرید و فروش آنلاین طلا، نقره آبشده، سکه و ساچمه.">
-<meta name="twitter:image" content="https://metalsp.ir/logo.jpg">
+<meta property="og:type" content="{{ $seo['type'] ?? 'website' }}">
+<meta property="og:site_name" content="{{ $siteName }}">
+<meta property="og:title" content="{{ $title }}">
+<meta property="og:description" content="{{ $description }}">
+<meta property="og:url" content="{{ $canonical }}">
+<meta property="og:image" content="{{ $seo['image'] ?? $logo }}">
+<meta property="og:locale" content="{{ config('seo.locale') }}">
+<meta name="twitter:card" content="{{ config('seo.twitter_card') }}">
+<meta name="twitter:title" content="{{ $title }}">
+<meta name="twitter:description" content="{{ $description }}">
+<meta name="twitter:image" content="{{ $seo['image'] ?? $logo }}">
 <meta name="theme-color" content="#0b0e14">
 
-{{-- داده‌ی ساختاریافته برای گوگل (JewelryStore) — verbatim تا Blade مقادیر @context/@type را دستکاری نکند --}}
-@verbatim
 <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "JewelryStore",
-  "name": "آبشده صفرپور",
-  "alternateName": "صفرپور",
-  "url": "https://metalsp.ir/",
-  "logo": "https://metalsp.ir/logo.jpg",
-  "image": "https://metalsp.ir/logo.jpg",
-  "description": "خرید و فروش آنلاین و قیمت لحظه‌ای طلا، نقره آبشده (عیار ۹۹۹ و ۹۹۵)، سکه تمام، نیم سکه، ربع سکه و ساچمه نقره.",
-  "priceRange": "$$",
-  "currenciesAccepted": "IRR",
-  "areaServed": "IR",
-  "knowsAbout": ["طلا", "نقره", "نقره آبشده", "سکه", "نیم سکه", "ربع سکه", "سکه تمام", "ساچمه نقره", "نقره عیار ۹۹۹", "نقره عیار ۹۹۵"]
-}
+{!! json_encode([
+    '@context' => 'https://schema.org',
+    '@type' => 'JewelryStore',
+    '@id' => $siteUrl . '/#organization',
+    'name' => $siteName,
+    'alternateName' => 'صفرپور',
+    'url' => $siteUrl . '/',
+    'logo' => $logo,
+    'image' => $logo,
+    'description' => config('seo.default.description'),
+    'priceRange' => '$$',
+    'currenciesAccepted' => 'IRR',
+    'areaServed' => 'IR',
+    'knowsAbout' => ['طلا', 'نقره', 'نقره آبشده', 'سکه', 'نیم سکه', 'ربع سکه', 'سکه تمام', 'ساچمه نقره', 'نقره عیار ۹۹۹', 'نقره عیار ۹۹۵'],
+], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) !!}
 </script>
-@endverbatim
+@if (! empty($schema))
+<script type="application/ld+json">
+{!! json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) !!}
+</script>
+@endif
 
 <link rel="icon" href="/logo.jpg" type="image/jpeg">
 <link rel="apple-touch-icon" href="/logo.jpg">
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu&display=swap" rel="stylesheet">
 @viteReactRefresh
@@ -58,31 +75,15 @@
 <body>
 @inertia
 
-{{-- محتوای سرور-رندر برای موتورهای جستجو: چون اپ JS است و body اولیه خالی است،
-     این بلوک متن واقعی و قابل‌کرال را در همان اولین واکشی در اختیار گوگل می‌گذارد. --}}
 <noscript>
     <main>
         <h1>قیمت لحظه‌ای طلا، نقره و سکه | آبشده صفرپور</h1>
         <p>
-            <strong>آبشده صفرپور</strong> مرجع <strong>قیمت لحظه‌ای طلا</strong>،
-            <strong>قیمت نقره</strong> و <strong>قیمت سکه</strong> و پلتفرم
-            <strong>خرید و فروش آنلاین طلا و نقره</strong> است. در این تابلو نرخ روز
-            طلای آبشده، نقره آبشده و انواع سکه به‌صورت زنده نمایش داده می‌شود.
+            آبشده صفرپور مرجع قیمت لحظه‌ای طلا، قیمت نقره و قیمت سکه و پلتفرم خرید و فروش آنلاین طلا و نقره است.
+            در این تابلو نرخ روز طلای آبشده، نقره آبشده، نقره عیار ۹۹۹ و ۹۹۵، سکه تمام، نیم سکه و ربع سکه نمایش داده می‌شود.
         </p>
-        <h2>خرید و فروش نقره</h2>
         <p>
-            خرید نقره و فروش نقره با بهترین نرخ؛ شامل <strong>نقره آبشده</strong>،
-            <strong>نقره عیار ۹۹۹</strong> و <strong>نقره عیار ۹۹۵</strong>،
-            ساچمه نقره و نقره به‌صورت گرمی و مثقالی.
-        </p>
-        <h2>خرید و فروش طلا</h2>
-        <p>
-            خرید طلا و فروش طلای آبشده به نرخ لحظه‌ای، به‌صورت گرمی و مثقالی.
-        </p>
-        <h2>خرید و فروش سکه</h2>
-        <p>
-            خرید سکه و فروش سکه شامل <strong>سکه تمام بهار آزادی</strong>،
-            <strong>نیم سکه</strong> و <strong>ربع سکه</strong> با قیمت روز.
+            برای مشاهده نرخ‌های به‌روز، خرید نقره، فروش نقره، خرید طلا، فروش طلا و محاسبه قیمت طلا و نقره از منوی سایت استفاده کنید.
         </p>
     </main>
 </noscript>

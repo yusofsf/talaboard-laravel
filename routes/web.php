@@ -8,6 +8,7 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SeoPageController;
 use App\Http\Controllers\SilverDeliveryController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TradeController;
@@ -18,14 +19,22 @@ use Illuminate\Support\Facades\Route;
 // تابلوی قیمت (عمومی)
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/api/prices', [HomeController::class, 'prices'])->name('prices.api');
-Route::get('/calculator', fn () => \Inertia\Inertia::render('Calculator'))->name('calculator');
+Route::get('/calculator', fn () => \Inertia\Inertia::render('Calculator', [
+    'seo' => [
+        ...config('seo.public_pages.calculator'),
+        'canonical' => rtrim(config('seo.url'), '/') . '/calculator',
+    ],
+]))->name('calculator');
+Route::get('/silver-prices', [SeoPageController::class, 'show'])->defaults('page', 'silver-prices')->name('seo.silver');
+Route::get('/gold-prices', [SeoPageController::class, 'show'])->defaults('page', 'gold-prices')->name('seo.gold');
+Route::get('/coin-prices', [SeoPageController::class, 'show'])->defaults('page', 'coin-prices')->name('seo.coin');
 
 // سئو: sitemap و robots از طریق روت سرو می‌شوند تا مستقل از سیملینکِ public_html کار کنند
 // (در پروداکشن public_html جداست؛ فایل استاتیک بدون سیملینک ۴۰۴ می‌شد و گوگل «could not be read» می‌داد)
-Route::get('/sitemap.xml', fn () => response()->file(public_path('sitemap.xml'), [
+Route::get('/sitemap.xml', fn () => response(file_get_contents(public_path('sitemap.xml')), 200, [
     'Content-Type' => 'application/xml; charset=UTF-8',
 ]))->name('sitemap');
-Route::get('/robots.txt', fn () => response()->file(public_path('robots.txt'), [
+Route::get('/robots.txt', fn () => response(file_get_contents(public_path('robots.txt')), 200, [
     'Content-Type' => 'text/plain; charset=UTF-8',
 ]))->name('robots');
 

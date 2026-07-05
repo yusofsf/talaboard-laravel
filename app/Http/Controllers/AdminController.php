@@ -142,6 +142,7 @@ class AdminController extends Controller
                 'recipient_name' => $r->recipient_name,
                 'phone'          => $r->phone,
                 'address'        => $r->address,
+                'delivery_method' => $r->delivery_method ?? 'address',
                 'status'         => $r->status,
                 'created_at'     => Jalali::format($r->created_at),
                 'date_raw'       => $r->created_at->format('Y-m-d'),

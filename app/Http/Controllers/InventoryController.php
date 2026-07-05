@@ -30,6 +30,8 @@ class InventoryController extends Controller
                 'metal'      => $r->metal,
                 'purity'     => $r->purity,
                 'grams'      => (float) $r->grams,
+                'delivery_method' => $r->delivery_method ?? 'address',
+                'address'     => $r->address,
                 'status'     => $r->status,
                 'admin_note' => $r->admin_note,
                 'created_at' => Jalali::format($r->created_at),

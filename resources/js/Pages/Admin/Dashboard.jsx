@@ -224,6 +224,8 @@ function WTxnRow({ w }) {
 
 const DELIVERY_STATUS_LABEL = { pending: 'در انتظار', approved: 'تأییدشده', shipped: 'ارسال‌شده', rejected: 'رد‌شده', delivered: 'تحویل داده‌شده' };
 
+const DELIVERY_METHOD_LABEL = { address: 'ارسال به آدرس', pickup: 'تحویل حضوری از مغازه' };
+
 function DeliveryRow({ r, printOnly, deliveryNote, setDeliveryNote, updateDelivery }) {
     return (
         <tr>
@@ -232,6 +234,7 @@ function DeliveryRow({ r, printOnly, deliveryNote, setDeliveryNote, updateDelive
             <td>{r.metal === 'gold' ? 'طلا' : `نقره ${r.purity}`}</td>
             <td className="num">{r.grams} گرم</td>
             <td>{r.recipient_name}<br /><span dir="ltr" style={{ fontSize: 12, color: 'var(--muted)' }}>{r.phone}</span></td>
+            <td>{DELIVERY_METHOD_LABEL[r.delivery_method] || DELIVERY_METHOD_LABEL.address}</td>
             <td style={{ fontSize: 12, color: 'var(--muted)', maxWidth: 220 }}>{r.address}</td>
             <td>
                 <span className={`badge ${r.status === 'pending' ? 'silver' : r.status === 'rejected' ? 'sell-b' : 'buy-b'}`}>
@@ -435,7 +438,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     const filteredMemberApps = useMemo(() => filterBySearch(memberApplications || [], memberQ, ['name', 'phone', 'national_id']), [memberApplications, memberQ]);
     const filteredVipMembers = useMemo(() => filterBySearch(vipMembers || [], vipQ, ['name', 'phone', 'national_id', 'email']), [vipMembers, vipQ]);
     const filteredDeliveryRequests = useMemo(
-        () => filterBySearch(filterByDateRange(deliveryRequests || [], deliveryFrom, deliveryTo), deliveryQ, ['user_name', 'user_phone', 'recipient_name', 'phone', 'address']),
+        () => filterBySearch(filterByDateRange(deliveryRequests || [], deliveryFrom, deliveryTo), deliveryQ, ['user_name', 'user_phone', 'recipient_name', 'phone', 'address', 'delivery_method']),
         [deliveryRequests, deliveryFrom, deliveryTo, deliveryQ]
     );
     const filteredWithdrawalRequests = useMemo(
@@ -958,7 +961,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                         {filteredDeliveryRequests.length ? (
                         <div className="table-wrap">
                             <table>
-                                <thead><tr><th>کاربر</th><th>موبایل</th><th>مورد</th><th>مقدار</th><th>گیرنده</th><th>آدرس</th><th>وضعیت</th><th>تاریخ</th><th></th></tr></thead>
+                                <thead><tr><th>کاربر</th><th>موبایل</th><th>مورد</th><th>مقدار</th><th>گیرنده</th><th>روش تحویل</th><th>آدرس</th><th>وضعیت</th><th>تاریخ</th><th></th></tr></thead>
                                 <tbody>
                                     {deliveryPager.pageItems.map(r => (
                                         <DeliveryRow key={r.id} r={r} deliveryNote={deliveryNote} setDeliveryNote={setDeliveryNote} updateDelivery={updateDelivery} />
@@ -974,7 +977,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                         <div className="table-wrap print-area print-only-block">
                             <div className="print-only" style={{ marginBottom: 14, fontWeight: 800, fontSize: 16 }}>درخواست‌های تحویل فیزیکی</div>
                             <table>
-                                <thead><tr><th>کاربر</th><th>موبایل</th><th>مورد</th><th>مقدار</th><th>گیرنده</th><th>آدرس</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
+                                <thead><tr><th>کاربر</th><th>موبایل</th><th>مورد</th><th>مقدار</th><th>گیرنده</th><th>روش تحویل</th><th>آدرس</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
                                 <tbody>
                                     {filteredDeliveryRequests.map(r => <DeliveryRow key={r.id} r={r} printOnly />)}
                                 </tbody>

@@ -19,6 +19,11 @@ const DELIVERY_STATUS = {
     rejected: ['رد‌شده', 'sell-b'],
 };
 
+const DELIVERY_METHOD = {
+    address: 'ارسال به آدرس',
+    pickup: 'تحویل حضوری از مغازه',
+};
+
 function HistoryTable({ rows, showPurity }) {
     const pager = usePager(rows);
 
@@ -58,13 +63,13 @@ export default function Inventory({ goldBalance, silverBalance, goldHistory, sil
     const deliveryPager = usePager(deliveryRequests);
     const form = useForm({
         metal: 'gold', purity: '999', grams: '',
-        recipient_name: '', phone: '', address: '',
+        recipient_name: '', phone: '', delivery_method: 'address', address: '',
     });
 
     function submit(e) {
         e.preventDefault();
         form.post('/silver-delivery', {
-            onSuccess: () => { form.reset('grams', 'recipient_name', 'phone', 'address'); setShowForm(false); },
+            onSuccess: () => { form.reset('grams', 'recipient_name', 'phone', 'delivery_method', 'address'); setShowForm(false); },
         });
     }
 
@@ -136,9 +141,18 @@ export default function Inventory({ goldBalance, silverBalance, goldHistory, sil
                                     <input value={form.data.phone} onChange={e => form.setData('phone', e.target.value)} required />
                                 </div>
                                 <div className="field">
-                                    <label>آدرس تحویل</label>
-                                    <input value={form.data.address} onChange={e => form.setData('address', e.target.value)} required />
+                                    <label>روش تحویل</label>
+                                    <select value={form.data.delivery_method} onChange={e => form.setData('delivery_method', e.target.value)}>
+                                        <option value="address">ارسال به آدرس</option>
+                                        <option value="pickup">تحویل حضوری از مغازه</option>
+                                    </select>
                                 </div>
+                                {form.data.delivery_method === 'address' && (
+                                    <div className="field">
+                                        <label>آدرس تحویل</label>
+                                        <input value={form.data.address} onChange={e => form.setData('address', e.target.value)} required />
+                                    </div>
+                                )}
                                 <button className="btn" type="submit" disabled={form.processing}>
                                     {form.processing ? 'در حال ارسال...' : 'ثبت درخواست'}
                                 </button>
@@ -152,7 +166,7 @@ export default function Inventory({ goldBalance, silverBalance, goldHistory, sil
                         <div className="section-title">درخواست‌های تحویل فیزیکی</div>
                         <div className="table-wrap" style={{ marginBottom: 28 }}>
                             <table>
-                                <thead><tr><th>تاریخ</th><th>مورد</th><th>مقدار</th><th>وضعیت</th><th>یادداشت ادمین</th></tr></thead>
+                                <thead><tr><th>تاریخ</th><th>مورد</th><th>مقدار</th><th>روش تحویل</th><th>وضعیت</th><th>یادداشت ادمین</th></tr></thead>
                                 <tbody>
                                     {deliveryPager.pageItems.map(r => {
                                         const [label, cls] = DELIVERY_STATUS[r.status] || [r.status, 'silver'];
@@ -161,6 +175,12 @@ export default function Inventory({ goldBalance, silverBalance, goldHistory, sil
                                                 <td style={{ fontSize: 12, color: 'var(--muted)' }}>{r.created_at}</td>
                                                 <td>{r.metal === 'gold' ? 'طلا' : `نقره ${r.purity}`}</td>
                                                 <td className="num">{r.grams} گرم</td>
+                                                <td>
+                                                    {DELIVERY_METHOD[r.delivery_method] || DELIVERY_METHOD.address}
+                                                    {r.delivery_method === 'address' && r.address && (
+                                                        <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{r.address}</div>
+                                                    )}
+                                                </td>
                                                 <td><span className={`badge ${cls}`}>{label}</span></td>
                                                 <td style={{ color: 'var(--muted)', fontSize: 13 }}>{r.admin_note || '—'}</td>
                                             </tr>

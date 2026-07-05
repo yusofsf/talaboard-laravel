@@ -26,12 +26,15 @@ class SilverDeliveryController extends Controller
             'grams'          => 'required|numeric|min:1',
             'recipient_name' => 'required|string|max:100',
             'phone'          => 'required|string|max:20',
-            'address'        => 'required|string|max:500',
+            'delivery_method' => 'required|in:address,pickup',
+            'address'        => 'required_if:delivery_method,address|nullable|string|max:500',
         ]);
 
         $metal  = $request->metal;
         $purity = $metal === 'silver' ? $request->purity : '';
         $grams  = (float) $request->grams;
+        $deliveryMethod = $request->delivery_method;
+        $address = $deliveryMethod === 'address' ? $request->address : 'تحویل حضوری از مغازه';
 
         $balance = $metal === 'gold' ? $user->goldBalance() : $user->silverBalance($purity);
         if ($balance < $grams) {
@@ -41,7 +44,7 @@ class SilverDeliveryController extends Controller
         $admins = User::where('is_admin', true)->get();
         $itemLabel = $metal === 'gold' ? 'طلا' : "نقره {$purity}";
 
-        DB::transaction(function () use ($user, $request, $metal, $purity, $grams, $admins, $itemLabel) {
+        DB::transaction(function () use ($user, $request, $metal, $purity, $grams, $admins, $itemLabel, $deliveryMethod, $address) {
             $delivery = SilverDeliveryRequest::create([
                 'user_id'        => $user->id,
                 'metal'          => $metal,
@@ -49,7 +52,8 @@ class SilverDeliveryController extends Controller
                 'grams'          => $grams,
                 'recipient_name' => $request->recipient_name,
                 'phone'          => $request->phone,
-                'address'        => $request->address,
+                'address'        => $address,
+                'delivery_method' => $deliveryMethod,
                 'status'         => 'pending',
             ]);
 

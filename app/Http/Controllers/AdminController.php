@@ -450,7 +450,7 @@ class AdminController extends Controller
         $level = $request->input('level', 'regular');
         match ($level) {
             'vip_admin' => $user->update(['is_vip' => true,  'is_admin' => true,  'membership_level' => 2]),
-            'admin'     => $user->update(['is_vip' => false, 'is_admin' => true]),
+            'admin'     => $user->update(['is_vip' => false, 'is_admin' => true,  'membership_level' => 1]),
             'vip'       => $user->update(['is_vip' => true,  'is_admin' => false, 'membership_level' => 2]),
             default     => $user->update(['is_vip' => false, 'is_admin' => false, 'membership_level' => 1]),
         };

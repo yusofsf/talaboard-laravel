@@ -514,6 +514,11 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
         router.post(`/admin/membership/reject/${uid}`, { message: memberMsg[uid] || '' }, { preserveScroll: true });
     }
 
+    function makeRegular(uid, name) {
+        if (!confirm(`عضویت ویژه «${name}» به عادی تبدیل شود؟`)) return;
+        router.post(`/admin/set-level/${uid}`, { level: 'regular' }, { preserveScroll: true });
+    }
+
     function updateDelivery(id, status) {
         const note = (deliveryNote[id] || '').trim();
         if (status === 'rejected') {
@@ -938,6 +943,16 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
 
                                     <div style={{ marginTop: 14 }}>
                                         <Link href={`/admin/users/${m.id}/trades`} className="btn-sm gold">ریز معاملات</Link>
+                                        {m.id !== auth.user.id && (
+                                            <button
+                                                type="button"
+                                                onClick={() => makeRegular(m.id, m.name)}
+                                                className="btn-sm danger"
+                                                style={{ marginInlineStart: 8 }}
+                                            >
+                                                تبدیل به عادی
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             ))}

@@ -402,9 +402,7 @@ export default function Home({ prices: initial, refreshSeconds }) {
                                             <Link href="/profile" className="tv-nav-pill user">👤 {user.name}</Link>
                                             <Link href="/logout" method="post" as="button" className="tv-nav-pill">خروج</Link>
                                         </>
-                                    ) : (
-                                        <Link href="/login" className="tv-nav-pill gold">ورود / ثبت‌نام</Link>
-                                    )}
+                                    ) : null}
                                 </div>
                             )}
                         </div>

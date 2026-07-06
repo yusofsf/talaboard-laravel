@@ -92,11 +92,7 @@ export default function AppLayout({ children }) {
                                         <MenuLink href="/profile" onClick={() => setOpen(false)}>👤 {user.name}</MenuLink>
                                         <button onClick={logout} className="menu-link danger">🚪 خروج</button>
                                     </>
-                                ) : (
-                                    <>
-                                        <MenuLink href="/login" onClick={() => setOpen(false)} gold>ورود / ثبت‌نام</MenuLink>
-                                    </>
-                                )}
+                                ) : null}
                             </div>
                         </>
                     )}

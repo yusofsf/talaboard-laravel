@@ -7,6 +7,7 @@ use App\Models\ActivityLog;
 use App\Models\DepositRequest;
 use App\Models\GoldLedger;
 use App\Models\Notification;
+use App\Models\SecurityEvent;
 use App\Models\Setting;
 use App\Models\SilverDeliveryRequest;
 use App\Models\SilverLedger;
@@ -191,6 +192,25 @@ class AdminController extends Controller
                 'date_raw'    => optional($l->created_at)->format('Y-m-d'),
             ]);
 
+        $securityEvents = SecurityEvent::with('user')->orderByDesc('id')->limit(200)->get()
+            ->map(fn ($e) => [
+                'id'             => $e->id,
+                'event_type'     => $e->event_type,
+                'severity'       => $e->severity,
+                'route_name'     => $e->route_name,
+                'path'           => $e->path,
+                'method'         => $e->method,
+                'ip'             => $e->ip,
+                'user_agent'     => $e->user_agent,
+                'payload'        => $e->payload,
+                'matched_fields' => $e->matched_fields,
+                'user_id'        => $e->user_id,
+                'user_name'      => $e->user?->name,
+                'user_phone'     => $e->user?->phone,
+                'created_at'     => Jalali::format($e->created_at),
+                'date_raw'       => optional($e->created_at)->format('Y-m-d'),
+            ]);
+
         $tickets = Ticket::with('user')->withCount('messages')->orderByDesc('updated_at')->get()
             ->map(fn ($t) => [
                 'id'         => $t->id,
@@ -207,7 +227,7 @@ class AdminController extends Controller
             'trade_room_commission_percent' => (float) Setting::get('trade_room_commission_percent', 0.1),
         ];
 
-        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'stats', 'memberApplications', 'vipMembers', 'deliveryRequests', 'withdrawalRequests', 'depositRequests', 'allTrades', 'activityLogs', 'tickets', 'settings'));
+        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'stats', 'memberApplications', 'vipMembers', 'deliveryRequests', 'withdrawalRequests', 'depositRequests', 'allTrades', 'activityLogs', 'securityEvents', 'tickets', 'settings'));
     }
 
     /** ریز معاملات یک کاربر خاص (فروشگاه + اتاق معاملاتی) برای مشاهده و خروجی PDF ادمین. */
@@ -720,7 +740,7 @@ class AdminController extends Controller
         $user = User::findOrFail($uid);
 
         $request->validate([
-            'name'        => 'required|string|max:100',
+            'name'        => ['required', 'string', 'max:100', 'not_regex:/[<>]/'],
             'phone'       => 'required|string|unique:users,phone,' . $user->id,
             'email'       => 'nullable|email',
             'national_id' => 'nullable|string|max:10',

@@ -6,6 +6,7 @@ use App\Models\DepositRequest;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class DepositRequestTest extends TestCase
@@ -28,6 +29,23 @@ class DepositRequestTest extends TestCase
         $this->assertSame(0, $user->refresh()->walletBalance());
 
         $this->assertTrue(Notification::where('user_id', $admin->id)->exists());
+    }
+
+    public function test_deposit_notification_does_not_include_raw_html_from_legacy_user_name(): void
+    {
+        $user  = User::factory()->create();
+        $admin = User::factory()->admin()->create();
+
+        DB::table('users')->where('id', $user->id)->update(['name' => '<script>alert(1)</script>']);
+
+        $this->actingAs($user->refresh())->post('/wallet/deposit', [
+            'amount' => 500000,
+        ])->assertRedirect();
+
+        $adminNotif = Notification::where('user_id', $admin->id)->first();
+        $this->assertNotNull($adminNotif);
+        $this->assertStringNotContainsString('<script>', $adminNotif->title);
+        $this->assertStringNotContainsString('</script>', $adminNotif->title);
     }
 
     public function test_admin_approving_a_deposit_credits_the_wallet_and_notifies_correctly(): void

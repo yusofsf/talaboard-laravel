@@ -43,7 +43,7 @@ class ProfileController extends Controller
     {
         $user = $request->user();
         $request->validate([
-            'name'        => 'required|string|max:100',
+            'name'        => ['required', 'string', 'max:100', 'not_regex:/[<>]/'],
             'phone'       => 'required|string|unique:users,phone,' . $user->id,
             'email'       => 'nullable|email',
             'national_id' => 'nullable|string|max:10',

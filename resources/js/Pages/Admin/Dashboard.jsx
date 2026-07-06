@@ -379,7 +379,34 @@ function LogRow({ l }) {
     );
 }
 
-export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApplications, vipMembers, deliveryRequests, withdrawalRequests, depositRequests, allTrades, activityLogs, tickets, settings }) {
+function SecurityEventRow({ e }) {
+    const matches = (e.matched_fields || []).map(m => `${m.field}: ${m.sample}`).join(' | ');
+    const payload = e.payload ? JSON.stringify(e.payload) : '—';
+
+    return (
+        <tr>
+            <td style={{ fontSize: 12, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{e.created_at}</td>
+            <td><span className="badge sell-b">{e.event_type}</span></td>
+            <td style={{ fontSize: 13 }}>
+                {e.user_name ? (
+                    <>{e.user_name}<br /><span dir="ltr" style={{ color: 'var(--muted)', fontSize: 12 }}>{e.user_phone}</span></>
+                ) : 'مهمان'}
+            </td>
+            <td className="num" dir="ltr" style={{ fontSize: 12, color: 'var(--muted)' }}>{e.ip || '—'}</td>
+            <td style={{ fontSize: 12 }}>
+                <strong>{e.method}</strong> {e.path}
+                {e.route_name && <div style={{ color: 'var(--muted)' }}>{e.route_name}</div>}
+            </td>
+            <td style={{ fontSize: 12, whiteSpace: 'normal', minWidth: 240 }}>{matches || '—'}</td>
+            <td dir="ltr" style={{ fontSize: 11, color: 'var(--muted)', whiteSpace: 'normal', maxWidth: 320, wordBreak: 'break-word' }}>
+                {payload}
+                {e.user_agent && <div style={{ marginTop: 6 }}>{e.user_agent}</div>}
+            </td>
+        </tr>
+    );
+}
+
+export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApplications, vipMembers, deliveryRequests, withdrawalRequests, depositRequests, allTrades, activityLogs, securityEvents, tickets, settings }) {
     const { auth } = usePage().props;
     const [tab, setTab] = useState('users');
 
@@ -408,6 +435,8 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     const [logCat, setLogCat] = useState('all');
     const [logFrom, setLogFrom] = useState('');
     const [logTo, setLogTo] = useState('');
+    const [securityFrom, setSecurityFrom] = useState('');
+    const [securityTo, setSecurityTo] = useState('');
     const [editingNotifId, setEditingNotifId] = useState(null);
     const [notifEdit, setNotifEdit] = useState({ title: '', body: '', type: 'info' });
     const settingsForm = useForm({ trade_room_commission_percent: settings?.trade_room_commission_percent ?? 0.1 });
@@ -423,6 +452,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     const [withdrawalsQ, setWithdrawalsQ] = useState('');
     const [depositsQ, setDepositsQ] = useState('');
     const [logsQ, setLogsQ] = useState('');
+    const [securityQ, setSecurityQ] = useState('');
     const [ticketsQ, setTicketsQ] = useState('');
 
     const filteredUsers = useMemo(() => filterBySearch(users, usersQ, ['name', 'phone', 'email', 'national_id']), [users, usersQ]);
@@ -455,6 +485,11 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
         logFrom, logTo
     ), logsQ, ['description', 'user_name', 'action']), [activityLogs, logCat, logFrom, logTo, logsQ]);
 
+    const filteredSecurityEvents = useMemo(
+        () => filterBySearch(filterByDateRange(securityEvents || [], securityFrom, securityTo), securityQ, ['event_type', 'user_name', 'user_phone', 'ip', 'path', 'route_name', 'method', 'user_agent']),
+        [securityEvents, securityFrom, securityTo, securityQ]
+    );
+
     const filteredTickets = useMemo(() => filterBySearch(tickets || [], ticketsQ, ['subject', 'user_name', 'user_phone']), [tickets, ticketsQ]);
 
     const usersPager = usePager(filteredUsers, usersQ);
@@ -467,6 +502,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     const withdrawalsPager = usePager(filteredWithdrawalRequests, `${withdrawalsFrom}|${withdrawalsTo}|${withdrawalsQ}`);
     const depositsPager = usePager(filteredDepositRequests, `${depositsFrom}|${depositsTo}|${depositsQ}`);
     const logsPager = usePager(filteredLogs, `${logCat}|${logFrom}|${logTo}|${logsQ}`);
+    const securityPager = usePager(filteredSecurityEvents, `${securityFrom}|${securityTo}|${securityQ}`);
     const ticketsPager = usePager(filteredTickets, ticketsQ);
 
     function submitTradeReject(t) {
@@ -562,6 +598,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
         ['withdrawals', `تسویه حساب${withdrawalRequests?.length ? ` (${withdrawalRequests.length})` : ''}`],
         ['deposits', `افزایش موجودی${depositRequests?.length ? ` (${depositRequests.length})` : ''}`],
         ['tickets', `تیکت‌ها${tickets?.filter(t => t.status === 'open').length ? ` (${tickets.filter(t => t.status === 'open').length})` : ''}`],
+        ['security', `امنیت${securityEvents?.length ? ` (${securityEvents.length})` : ''}`],
         ['logs', 'گزارش فعالیت'],
         ['settings', '⚙️ تنظیمات'],
     ];
@@ -1111,6 +1148,44 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                             <div className="empty"><div className="ico">🎫</div>هیچ تیکتی ثبت نشده.</div>
                         )}
                         <Pager page={ticketsPager.page} totalPages={ticketsPager.totalPages} onChange={ticketsPager.setPage} />
+                    </>
+                )}
+
+                {/* رخدادهای امنیتی */}
+                {tab === 'security' && (
+                    <>
+                        <div className="no-print" style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 18 }}>
+                            <SearchBox value={securityQ} onChange={setSecurityQ} placeholder="🔍 جستجو در کاربر، IP، مسیر، نوع رخداد..." />
+                            <DateRangeFilter from={securityFrom} to={securityTo} onFromChange={setSecurityFrom} onToChange={setSecurityTo} />
+                            {(securityFrom || securityTo || securityQ) && <button type="button" className="btn-sm" onClick={() => { setSecurityFrom(''); setSecurityTo(''); setSecurityQ(''); }}>حذف فیلتر</button>}
+                            <button type="button" className="btn-sm gold" onClick={() => window.print()}>🖨️ چاپ / خروجی PDF</button>
+                        </div>
+
+                        {filteredSecurityEvents.length ? (
+                            <>
+                                <div className="table-wrap">
+                                    <table>
+                                        <thead><tr><th>تاریخ</th><th>نوع</th><th>کاربر</th><th>IP</th><th>مسیر</th><th>فیلد مشکوک</th><th>نمونه داده</th></tr></thead>
+                                        <tbody>
+                                            {securityPager.pageItems.map(e => <SecurityEventRow key={e.id} e={e} />)}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <Pager page={securityPager.page} totalPages={securityPager.totalPages} onChange={securityPager.setPage} />
+
+                                <div className="table-wrap print-area print-only-block">
+                                    <div className="print-only" style={{ marginBottom: 6, fontWeight: 800, fontSize: 16 }}>رخدادهای امنیتی</div>
+                                    <table>
+                                        <thead><tr><th>تاریخ</th><th>نوع</th><th>کاربر</th><th>IP</th><th>مسیر</th><th>فیلد مشکوک</th><th>نمونه داده</th></tr></thead>
+                                        <tbody>
+                                            {filteredSecurityEvents.map(e => <SecurityEventRow key={e.id} e={e} />)}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="empty"><div className="ico">🛡️</div>رخداد امنیتی برای نمایش نیست.</div>
+                        )}
                     </>
                 )}
 

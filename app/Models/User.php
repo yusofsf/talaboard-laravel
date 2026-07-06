@@ -31,6 +31,21 @@ class User extends Authenticatable
         ];
     }
 
+    public function getNameAttribute($value): string
+    {
+        return self::plainText($value);
+    }
+
+    public function setNameAttribute($value): void
+    {
+        $this->attributes['name'] = self::plainText($value);
+    }
+
+    private static function plainText($value): string
+    {
+        return trim(strip_tags((string) $value));
+    }
+
     public function transactions()
     {
         return $this->hasMany(Transaction::class)->orderByDesc('created_at');

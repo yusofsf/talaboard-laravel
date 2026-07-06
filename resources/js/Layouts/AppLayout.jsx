@@ -46,6 +46,12 @@ export default function AppLayout({ children }) {
                         ☰
                     </button>
 
+                    {!user && (
+                        <Link href="/login" className="menu-link gold" style={{ height: 40, display: 'inline-flex', alignItems: 'center' }}>
+                            ورود / ثبت‌نام
+                        </Link>
+                    )}
+
                     {open && (
                         <>
                             <div onClick={() => setOpen(false)} style={{

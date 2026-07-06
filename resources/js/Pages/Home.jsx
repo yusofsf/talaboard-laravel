@@ -406,6 +406,7 @@ export default function Home({ prices: initial, refreshSeconds }) {
                                 </div>
                             )}
                         </div>
+                        {!user && <Link href="/login" className="tv-nav-pill gold">ورود / ثبت‌نام</Link>}
                         <div className="tv-live">
                             <span className={`tv-dot${online ? '' : ' off'}`} />
                             <span>{online ? 'آنلاین' : 'قطع ارتباط'}</span>

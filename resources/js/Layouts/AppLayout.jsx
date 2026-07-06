@@ -65,6 +65,7 @@ export default function AppLayout({ children }) {
                                 display: 'flex', flexDirection: 'column', gap: 2,
                             }}>
                                 <MenuLink href="/" onClick={() => setOpen(false)}>💹 تابلوی قیمت</MenuLink>
+                                <MenuLink href="/articles" onClick={() => setOpen(false)}>📝 مقالات</MenuLink>
                                 <MenuLink href="/chart" onClick={() => setOpen(false)}>📈 چارت</MenuLink>
                                 <MenuLink href="/calculator" onClick={() => setOpen(false)}>🧮 ماشین حساب</MenuLink>
                                 <MenuLink href="/speed-test" onClick={() => setOpen(false)}>⚡ تست سرعت</MenuLink>
@@ -91,6 +92,7 @@ export default function AppLayout({ children }) {
                                         {user.is_admin && (
                                             <>
                                                 <MenuLink href="/admin" onClick={() => setOpen(false)} gold>🛠️ مدیریت</MenuLink>
+                                                <MenuLink href="/admin/articles" onClick={() => setOpen(false)}>📝 مدیریت مقالات</MenuLink>
                                                 <MenuLink href="/admin/online-users" onClick={() => setOpen(false)}>🟢 کاربران آنلاین</MenuLink>
                                             </>
                                         )}

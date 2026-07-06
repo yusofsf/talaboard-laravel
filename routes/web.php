@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminArticleController;
+use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\HomeController;
@@ -27,6 +29,8 @@ Route::get('/calculator', fn () => \Inertia\Inertia::render('Calculator', [
 ]))->name('calculator');
 Route::get('/chart', fn () => \Inertia\Inertia::render('Chart'))->name('chart');
 Route::get('/speed-test', fn () => \Inertia\Inertia::render('SpeedTest'))->name('speed-test');
+Route::get('/articles', [ArticleController::class, 'index'])->name('articles.index');
+Route::get('/articles/{slug}', [ArticleController::class, 'show'])->name('articles.show');
 Route::get('/silver-prices', [SeoPageController::class, 'show'])->defaults('page', 'silver-prices')->name('seo.silver');
 Route::get('/gold-prices', [SeoPageController::class, 'show'])->defaults('page', 'gold-prices')->name('seo.gold');
 Route::get('/coin-prices', [SeoPageController::class, 'show'])->defaults('page', 'coin-prices')->name('seo.coin');
@@ -113,6 +117,10 @@ Route::middleware('auth')->group(function () {
 // پنل ادمین
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
+    Route::get('/articles', [AdminArticleController::class, 'index'])->name('articles.index');
+    Route::post('/articles', [AdminArticleController::class, 'store'])->name('articles.store');
+    Route::put('/articles/{id}', [AdminArticleController::class, 'update'])->name('articles.update');
+    Route::delete('/articles/{id}', [AdminArticleController::class, 'destroy'])->name('articles.destroy');
     Route::get('/online-users', [AdminController::class, 'onlineUsers'])->name('online-users');
     Route::post('/settings', [AdminController::class, 'updateSettings'])->name('settings.update');
     Route::get('/tickets/{id}', [AdminController::class, 'ticketShow'])->name('tickets.show');

@@ -196,8 +196,8 @@ export default function Home({ prices: initial, refreshSeconds }) {
                 }
                 .tv-status{display:flex; align-items:center; gap:14px}
                 .tv-clock{text-align:left; font-variant-numeric:tabular-nums}
-                .tv-clock .t{font-size:clamp(26px,3.1vw,54px); font-weight:800; line-height:1}
-                .tv-clock .d{font-size:clamp(12px,1vw,17px); color:var(--txt); margin-top:4px}
+                .tv-clock .t{font-size:clamp(22px,2.5vw,42px); font-weight:800; line-height:1}
+                .tv-clock .d{font-size:clamp(10px,.82vw,14px); color:var(--txt); margin-top:4px}
                 .tv-live{
                   display:flex; align-items:center; gap:8px; font-size:clamp(12px,1vw,16px);
                   padding:8px 14px; border-radius:999px; border:1px solid var(--line);
@@ -346,7 +346,7 @@ export default function Home({ prices: initial, refreshSeconds }) {
                   .tv-clock{text-align:center}
                   .tv-shopname{font-size:26px; line-height:1.9; padding-block:.2em .3em}
                   .tv-htitle{font-size:15px} .tv-hsub{font-size:11px}
-                  .tv-clock .t{font-size:20px} .tv-clock .d{font-size:11px}
+                  .tv-clock .t{font-size:18px} .tv-clock .d{font-size:10px}
                   .tv-main{gap:12px; margin-top:8px}
                   .tv-block{gap:6px}
                   .tv-grid{grid-template-columns:repeat(2,1fr); gap:10px}
@@ -395,6 +395,7 @@ export default function Home({ prices: initial, refreshSeconds }) {
                             <button type="button" className="tv-menu-btn" aria-label="منو" onClick={() => setMenuOpen(v => !v)}>☰</button>
                             {menuOpen && (
                                 <div className="tv-menu-panel">
+                                    <Link href="/articles" className="tv-nav-pill">📝 مقالات</Link>
                                     <Link href="/chart" className="tv-nav-pill">📈 چارت</Link>
                                     <Link href="/calculator" className="tv-nav-pill">🧮 ماشین حساب</Link>
                                     <Link href="/speed-test" className="tv-nav-pill">⚡ تست سرعت</Link>

@@ -385,8 +385,7 @@ export default function Home({ prices: initial, refreshSeconds }) {
                             </>
                         ) : (
                             <>
-                                <Link href="/login" className="tv-nav-pill">ورود</Link>
-                                <Link href="/register" className="tv-nav-pill gold">ثبت‌نام</Link>
+                                <Link href="/login" className="tv-nav-pill gold">ورود / ثبت‌نام</Link>
                             </>
                         )}
                         <div className="tv-live">

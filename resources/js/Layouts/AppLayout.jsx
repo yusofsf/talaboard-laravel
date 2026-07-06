@@ -94,8 +94,7 @@ export default function AppLayout({ children }) {
                                     </>
                                 ) : (
                                     <>
-                                        <MenuLink href="/login" onClick={() => setOpen(false)}>ورود</MenuLink>
-                                        <MenuLink href="/register" onClick={() => setOpen(false)} gold>ثبت‌نام</MenuLink>
+                                        <MenuLink href="/login" onClick={() => setOpen(false)} gold>ورود / ثبت‌نام</MenuLink>
                                     </>
                                 )}
                             </div>

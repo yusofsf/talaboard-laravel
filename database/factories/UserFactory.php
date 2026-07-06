@@ -3,9 +3,8 @@
 namespace Database\Factories;
 
 use App\Models\User;
+use App\Support\UserPassword;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 /**
  * @extends Factory<User>
@@ -13,23 +12,20 @@ use Illuminate\Support\Str;
 class UserFactory extends Factory
 {
     /**
-     * The current password being used by the factory.
-     */
-    protected static ?string $password;
-
-    /**
      * Define the model's default state.
      *
      * @return array<string, mixed>
      */
     public function definition(): array
     {
+        $salt = UserPassword::newSalt();
+
         return [
             'name'     => fake()->name(),
             'phone'    => '09' . fake()->unique()->numerify('#########'),
             'email'    => fake()->unique()->safeEmail(),
-            'password' => static::$password ??= Hash::make('password'),
-            'salt'     => Str::random(32),
+            'password' => UserPassword::hash('password', $salt),
+            'salt'     => $salt,
             'is_vip'   => false,
             'is_admin' => false,
             'membership_level'  => 1,

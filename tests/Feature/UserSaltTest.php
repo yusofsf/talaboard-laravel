@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Support\UserPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -20,7 +21,7 @@ class UserSaltTest extends TestCase
         $this->assertArrayNotHasKey('salt', $user->toArray());
     }
 
-    public function test_registration_persists_salt_and_keeps_bcrypt_login_working(): void
+    public function test_registration_uses_custom_salt_before_bcrypt(): void
     {
         $this->post('/register', [
             'name' => 'Test User',
@@ -32,7 +33,30 @@ class UserSaltTest extends TestCase
         $user = User::where('phone', '09120000000')->first();
         $this->assertNotNull($user);
         $this->assertNotEmpty($user->salt);
-        $this->assertTrue(Hash::check('password', $user->password));
+        $this->assertFalse(Hash::check('password', $user->password));
+        $this->assertTrue(UserPassword::check($user, 'password'));
+    }
+
+    public function test_legacy_bcrypt_password_is_upgraded_on_successful_login(): void
+    {
+        $user = User::factory()->create([
+            'phone' => '09120000001',
+            'salt' => UserPassword::newSalt(),
+            'password' => Hash::make('password'),
+        ]);
+        $oldHash = $user->password;
+        $oldSalt = $user->salt;
+
+        $this->post('/login', [
+            'phone' => '09120000001',
+            'password' => 'password',
+        ])->assertRedirect('/');
+
+        $user->refresh();
+        $this->assertNotSame($oldHash, $user->password);
+        $this->assertNotSame($oldSalt, $user->salt);
+        $this->assertFalse(Hash::check('password', $user->password));
+        $this->assertTrue(UserPassword::check($user, 'password'));
     }
 
     public function test_password_update_rotates_salt(): void
@@ -47,6 +71,7 @@ class UserSaltTest extends TestCase
         ])->assertRedirect();
 
         $this->assertNotSame($oldSalt, $user->refresh()->salt);
-        $this->assertTrue(Hash::check('new-password', $user->password));
+        $this->assertFalse(Hash::check('new-password', $user->password));
+        $this->assertTrue(UserPassword::check($user, 'new-password'));
     }
 }

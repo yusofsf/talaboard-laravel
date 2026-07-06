@@ -6,10 +6,9 @@ use App\Models\ActivityLog;
 use App\Models\OtpToken;
 use App\Models\User;
 use App\Services\SmsService;
+use App\Support\UserPassword;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class AuthController extends Controller
@@ -31,11 +30,13 @@ class AuthController extends Controller
             'password' => 'required|min:6|confirmed',
         ]);
 
+        $salt = UserPassword::newSalt();
+
         $user = User::create([
             'name'     => $request->name,
             'phone'    => $this->normPhone($request->phone),
-            'salt'     => Str::random(32),
-            'password' => Hash::make($request->password),
+            'salt'     => $salt,
+            'password' => UserPassword::hash($request->password, $salt),
         ]);
 
         ActivityLog::record('register', 'auth', "ثبت‌نام کاربر جدید: {$user->name} ({$user->phone})", $user->id);
@@ -70,7 +71,7 @@ class AuthController extends Controller
                 ->with('error', 'به‌دلیل به‌روزرسانی سامانه، لازم است رمز عبور خود را بازنشانی کنید. کد تأیید برای شما ارسال شد.');
         }
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$user || !UserPassword::checkAndUpgrade($user, $request->password)) {
             ActivityLog::record('login_failed', 'auth', "تلاش ناموفق ورود با شماره: {$phone}", $user?->id);
             return back()->withErrors(['phone' => 'شماره موبایل یا رمز عبور اشتباه است.']);
         }
@@ -173,9 +174,8 @@ class AuthController extends Controller
             return back()->withErrors(['otp' => 'کاربری با این شماره پیدا نشد.']);
         }
 
+        UserPassword::set($user, $request->password);
         $user->update([
-            'password'             => Hash::make($request->password),
-            'salt'                 => Str::random(32),
             'must_reset_password'  => false,
             'legacy_password_hash' => null,
         ]);

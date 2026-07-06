@@ -61,6 +61,7 @@ export default function AppLayout({ children }) {
                                 <MenuLink href="/" onClick={() => setOpen(false)}>💹 تابلوی قیمت</MenuLink>
                                 <MenuLink href="/chart" onClick={() => setOpen(false)}>📈 چارت</MenuLink>
                                 <MenuLink href="/calculator" onClick={() => setOpen(false)}>🧮 ماشین حساب</MenuLink>
+                                <MenuLink href="/speed-test" onClick={() => setOpen(false)}>⚡ تست سرعت</MenuLink>
 
                                 {user ? (
                                     <>
@@ -81,7 +82,6 @@ export default function AppLayout({ children }) {
                                         {(user.is_vip || user.membership_level === 2) && (
                                             <MenuLink href="/trade-room" onClick={() => setOpen(false)}>🤝 اتاق معاملاتی</MenuLink>
                                         )}
-                                        <MenuLink href="/speed-test" onClick={() => setOpen(false)}>⚡ تست سرعت</MenuLink>
                                         {user.is_admin && (
                                             <>
                                                 <MenuLink href="/admin" onClick={() => setOpen(false)} gold>🛠️ مدیریت</MenuLink>

@@ -375,6 +375,9 @@ export default function Home({ prices: initial, refreshSeconds }) {
                             <div className="t">{now.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
                             <div className="d">{now.toLocaleDateString('fa-IR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
                         </div>
+                        <Link href="/chart" className="tv-nav-pill">📈 چارت</Link>
+                        <Link href="/calculator" className="tv-nav-pill">🧮 ماشین حساب</Link>
+                        <Link href="/speed-test" className="tv-nav-pill">⚡ تست سرعت</Link>
                         {user ? (
                             <>
                                 <Link href="/profile" className="tv-nav-pill user">{user.name}</Link>

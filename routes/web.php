@@ -25,6 +25,8 @@ Route::get('/calculator', fn () => \Inertia\Inertia::render('Calculator', [
         'canonical' => rtrim(config('seo.url'), '/') . '/calculator',
     ],
 ]))->name('calculator');
+Route::get('/chart', fn () => \Inertia\Inertia::render('Chart'))->name('chart');
+Route::get('/speed-test', fn () => \Inertia\Inertia::render('SpeedTest'))->name('speed-test');
 Route::get('/silver-prices', [SeoPageController::class, 'show'])->defaults('page', 'silver-prices')->name('seo.silver');
 Route::get('/gold-prices', [SeoPageController::class, 'show'])->defaults('page', 'gold-prices')->name('seo.gold');
 Route::get('/coin-prices', [SeoPageController::class, 'show'])->defaults('page', 'coin-prices')->name('seo.coin');
@@ -86,7 +88,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/wallet/withdraw', [WalletController::class, 'requestWithdrawal'])->name('wallet.withdraw');
     Route::post('/wallet/deposit', [WalletController::class, 'requestDeposit'])->name('wallet.deposit');
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory');
-    Route::get('/chart', fn () => \Inertia\Inertia::render('Chart'))->name('chart');
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications');
     Route::post('/notifications/read/all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
@@ -94,8 +95,6 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/membership', [MembershipController::class, 'show'])->name('membership');
     Route::post('/membership/apply', [MembershipController::class, 'apply'])->name('membership.apply');
-
-    Route::get('/speed-test', fn () => \Inertia\Inertia::render('SpeedTest'))->name('speed-test');
 
     Route::get('/trade-room', [TradeRoomController::class, 'index'])->name('trade-room');
     Route::post('/trade-room', [TradeRoomController::class, 'store'])->name('trade-room.store');

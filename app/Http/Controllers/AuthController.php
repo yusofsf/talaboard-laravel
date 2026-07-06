@@ -9,6 +9,7 @@ use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class AuthController extends Controller
@@ -33,6 +34,7 @@ class AuthController extends Controller
         $user = User::create([
             'name'     => $request->name,
             'phone'    => $this->normPhone($request->phone),
+            'salt'     => Str::random(32),
             'password' => Hash::make($request->password),
         ]);
 
@@ -173,6 +175,7 @@ class AuthController extends Controller
 
         $user->update([
             'password'             => Hash::make($request->password),
+            'salt'                 => Str::random(32),
             'must_reset_password'  => false,
             'legacy_password_hash' => null,
         ]);

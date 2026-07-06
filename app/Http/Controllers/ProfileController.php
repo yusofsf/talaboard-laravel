@@ -6,6 +6,7 @@ use App\Helpers\Jalali;
 use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class ProfileController extends Controller
@@ -73,7 +74,10 @@ class ProfileController extends Controller
             return back()->withErrors(['old_password' => 'رمز عبور فعلی اشتباه است.']);
         }
 
-        $user->update(['password' => Hash::make($request->new_password)]);
+        $user->update([
+            'password' => Hash::make($request->new_password),
+            'salt' => Str::random(32),
+        ]);
 
         Notification::create([
             'user_id' => $user->id,

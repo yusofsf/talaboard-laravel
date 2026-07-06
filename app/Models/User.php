@@ -5,18 +5,28 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 
 class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
     protected $fillable = [
-        'name', 'phone', 'email', 'national_id', 'password',
+        'name', 'phone', 'email', 'national_id', 'password', 'salt',
         'is_vip', 'is_admin', 'must_reset_password', 'legacy_password_hash',
         'membership_level', 'national_id_doc', 'identity_doc', 'verification_video',
         'membership_status', 'birth_date', 'residence_address',
     ];
-    protected $hidden   = ['password', 'remember_token', 'legacy_password_hash'];
+    protected $hidden   = ['password', 'salt', 'remember_token', 'legacy_password_hash'];
+
+    protected static function booted(): void
+    {
+        static::creating(function (User $user) {
+            if (blank($user->salt)) {
+                $user->salt = Str::random(32);
+            }
+        });
+    }
 
     protected function casts(): array
     {

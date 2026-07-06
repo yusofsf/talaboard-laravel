@@ -29,11 +29,24 @@ Route::get('/silver-prices', [SeoPageController::class, 'show'])->defaults('page
 Route::get('/gold-prices', [SeoPageController::class, 'show'])->defaults('page', 'gold-prices')->name('seo.gold');
 Route::get('/coin-prices', [SeoPageController::class, 'show'])->defaults('page', 'coin-prices')->name('seo.coin');
 
+foreach (config('seo.keyword_pages', []) as $page => $meta) {
+    Route::get($meta['path'], [SeoPageController::class, 'show'])
+        ->defaults('page', $page)
+        ->name("seo.keyword.{$page}");
+}
+
 // سئو: sitemap و robots از طریق روت سرو می‌شوند تا مستقل از سیملینکِ public_html کار کنند
 // (در پروداکشن public_html جداست؛ فایل استاتیک بدون سیملینک ۴۰۴ می‌شد و گوگل «could not be read» می‌داد)
-Route::get('/sitemap.xml', fn () => response(file_get_contents(public_path('sitemap.xml')), 200, [
-    'Content-Type' => 'application/xml; charset=UTF-8',
-]))->name('sitemap');
+Route::get('/sitemap.xml', function () {
+    $siteUrl = rtrim(config('seo.url'), '/');
+    $pages = [
+        ...config('seo.public_pages', []),
+        ...config('seo.keyword_pages', []),
+    ];
+    $xml = view('seo.sitemap', compact('siteUrl', 'pages'))->render();
+
+    return response($xml, 200, ['Content-Type' => 'application/xml; charset=UTF-8']);
+})->name('sitemap');
 Route::get('/robots.txt', fn () => response(file_get_contents(public_path('robots.txt')), 200, [
     'Content-Type' => 'text/plain; charset=UTF-8',
 ]))->name('robots');

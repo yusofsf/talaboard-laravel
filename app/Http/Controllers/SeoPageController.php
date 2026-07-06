@@ -10,7 +10,10 @@ class SeoPageController extends Controller
 {
     public function show(string $page): Response
     {
-        $pages = config('seo.public_pages');
+        $pages = [
+            ...config('seo.public_pages', []),
+            ...config('seo.keyword_pages', []),
+        ];
         abort_unless(isset($pages[$page]), 404);
 
         $meta = $pages[$page];
@@ -33,7 +36,7 @@ class SeoPageController extends Controller
 
     private function schema(array $meta, string $canonical): array
     {
-        return [
+        $schema = [
             '@context' => 'https://schema.org',
             '@type' => 'WebPage',
             'name' => $meta['title'],
@@ -50,5 +53,27 @@ class SeoPageController extends Controller
                 $meta['keywords'] ?? []
             ),
         ];
+
+        if (! empty($meta['faq'])) {
+            $schema = [
+                '@context' => 'https://schema.org',
+                '@graph' => [
+                    $schema,
+                    [
+                        '@type' => 'FAQPage',
+                        'mainEntity' => array_map(fn (array $item) => [
+                            '@type' => 'Question',
+                            'name' => $item['question'],
+                            'acceptedAnswer' => [
+                                '@type' => 'Answer',
+                                'text' => $item['answer'],
+                            ],
+                        ], $meta['faq']),
+                    ],
+                ],
+            ];
+        }
+
+        return $schema;
     }
 }

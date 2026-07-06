@@ -18,6 +18,41 @@
             ['label' => 'ربع سکه', 'value' => data_get($prices, 'gold.rob'), 'href' => '/trade/rob'],
         ],
     ][$pageKey] ?? [];
+    if (empty($cards)) {
+        if (str_contains($pageKey, 'silver')) {
+            $cards = [
+                ['label' => 'گرم نقره ۹۹۹', 'value' => data_get($prices, 'silver.gram_999'), 'href' => '/trade/gram_999'],
+                ['label' => 'مثقال نقره ۹۹۹', 'value' => data_get($prices, 'silver.mithqal_999'), 'href' => '/trade/mithqal_999'],
+                ['label' => 'گرم نقره ۹۹۵', 'value' => data_get($prices, 'silver.gram_995'), 'href' => '/trade/gram_995'],
+                ['label' => 'مثقال نقره ۹۹۵', 'value' => data_get($prices, 'silver.mithqal_995'), 'href' => '/trade/mithqal_995'],
+            ];
+        } elseif (str_contains($pageKey, 'coin')) {
+            $cards = [
+                ['label' => 'سکه تمام', 'value' => data_get($prices, 'gold.bahar'), 'href' => '/trade/bahar'],
+                ['label' => 'نیم سکه', 'value' => data_get($prices, 'gold.nim'), 'href' => '/trade/nim'],
+                ['label' => 'ربع سکه', 'value' => data_get($prices, 'gold.rob'), 'href' => '/trade/rob'],
+            ];
+        } else {
+            $cards = [
+                ['label' => 'گرم طلا', 'value' => data_get($prices, 'gold.geram'), 'href' => '/trade/geram'],
+                ['label' => 'مثقال طلا', 'value' => data_get($prices, 'gold.mithqal'), 'href' => '/trade/mithqal'],
+                ['label' => 'سکه تمام', 'value' => data_get($prices, 'gold.bahar'), 'href' => '/trade/bahar'],
+            ];
+        }
+    }
+    $keywordPages = config('seo.keyword_pages', []);
+    $relatedPages = collect($keywordPages)
+        ->reject(fn ($page) => $page['path'] === $meta['path'])
+        ->filter(function ($page, $key) use ($pageKey) {
+            foreach (['silver', 'gold', 'coin'] as $topic) {
+                if (str_contains($pageKey, $topic) && str_contains($key, $topic)) {
+                    return true;
+                }
+            }
+
+            return false;
+        })
+        ->take(6);
 @endphp
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
@@ -112,6 +147,27 @@
             @endforeach
         </div>
     </section>
+
+    @if (! empty($meta['faq']))
+        <section class="content">
+            <h2>سوالات متداول</h2>
+            @foreach ($meta['faq'] as $item)
+                <h3>{{ $item['question'] }}</h3>
+                <p>{{ $item['answer'] }}</p>
+            @endforeach
+        </section>
+    @endif
+
+    @if ($relatedPages->isNotEmpty())
+        <section class="content">
+            <h2>صفحات مرتبط</h2>
+            <div class="links">
+                @foreach ($relatedPages as $page)
+                    <a class="linkcard" href="{{ $page['path'] }}"><strong>{{ $page['heading'] }}</strong><span>{{ $page['description'] }}</span></a>
+                @endforeach
+            </div>
+        </section>
+    @endif
 
     <section class="links">
         <a class="linkcard" href="/silver-prices"><strong>قیمت نقره</strong><span>نقره ۹۹۹، نقره ۹۹۵، مثقال و گرم نقره</span></a>

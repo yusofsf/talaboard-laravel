@@ -140,6 +140,7 @@ export default function Home({ prices: initial, refreshSeconds }) {
     const [data, setData] = useState(initial);
     const [online, setOnline] = useState(true);
     const [now, setNow] = useState(new Date());
+    const [menuOpen, setMenuOpen] = useState(false);
 
     useEffect(() => {
         const id = setInterval(() => setNow(new Date()), 1000);
@@ -212,6 +213,20 @@ export default function Home({ prices: initial, refreshSeconds }) {
                 }
                 .tv-nav-pill.gold{background:linear-gradient(135deg,var(--gold-1),var(--gold-2));color:#1a1200;border:none;font-weight:700}
                 .tv-nav-pill.user{color:var(--gold-1);border-color:rgba(246,207,99,.35)}
+                .tv-menu-wrap{position:relative}
+                .tv-menu-btn{
+                  width:38px;height:38px;border-radius:12px;border:1px solid var(--line);
+                  background:rgba(255,255,255,.04);color:var(--txt);font-size:20px;
+                  cursor:pointer;display:grid;place-items:center;font-family:inherit;
+                }
+                .tv-menu-btn:hover{background:rgba(255,255,255,.08)}
+                .tv-menu-panel{
+                  position:absolute;top:46px;inset-inline-end:0;z-index:30;min-width:210px;
+                  display:flex;flex-direction:column;gap:4px;padding:10px;border-radius:14px;
+                  background:linear-gradient(160deg,var(--card),var(--card-2));
+                  border:1px solid var(--line);box-shadow:0 14px 40px rgba(0,0,0,.4);
+                }
+                .tv-menu-panel .tv-nav-pill{justify-content:flex-start;border-radius:10px;width:100%}
 
                 .tv-banner{margin-top:10px; padding:8px 16px; border-radius:12px;
                   background:rgba(255,107,120,.12); border:1px solid rgba(255,107,120,.3);
@@ -375,19 +390,24 @@ export default function Home({ prices: initial, refreshSeconds }) {
                             <div className="t">{now.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
                             <div className="d">{now.toLocaleDateString('fa-IR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
                         </div>
-                        <Link href="/chart" className="tv-nav-pill">📈 چارت</Link>
-                        <Link href="/calculator" className="tv-nav-pill">🧮 ماشین حساب</Link>
-                        <Link href="/speed-test" className="tv-nav-pill">⚡ تست سرعت</Link>
-                        {user ? (
-                            <>
-                                <Link href="/profile" className="tv-nav-pill user">{user.name}</Link>
-                                <Link href="/logout" method="post" as="button" className="tv-nav-pill">خروج</Link>
-                            </>
-                        ) : (
-                            <>
-                                <Link href="/login" className="tv-nav-pill gold">ورود / ثبت‌نام</Link>
-                            </>
-                        )}
+                        <div className="tv-menu-wrap">
+                            <button type="button" className="tv-menu-btn" aria-label="منو" onClick={() => setMenuOpen(v => !v)}>☰</button>
+                            {menuOpen && (
+                                <div className="tv-menu-panel">
+                                    <Link href="/chart" className="tv-nav-pill">📈 چارت</Link>
+                                    <Link href="/calculator" className="tv-nav-pill">🧮 ماشین حساب</Link>
+                                    <Link href="/speed-test" className="tv-nav-pill">⚡ تست سرعت</Link>
+                                    {user ? (
+                                        <>
+                                            <Link href="/profile" className="tv-nav-pill user">👤 {user.name}</Link>
+                                            <Link href="/logout" method="post" as="button" className="tv-nav-pill">خروج</Link>
+                                        </>
+                                    ) : (
+                                        <Link href="/login" className="tv-nav-pill gold">ورود / ثبت‌نام</Link>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                         <div className="tv-live">
                             <span className={`tv-dot${online ? '' : ' off'}`} />
                             <span>{online ? 'آنلاین' : 'قطع ارتباط'}</span>

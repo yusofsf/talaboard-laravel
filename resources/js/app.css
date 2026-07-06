@@ -36,7 +36,7 @@ nav {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; padding: 12px 24px;
   background: rgba(13,18,38,.72); border-bottom: 1px solid var(--line);
-  position: sticky; top: 0; z-index: 30; backdrop-filter: blur(14px) saturate(140%);
+  position: sticky; top: 0; z-index: 1000; backdrop-filter: blur(14px) saturate(140%);
   box-shadow: 0 6px 24px -16px rgba(0,0,0,.7);
 }
 

@@ -176,6 +176,7 @@ export default function Home({ prices: initial, refreshSeconds }) {
             <style>{`
                 .tv-wrap{min-height:100vh; display:flex; flex-direction:column; padding:clamp(12px,1.6vw,28px);}
                 .tv-wrap header{
+                  position:relative; z-index:1000;
                   display:flex; align-items:center; justify-content:space-between; flex-direction:row;
                   gap:18px; padding:clamp(8px,1vw,16px) clamp(14px,1.6vw,26px);
                   background:linear-gradient(90deg,rgba(255,255,255,.04),rgba(255,255,255,.01));
@@ -213,7 +214,7 @@ export default function Home({ prices: initial, refreshSeconds }) {
                 }
                 .tv-nav-pill.gold{background:linear-gradient(135deg,var(--gold-1),var(--gold-2));color:#1a1200;border:none;font-weight:700}
                 .tv-nav-pill.user{color:var(--gold-1);border-color:rgba(246,207,99,.35)}
-                .tv-menu-wrap{position:relative}
+                .tv-menu-wrap{position:relative; z-index:1001}
                 .tv-menu-btn{
                   width:38px;height:38px;border-radius:12px;border:1px solid var(--line);
                   background:rgba(255,255,255,.04);color:var(--txt);font-size:20px;
@@ -221,7 +222,7 @@ export default function Home({ prices: initial, refreshSeconds }) {
                 }
                 .tv-menu-btn:hover{background:rgba(255,255,255,.08)}
                 .tv-menu-panel{
-                  position:absolute;top:46px;inset-inline-end:0;z-index:30;min-width:210px;
+                  position:absolute;top:46px;inset-inline-end:0;z-index:1002;min-width:210px;
                   display:flex;flex-direction:column;gap:4px;padding:10px;border-radius:14px;
                   background:linear-gradient(160deg,var(--card),var(--card-2));
                   border:1px solid var(--line);box-shadow:0 14px 40px rgba(0,0,0,.4);

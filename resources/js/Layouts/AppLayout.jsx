@@ -55,10 +55,10 @@ export default function AppLayout({ children }) {
                     {open && (
                         <>
                             <div onClick={() => setOpen(false)} style={{
-                                position: 'fixed', inset: 0, zIndex: 40, background: 'transparent',
+                                position: 'fixed', inset: 0, zIndex: 1001, background: 'transparent',
                             }} />
                             <div style={{
-                                position: 'absolute', top: 48, insetInlineStart: 0, zIndex: 50,
+                                position: 'absolute', top: 48, insetInlineStart: 0, zIndex: 1002,
                                 background: 'linear-gradient(160deg,var(--card),var(--card-2))',
                                 border: '1px solid var(--line)', borderRadius: 14,
                                 minWidth: 220, padding: 10, boxShadow: '0 14px 40px rgba(0,0,0,.4)',

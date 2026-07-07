@@ -2,17 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Helpers\Jalali;
 use App\Models\ActivityLog;
-use App\Models\GoldLedger;
-use App\Models\Notification;
-use App\Models\SilverLedger;
+use App\Models\CartItem;
 use App\Models\Transaction;
-use App\Models\WalletTransaction;
 use App\Services\PriceService;
-use App\Services\SmsService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class TradeController extends Controller
@@ -34,7 +28,6 @@ class TradeController extends Controller
 
     public function __construct(
         private PriceService $prices,
-        private SmsService   $sms,
     ) {}
 
     public function show(string $item)
@@ -85,12 +78,6 @@ class TradeController extends Controller
             }
         }
 
-        // خرید: باید موجودی کیف پول کافی باشد (به همان مبلغ کسر می‌شود)
-        // فروش: کاربر باید همان مقدار طلا/نقره را در حساب خود داشته باشد
-        if ($request->trade_type === 'buy' && $user->walletBalance() < $total) {
-            return back()->withErrors(['quantity' => 'موجودی کیف پول شما کافی نیست. لطفاً ابتدا کیف پول خود را شارژ کنید.']);
-        }
-
         if ($request->trade_type === 'sell') {
             if ($item === 'geram' || $item === 'mithqal') {
                 $grams = $this->goldGrams($item, $qty);
@@ -113,63 +100,21 @@ class TradeController extends Controller
 
         $typeLabel = $request->trade_type === 'buy' ? 'خرید' : 'فروش';
 
-        DB::transaction(function () use ($user, $request, $item, $meta, $qty, $price, $total, $typeLabel) {
-            Transaction::create([
-                'user_id'       => $user->id,
-                'type'          => $request->trade_type,
-                'item'          => $item,
-                'item_label'    => $meta['label'],
-                'quantity'      => $qty,
-                'price_per_unit'=> (int) $price,
-                'total'         => $total,
-            ]);
+        CartItem::create([
+            'user_id' => $user->id,
+            'trade_type' => $request->trade_type,
+            'item' => $item,
+            'item_label' => $meta['label'],
+            'item_group' => $meta['group'],
+            'quantity' => $qty,
+            'price_per_unit' => (int) $price,
+            'total' => $total,
+        ]);
 
-            WalletTransaction::create([
-                'user_id'     => $user->id,
-                'amount'      => $request->trade_type === 'buy' ? -$total : $total,
-                'type'        => $request->trade_type === 'buy' ? 'withdraw' : 'deposit',
-                'description' => "{$typeLabel} {$meta['label']} ({$qty})",
-            ]);
+        ActivityLog::record('cart_add', 'trade',
+            "افزودن {$typeLabel} {$meta['label']} به سبد خرید — مقدار: {$qty} — مبلغ: " . number_format($total) . " تومان — کاربر: {$user->name}", $user->id);
 
-            Notification::create([
-                'user_id' => $user->id,
-                'title'   => "ثبت {$typeLabel} — {$meta['label']}",
-                'body'    => "نوع: {$typeLabel} | مقدار: {$qty} | مبلغ: " . number_format($total) . " تومان | تاریخ: " . Jalali::now(),
-                'type'    => 'trade',
-            ]);
-
-            // خرید/فروش طلا (گرم یا مثقال) → موجودی انبار طلای کاربر برحسب گرم تغییر می‌کند
-            if ($item === 'geram' || $item === 'mithqal') {
-                $grams = $this->goldGrams($item, $qty);
-                GoldLedger::create([
-                    'user_id' => $user->id,
-                    'grams'   => $request->trade_type === 'buy' ? $grams : -$grams,
-                    'type'    => $request->trade_type === 'buy' ? 'purchase' : 'sale',
-                    'description' => "{$typeLabel} از فروشگاه — {$meta['label']} ({$qty})",
-                ]);
-            }
-
-            // خرید/فروش نقره (گرم یا مثقال) → موجودی انبار نقره‌ی کاربر برحسب گرم تغییر می‌کند
-            if ($meta['group'] === 'silver') {
-                [$purity, $grams] = $this->silverGrams($item, $qty);
-                SilverLedger::create([
-                    'user_id' => $user->id,
-                    'purity'  => $purity,
-                    'grams'   => $request->trade_type === 'buy' ? $grams : -$grams,
-                    'type'    => $request->trade_type === 'buy' ? 'purchase' : 'sale',
-                    'description' => "{$typeLabel} از فروشگاه — {$meta['label']} ({$qty})",
-                ]);
-            }
-        });
-
-        ActivityLog::record('trade_' . $request->trade_type, 'trade',
-            "{$typeLabel} {$meta['label']} — مقدار: {$qty} — مبلغ: " . number_format($total) . " تومان — کاربر: {$user->name}", $user->id);
-
-        try {
-            $this->sms->sendTradeConfirm($user->phone, $user->name, $request->trade_type, $meta['label'], $qty, $total);
-        } catch (\Exception) {}
-
-        return redirect()->route('history')->with('success', "{$typeLabel} با موفقیت ثبت شد.");
+        return redirect()->route('cart')->with('success', "{$typeLabel} به سبد خرید اضافه شد.");
     }
 
     private function lookup(array $data, string $item, array $meta, string $goldKey, string $silverKey): ?float

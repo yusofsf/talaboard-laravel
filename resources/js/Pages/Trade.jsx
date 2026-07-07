@@ -81,10 +81,10 @@ export default function Trade({ item, meta, sellPrice, buyPrice }) {
                             </div>
                         )}
                         <button className="btn" type="submit" disabled={processing || !price}>
-                            {processing ? '...' : `ثبت ${data.trade_type === 'buy' ? 'خرید' : 'فروش'}`}
+                            {processing ? '...' : `افزودن ${data.trade_type === 'buy' ? 'خرید' : 'فروش'} به سبد خرید`}
                         </button>
                     </form>
-                    <div className="form-foot"><a href="/history">سوابق معاملات</a> · <a href="/chart">📈 مشاهده چارت</a></div>
+                    <div className="form-foot"><a href="/cart">سبد خرید</a> · <a href="/history">سوابق معاملات</a> · <a href="/chart">📈 مشاهده چارت</a></div>
                 </div>
             </div>
         </AppLayout>

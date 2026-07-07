@@ -396,12 +396,15 @@ export default function Home({ prices: initial, refreshSeconds }) {
                             {menuOpen && (
                                 <div className="tv-menu-panel">
                                     <Link href="/articles" className="tv-nav-pill">📝 مقالات</Link>
+                                    <Link href="/about" className="tv-nav-pill">درباره ما</Link>
+                                    <Link href="/contact" className="tv-nav-pill">تماس با ما</Link>
                                     <Link href="/chart" className="tv-nav-pill">📈 چارت</Link>
                                     <Link href="/calculator" className="tv-nav-pill">🧮 ماشین حساب</Link>
                                     <Link href="/speed-test" className="tv-nav-pill">⚡ تست سرعت</Link>
                                     {user ? (
                                         <>
                                             <Link href="/profile" className="tv-nav-pill user">👤 {user.name}</Link>
+                                            <Link href="/cart" className="tv-nav-pill">🛒 سبد خرید{user.cart_count > 0 ? ` (${user.cart_count})` : ''}</Link>
                                             <Link href="/logout" method="post" as="button" className="tv-nav-pill">خروج</Link>
                                         </>
                                     ) : null}

@@ -3,7 +3,9 @@
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminArticleController;
 use App\Http\Controllers\ArticleController;
+use App\Http\Controllers\CartController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ContactController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InventoryController;
@@ -29,7 +31,11 @@ Route::get('/calculator', fn () => \Inertia\Inertia::render('Calculator', [
 ]))->name('calculator');
 Route::get('/chart', fn () => \Inertia\Inertia::render('Chart'))->name('chart');
 Route::get('/speed-test', fn () => \Inertia\Inertia::render('SpeedTest'))->name('speed-test');
+Route::get('/about', fn () => \Inertia\Inertia::render('About'))->name('about');
+Route::get('/contact', [ContactController::class, 'show'])->name('contact');
+Route::post('/contact', [ContactController::class, 'send'])->middleware('throttle:5,1')->name('contact.send');
 Route::get('/articles', [ArticleController::class, 'index'])->name('articles.index');
+Route::get('/article', fn () => redirect()->route('articles.index'))->name('articles.alias');
 Route::get('/articles/{slug}', [ArticleController::class, 'show'])->name('articles.show');
 Route::get('/silver-prices', [SeoPageController::class, 'show'])->defaults('page', 'silver-prices')->name('seo.silver');
 Route::get('/gold-prices', [SeoPageController::class, 'show'])->defaults('page', 'gold-prices')->name('seo.gold');
@@ -84,6 +90,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile/bank-cards/{id}', [ProfileController::class, 'destroyBankCard'])->name('profile.bank-cards.destroy');
 
     Route::get('/history', [HistoryController::class, 'index'])->name('history');
+    Route::get('/cart', [CartController::class, 'index'])->name('cart');
+    Route::post('/cart/checkout', [CartController::class, 'checkout'])->name('cart.checkout');
+    Route::delete('/cart/{id}', [CartController::class, 'destroy'])->name('cart.destroy');
 
     Route::get('/trade/{item}', [TradeController::class, 'show'])->name('trade');
     Route::post('/trade/{item}', [TradeController::class, 'store']);

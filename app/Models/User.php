@@ -71,6 +71,11 @@ class User extends Authenticatable
         return $this->hasMany(Ticket::class);
     }
 
+    public function cartItems()
+    {
+        return $this->hasMany(CartItem::class)->orderByDesc('created_at');
+    }
+
     public function bankCards()
     {
         return $this->hasMany(BankCard::class)->orderByDesc('created_at');

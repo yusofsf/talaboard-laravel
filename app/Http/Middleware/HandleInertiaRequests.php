@@ -50,6 +50,7 @@ class HandleInertiaRequests extends Middleware
                     'membership_status' => $user->membership_status,
                     'wallet_balance' => $user->walletBalance(),
                     'unread_count'   => $user->unreadCount(),
+                    'cart_count'      => $user->cartItems()->count(),
                 ] : null,
             ],
             'flash' => [

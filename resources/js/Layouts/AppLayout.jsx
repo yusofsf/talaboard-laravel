@@ -65,6 +65,8 @@ export default function AppLayout({ children }) {
                                 display: 'flex', flexDirection: 'column', gap: 2,
                             }}>
                                 <MenuLink href="/" onClick={() => setOpen(false)}>💹 تابلوی قیمت</MenuLink>
+                                <MenuLink href="/about" onClick={() => setOpen(false)}>درباره ما</MenuLink>
+                                <MenuLink href="/contact" onClick={() => setOpen(false)}>تماس با ما</MenuLink>
                                 <MenuLink href="/articles" onClick={() => setOpen(false)}>📝 مقالات</MenuLink>
                                 <MenuLink href="/chart" onClick={() => setOpen(false)}>📈 چارت</MenuLink>
                                 <MenuLink href="/calculator" onClick={() => setOpen(false)}>🧮 ماشین حساب</MenuLink>
@@ -75,6 +77,9 @@ export default function AppLayout({ children }) {
                                         <MenuLink href="/history" onClick={() => setOpen(false)}>📜 سوابق</MenuLink>
                                         <MenuLink href="/wallet" onClick={() => setOpen(false)}>
                                             💰 کیف پول {user.wallet_balance > 0 && <span style={{ color: 'var(--gold-1)' }}> — {faNum(user.wallet_balance)}</span>}
+                                        </MenuLink>
+                                        <MenuLink href="/cart" onClick={() => setOpen(false)}>
+                                            🛒 سبد خرید {user.cart_count > 0 && <span className="nav-badge" style={{ position: 'static', marginInlineStart: 6 }}>{user.cart_count}</span>}
                                         </MenuLink>
                                         <MenuLink href="/inventory" onClick={() => setOpen(false)}>📦 موجودی انبار</MenuLink>
                                         <MenuLink href="/notifications" onClick={() => setOpen(false)}>

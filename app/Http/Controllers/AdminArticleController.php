@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Helpers\Jalali;
 use App\Models\Article;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -62,14 +63,27 @@ class AdminArticleController extends Controller
             'slug' => ['nullable', 'string', 'max:180', 'regex:/^[A-Za-z0-9\\-_]+$/', $unique],
             'summary' => 'nullable|string|max:500',
             'thumbnail_image' => 'nullable|string|max:500',
+            'thumbnail_upload' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
             'body_image' => 'nullable|string|max:500',
+            'body_upload' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
             'body' => 'required|string|max:20000',
             'tags' => 'nullable|string|max:500',
             'topics' => 'nullable|string|max:500',
             'is_published' => 'nullable|boolean',
         ]);
 
+        if ($request->hasFile('thumbnail_upload')) {
+            $data['thumbnail_image'] = Storage::url($request->file('thumbnail_upload')->store('articles', 'public'));
+        }
+
+        if ($request->hasFile('body_upload')) {
+            $data['body_image'] = Storage::url($request->file('body_upload')->store('articles', 'public'));
+        }
+
+        unset($data['thumbnail_upload'], $data['body_upload']);
+
         $data['slug'] = $data['slug'] ?: (Str::slug($data['title']) ?: Str::random(8));
+        $data['body'] = $this->cleanBody($data['body']);
         $data['tags'] = $this->splitList($data['tags'] ?? '');
         $data['topics'] = $this->splitList($data['topics'] ?? '');
         $data['is_published'] = $request->boolean('is_published');
@@ -85,5 +99,18 @@ class AdminArticleController extends Controller
             ->filter()
             ->values()
             ->all();
+    }
+
+    private function cleanBody(string $body): string
+    {
+        $allowedTags = '<p><br><strong><b><em><i><u><h2><h3><ul><ol><li><blockquote><a>';
+        $clean = strip_tags($body, $allowedTags);
+
+        $clean = preg_replace('/\s+on\w+\s*=\s*(["\']).*?\1/iu', '', $clean);
+        $clean = preg_replace('/\s+style\s*=\s*(["\']).*?\1/iu', '', $clean);
+        $clean = preg_replace('/\s+href\s*=\s*(["\'])\s*(?!\/|https?:\/\/|mailto:|tel:)[^"\']*\1/iu', '', $clean);
+        $clean = preg_replace('/<a\b(?![^>]*\brel=)/iu', '<a rel="noopener noreferrer"', $clean);
+
+        return trim($clean ?? '');
     }
 }

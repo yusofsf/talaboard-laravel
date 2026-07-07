@@ -2,6 +2,7 @@ import { Link } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
 
 const paragraphs = text => String(text || '').split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
+const hasHtml = text => /<\/?[a-z][\s\S]*>/i.test(String(text || ''));
 
 export default function Show({ article }) {
     return (
@@ -17,14 +18,21 @@ export default function Show({ article }) {
                     {article.summary && <p style={{ color: 'var(--muted)', fontSize: 16, lineHeight: 2, marginBottom: 20 }}>{article.summary}</p>}
                     {article.thumbnail_image && <img src={article.thumbnail_image} alt={article.title} style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', borderRadius: 10, border: '1px solid var(--line)', marginBottom: 24 }} />}
 
-                    <div style={{ fontSize: 16, lineHeight: 2.25, color: 'var(--txt)' }}>
-                        {paragraphs(article.body).map((p, i) => (
-                            <div key={i}>
-                                {i === 1 && article.body_image && <img src={article.body_image} alt={`${article.title} - تصویر داخل متن`} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--line)', margin: '10px 0 22px', objectFit: 'cover', maxHeight: 430 }} />}
-                                <p style={{ margin: '0 0 18px', textAlign: 'justify' }}>{p}</p>
-                            </div>
-                        ))}
-                    </div>
+                    {hasHtml(article.body) ? (
+                        <div>
+                            {article.body_image && <img src={article.body_image} alt={`${article.title} - تصویر داخل متن`} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--line)', margin: '10px 0 22px', objectFit: 'cover', maxHeight: 430 }} />}
+                            <div className="article-body" dangerouslySetInnerHTML={{ __html: article.body }} />
+                        </div>
+                    ) : (
+                        <div style={{ fontSize: 16, lineHeight: 2.25, color: 'var(--txt)' }}>
+                            {paragraphs(article.body).map((p, i) => (
+                                <div key={i}>
+                                    {i === 1 && article.body_image && <img src={article.body_image} alt={`${article.title} - تصویر داخل متن`} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--line)', margin: '10px 0 22px', objectFit: 'cover', maxHeight: 430 }} />}
+                                    <p style={{ margin: '0 0 18px', textAlign: 'justify' }}>{p}</p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
                     {(article.tags || []).length > 0 && (
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 28, borderTop: '1px solid var(--line)', paddingTop: 18 }}>

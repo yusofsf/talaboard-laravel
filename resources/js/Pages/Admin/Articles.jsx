@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, router, useForm } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
 
-const empty = { title: '', slug: '', summary: '', thumbnail_image: '', body_image: '', body: '', tags: '', topics: '', is_published: true };
+const empty = { title: '', slug: '', summary: '', thumbnail_image: '', thumbnail_upload: null, body_image: '', body_upload: null, body: '', tags: '', topics: '', is_published: true };
 
 export default function Articles({ articles }) {
     const form = useForm(empty);
@@ -10,8 +10,9 @@ export default function Articles({ articles }) {
 
     function submit(e) {
         e.preventDefault();
-        if (editing) form.put(`/admin/articles/${editing}`, { preserveScroll: true, onSuccess: reset });
-        else form.post('/admin/articles', { preserveScroll: true, onSuccess: reset });
+        const options = { preserveScroll: true, forceFormData: true, onSuccess: reset };
+        if (editing) form.transform(data => ({ ...data, _method: 'put' })).post(`/admin/articles/${editing}`, options);
+        else form.post('/admin/articles', options);
     }
 
     function reset() {
@@ -27,7 +28,9 @@ export default function Articles({ articles }) {
             slug: a.slug || '',
             summary: a.summary || '',
             thumbnail_image: a.thumbnail_image || '',
+            thumbnail_upload: null,
             body_image: a.body_image || '',
+            body_upload: null,
             body: a.body || '',
             tags: a.tags || '',
             topics: a.topics || '',
@@ -54,13 +57,19 @@ export default function Articles({ articles }) {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 12, marginTop: 14 }}>
                         <Field label="عنوان" error={form.errors.title}><input value={form.data.title} onChange={e => form.setData('title', e.target.value)} required /></Field>
                         <Field label="Slug انگلیسی" error={form.errors.slug}><input dir="ltr" value={form.data.slug} onChange={e => form.setData('slug', e.target.value)} placeholder="gold-buying-guide" /></Field>
-                        <Field label="تصویر بندانگشتی" error={form.errors.thumbnail_image}><input dir="ltr" value={form.data.thumbnail_image} onChange={e => form.setData('thumbnail_image', e.target.value)} placeholder="/images/article.jpg" /></Field>
-                        <Field label="تصویر داخل متن" error={form.errors.body_image}><input dir="ltr" value={form.data.body_image} onChange={e => form.setData('body_image', e.target.value)} /></Field>
+                        <UploadField label="تصویر بندانگشتی" urlValue={form.data.thumbnail_image} uploadError={form.errors.thumbnail_upload} urlError={form.errors.thumbnail_image}
+                            onUrlChange={value => form.setData('thumbnail_image', value)}
+                            onFileChange={file => form.setData('thumbnail_upload', file)} />
+                        <UploadField label="تصویر داخل متن" urlValue={form.data.body_image} uploadError={form.errors.body_upload} urlError={form.errors.body_image}
+                            onUrlChange={value => form.setData('body_image', value)}
+                            onFileChange={file => form.setData('body_upload', file)} />
                         <Field label="موضوعات" error={form.errors.topics}><input value={form.data.topics} onChange={e => form.setData('topics', e.target.value)} placeholder="طلا، آموزش خرید" /></Field>
                         <Field label="تگ‌ها" error={form.errors.tags}><input value={form.data.tags} onChange={e => form.setData('tags', e.target.value)} placeholder="سکه، نقره، عیار" /></Field>
                     </div>
                     <Field label="خلاصه" error={form.errors.summary}><textarea value={form.data.summary} onChange={e => form.setData('summary', e.target.value)} rows={2} /></Field>
-                    <Field label="متن مقاله" error={form.errors.body}><textarea value={form.data.body} onChange={e => form.setData('body', e.target.value)} rows={10} required /></Field>
+                    <Field label="متن مقاله" error={form.errors.body}>
+                        <RichTextEditor value={form.data.body} onChange={value => form.setData('body', value)} />
+                    </Field>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '12px 0' }}>
                         <input type="checkbox" checked={form.data.is_published} onChange={e => form.setData('is_published', e.target.checked)} />
                         منتشر شود
@@ -94,4 +103,66 @@ export default function Articles({ articles }) {
 
 function Field({ label, error, children }) {
     return <div className="field"><label>{label}</label>{children}{error && <div className="alert err" style={{ marginTop: 6 }}>{error}</div>}</div>;
+}
+
+function UploadField({ label, urlValue, urlError, uploadError, onUrlChange, onFileChange }) {
+    return (
+        <Field label={label} error={urlError || uploadError}>
+            <div style={{ display: 'grid', gap: 8 }}>
+                <input dir="ltr" value={urlValue} onChange={e => onUrlChange(e.target.value)} placeholder="/storage/articles/image.jpg" />
+                <input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => onFileChange(e.target.files?.[0] || null)} />
+                {urlValue && <img src={urlValue} alt="" style={{ width: '100%', maxHeight: 110, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--line)' }} />}
+            </div>
+        </Field>
+    );
+}
+
+function RichTextEditor({ value, onChange }) {
+    const editorRef = useRef(null);
+
+    useEffect(() => {
+        if (editorRef.current && editorRef.current.innerHTML !== value) {
+            editorRef.current.innerHTML = value || '';
+        }
+    }, [value]);
+
+    function run(command, argument = null) {
+        editorRef.current?.focus();
+        document.execCommand(command, false, argument);
+        onChange(editorRef.current?.innerHTML || '');
+    }
+
+    function formatBlock(tag) {
+        run('formatBlock', tag);
+    }
+
+    function addLink() {
+        const url = prompt('آدرس لینک را وارد کنید');
+        if (!url) return;
+        run('createLink', url);
+    }
+
+    return (
+        <div style={{ border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', background: 'rgba(255,255,255,.04)' }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: 8, borderBottom: '1px solid var(--line)', background: 'rgba(255,255,255,.03)' }}>
+                <button type="button" className="btn-sm" onClick={() => run('bold')}>B</button>
+                <button type="button" className="btn-sm" onClick={() => run('italic')}>I</button>
+                <button type="button" className="btn-sm" onClick={() => run('underline')}>U</button>
+                <button type="button" className="btn-sm" onClick={() => formatBlock('h2')}>تیتر ۲</button>
+                <button type="button" className="btn-sm" onClick={() => formatBlock('h3')}>تیتر ۳</button>
+                <button type="button" className="btn-sm" onClick={() => formatBlock('p')}>متن</button>
+                <button type="button" className="btn-sm" onClick={() => run('insertUnorderedList')}>لیست</button>
+                <button type="button" className="btn-sm" onClick={() => run('insertOrderedList')}>شماره‌دار</button>
+                <button type="button" className="btn-sm" onClick={() => formatBlock('blockquote')}>نقل‌قول</button>
+                <button type="button" className="btn-sm" onClick={addLink}>لینک</button>
+            </div>
+            <div
+                ref={editorRef}
+                contentEditable
+                suppressContentEditableWarning
+                onInput={e => onChange(e.currentTarget.innerHTML)}
+                style={{ minHeight: 280, padding: 14, outline: 'none', lineHeight: 2.1, color: 'var(--txt)' }}
+            />
+        </div>
+    );
 }

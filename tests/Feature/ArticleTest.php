@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Article;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class ArticleTest extends TestCase
@@ -81,5 +83,35 @@ class ArticleTest extends TestCase
         $this->assertSame('/images/coin-thumb.jpg', $article->thumbnail_image);
         $this->assertSame('/images/coin-body.jpg', $article->body_image);
         $this->assertTrue($article->is_published);
+    }
+
+    public function test_admin_can_upload_article_images_and_rich_body_is_sanitized(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->post('/admin/articles', [
+            'title' => 'مقاله تصویری',
+            'slug' => 'article-with-uploaded-images',
+            'summary' => 'خلاصه مقاله تصویری',
+            'thumbnail_upload' => UploadedFile::fake()->image('thumb.jpg', 1200, 675),
+            'body_upload' => UploadedFile::fake()->image('body.png', 900, 600),
+            'body' => '<h2>تیتر مقاله</h2><p onclick="alert(1)">متن <strong>بولد</strong><script>alert(1)</script></p>',
+            'tags' => 'تصویر',
+            'topics' => 'آموزش',
+            'is_published' => true,
+        ])->assertRedirect();
+
+        $article = Article::where('slug', 'article-with-uploaded-images')->firstOrFail();
+
+        $this->assertStringStartsWith('/storage/articles/', $article->thumbnail_image);
+        $this->assertStringStartsWith('/storage/articles/', $article->body_image);
+        $this->assertStringContainsString('<h2>تیتر مقاله</h2>', $article->body);
+        $this->assertStringContainsString('<strong>بولد</strong>', $article->body);
+        $this->assertStringNotContainsString('<script>', $article->body);
+        $this->assertStringNotContainsString('onclick', $article->body);
+
+        Storage::disk('public')->assertExists(str_replace('/storage/', '', $article->thumbnail_image));
+        Storage::disk('public')->assertExists(str_replace('/storage/', '', $article->body_image));
     }
 }

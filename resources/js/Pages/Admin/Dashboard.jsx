@@ -439,7 +439,13 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     const [securityTo, setSecurityTo] = useState('');
     const [editingNotifId, setEditingNotifId] = useState(null);
     const [notifEdit, setNotifEdit] = useState({ title: '', body: '', type: 'info' });
-    const settingsForm = useForm({ trade_room_commission_percent: settings?.trade_room_commission_percent ?? 0.1 });
+    const settingsForm = useForm({
+        trade_room_commission_percent: settings?.trade_room_commission_percent ?? 0.1,
+        about_title: settings?.about_title ?? '',
+        about_body: settings?.about_body ?? '',
+        contact_title: settings?.contact_title ?? '',
+        contact_intro: settings?.contact_intro ?? '',
+    });
 
     const [usersQ, setUsersQ] = useState('');
     const [txnsQ, setTxnsQ] = useState('');
@@ -1237,16 +1243,53 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
 
                 {/* تنظیمات */}
                 {tab === 'settings' && (
-                    <div className="fcard" style={{ maxWidth: 480 }}>
-                        <h2 style={{ fontSize: 16 }}>تنظیمات اتاق معاملاتی</h2>
+                    <div className="fcard" style={{ maxWidth: 760 }}>
+                        <h2 style={{ fontSize: 18 }}>تنظیمات سایت</h2>
                         <div style={{ height: 16 }} />
                         <form onSubmit={e => { e.preventDefault(); settingsForm.post('/admin/settings', { preserveScroll: true }); }}>
-                            <div className="field">
-                                <label>کارمزد اتاق معاملاتی (درصد) — بین خریدار و فروشنده نصف‌نصف کسر می‌شود</label>
-                                <input type="number" step="0.01" min="0" max="10"
-                                    value={settingsForm.data.trade_room_commission_percent}
-                                    onChange={e => settingsForm.setData('trade_room_commission_percent', e.target.value)} required />
-                                {settingsForm.errors.trade_room_commission_percent && <div className="alert err" style={{ marginTop: 8 }}>{settingsForm.errors.trade_room_commission_percent}</div>}
+                            <div style={{ display: 'grid', gap: 22 }}>
+                                <section>
+                                    <h3 style={{ fontSize: 15, marginBottom: 12, color: 'var(--gold-1)' }}>اتاق معاملاتی</h3>
+                                    <div className="field">
+                                        <label>کارمزد اتاق معاملاتی (درصد) — بین خریدار و فروشنده نصف‌نصف کسر می‌شود</label>
+                                        <input type="number" step="0.01" min="0" max="10"
+                                            value={settingsForm.data.trade_room_commission_percent}
+                                            onChange={e => settingsForm.setData('trade_room_commission_percent', e.target.value)} required />
+                                        {settingsForm.errors.trade_room_commission_percent && <div className="alert err" style={{ marginTop: 8 }}>{settingsForm.errors.trade_room_commission_percent}</div>}
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <h3 style={{ fontSize: 15, marginBottom: 12, color: 'var(--gold-1)' }}>صفحه درباره ما</h3>
+                                    <div className="field">
+                                        <label>عنوان</label>
+                                        <input value={settingsForm.data.about_title} maxLength="160"
+                                            onChange={e => settingsForm.setData('about_title', e.target.value)} />
+                                        {settingsForm.errors.about_title && <div className="alert err" style={{ marginTop: 8 }}>{settingsForm.errors.about_title}</div>}
+                                    </div>
+                                    <div className="field">
+                                        <label>متن — برای پاراگراف جدید یک خط خالی بگذارید</label>
+                                        <textarea rows="9" value={settingsForm.data.about_body} maxLength="10000"
+                                            onChange={e => settingsForm.setData('about_body', e.target.value)} />
+                                        {settingsForm.errors.about_body && <div className="alert err" style={{ marginTop: 8 }}>{settingsForm.errors.about_body}</div>}
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <h3 style={{ fontSize: 15, marginBottom: 12, color: 'var(--gold-1)' }}>صفحه تماس با ما</h3>
+                                    <div className="field">
+                                        <label>عنوان</label>
+                                        <input value={settingsForm.data.contact_title} maxLength="160"
+                                            onChange={e => settingsForm.setData('contact_title', e.target.value)} />
+                                        {settingsForm.errors.contact_title && <div className="alert err" style={{ marginTop: 8 }}>{settingsForm.errors.contact_title}</div>}
+                                    </div>
+                                    <div className="field">
+                                        <label>متن معرفی بالای فرم</label>
+                                        <textarea rows="4" value={settingsForm.data.contact_intro} maxLength="1000"
+                                            onChange={e => settingsForm.setData('contact_intro', e.target.value)} />
+                                        {settingsForm.errors.contact_intro && <div className="alert err" style={{ marginTop: 8 }}>{settingsForm.errors.contact_intro}</div>}
+                                    </div>
+                                </section>
                             </div>
                             <button className="btn" type="submit" disabled={settingsForm.processing} style={{ width: 'auto', padding: '11px 28px' }}>
                                 {settingsForm.processing ? '...' : 'ذخیره تنظیمات'}

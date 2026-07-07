@@ -225,6 +225,10 @@ class AdminController extends Controller
 
         $settings = [
             'trade_room_commission_percent' => (float) Setting::get('trade_room_commission_percent', 0.1),
+            'about_title' => Setting::get('about_title', config('page_content.about.title')),
+            'about_body' => Setting::get('about_body', config('page_content.about.body')),
+            'contact_title' => Setting::get('contact_title', config('page_content.contact.title')),
+            'contact_intro' => Setting::get('contact_intro', config('page_content.contact.intro')),
         ];
 
         return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'stats', 'memberApplications', 'vipMembers', 'deliveryRequests', 'withdrawalRequests', 'depositRequests', 'allTrades', 'activityLogs', 'securityEvents', 'tickets', 'settings'));
@@ -451,13 +455,21 @@ class AdminController extends Controller
     {
         $request->validate([
             'trade_room_commission_percent' => 'required|numeric|min:0|max:10',
+            'about_title' => 'nullable|string|max:160',
+            'about_body' => 'nullable|string|max:10000',
+            'contact_title' => 'nullable|string|max:160',
+            'contact_intro' => 'nullable|string|max:1000',
         ]);
 
         $old = Setting::get('trade_room_commission_percent', 0.1);
         Setting::put('trade_room_commission_percent', $request->trade_room_commission_percent);
+        Setting::put('about_title', trim((string) $request->input('about_title', '')));
+        Setting::put('about_body', trim((string) $request->input('about_body', '')));
+        Setting::put('contact_title', trim((string) $request->input('contact_title', '')));
+        Setting::put('contact_intro', trim((string) $request->input('contact_intro', '')));
 
         $this->notifyOtherAdmins($request, 'تغییر تنظیمات توسط ادمین',
-            "{$request->user()->name} کارمزد اتاق معاملاتی را از {$old}٪ به {$request->trade_room_commission_percent}٪ تغییر داد. تاریخ: " . Jalali::now());
+            "{$request->user()->name} تنظیمات سایت را ذخیره کرد. کارمزد اتاق معاملاتی از {$old}٪ به {$request->trade_room_commission_percent}٪ تغییر کرد. تاریخ: " . Jalali::now());
 
         return back()->with('success', 'تنظیمات ذخیره شد.');
     }

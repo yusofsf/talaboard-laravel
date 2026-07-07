@@ -1,8 +1,10 @@
 import { useForm } from '@inertiajs/react';
 import AppLayout from '../Layouts/AppLayout';
 
-export default function Contact() {
+export default function Contact({ content }) {
     const form = useForm({ name: '', email: '', subject: '', message: '' });
+    const title = content?.title || 'تماس با ما';
+    const intro = content?.intro || 'پیام خود را برای آبشده صفرپور بفرستید. پاسخ از طریق ایمیل ثبت‌شده پیگیری می‌شود.';
 
     function submit(e) {
         e.preventDefault();
@@ -13,9 +15,9 @@ export default function Contact() {
         <AppLayout>
             <main className="page">
                 <section className="fcard">
-                    <h1 style={{ fontSize: 26, margin: '0 0 8px' }}>تماس با ما</h1>
+                    <h1 style={{ fontSize: 26, margin: '0 0 8px' }}>{title}</h1>
                     <p style={{ color: 'var(--muted)', lineHeight: 2, marginBottom: 22 }}>
-                        پیام خود را برای آبشده صفرپور بفرستید. پاسخ از طریق ایمیل ثبت‌شده پیگیری می‌شود.
+                        {intro}
                     </p>
 
                     <form onSubmit={submit}>

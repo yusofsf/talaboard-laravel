@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Mail\ContactMessage;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
@@ -11,7 +12,12 @@ class ContactController extends Controller
 {
     public function show()
     {
-        return Inertia::render('Contact');
+        return Inertia::render('Contact', [
+            'content' => [
+                'title' => Setting::get('contact_title', config('page_content.contact.title')),
+                'intro' => Setting::get('contact_intro', config('page_content.contact.intro')),
+            ],
+        ]);
     }
 
     public function send(Request $request)

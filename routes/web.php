@@ -18,6 +18,7 @@ use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TradeController;
 use App\Http\Controllers\TradeRoomController;
 use App\Http\Controllers\WalletController;
+use App\Models\Setting;
 use Illuminate\Support\Facades\Route;
 
 // تابلوی قیمت (عمومی)
@@ -31,7 +32,12 @@ Route::get('/calculator', fn () => \Inertia\Inertia::render('Calculator', [
 ]))->name('calculator');
 Route::get('/chart', fn () => \Inertia\Inertia::render('Chart'))->name('chart');
 Route::get('/speed-test', fn () => \Inertia\Inertia::render('SpeedTest'))->name('speed-test');
-Route::get('/about', fn () => \Inertia\Inertia::render('About'))->name('about');
+Route::get('/about', fn () => \Inertia\Inertia::render('About', [
+    'content' => [
+        'title' => Setting::get('about_title', config('page_content.about.title')),
+        'body' => Setting::get('about_body', config('page_content.about.body')),
+    ],
+]))->name('about');
 Route::get('/contact', [ContactController::class, 'show'])->name('contact');
 Route::post('/contact', [ContactController::class, 'send'])->middleware('throttle:5,1')->name('contact.send');
 Route::get('/articles', [ArticleController::class, 'index'])->name('articles.index');

@@ -48,7 +48,8 @@ export default function AppLayout({ children }) {
 
                     {!user && (
                         <Link href="/login" className="menu-link gold" style={{ height: 40, display: 'inline-flex', alignItems: 'center' }}>
-                            ورود / ثبت‌نام
+                            <span className="menu-link-icon">🔐</span>
+                            <span className="menu-link-label">ورود / ثبت‌نام</span>
                         </Link>
                     )}
 
@@ -61,49 +62,52 @@ export default function AppLayout({ children }) {
                                 position: 'absolute', top: 48, insetInlineStart: 0, zIndex: 1002,
                                 background: 'linear-gradient(160deg,var(--card),var(--card-2))',
                                 border: '1px solid var(--line)', borderRadius: 14,
-                                minWidth: 220, padding: 10, boxShadow: '0 14px 40px rgba(0,0,0,.4)',
-                                display: 'flex', flexDirection: 'column', gap: 2,
+                                width: 'min(520px, calc(100vw - 28px))', padding: 10, boxShadow: '0 14px 40px rgba(0,0,0,.4)',
+                                display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 4,
                             }}>
-                                <MenuLink href="/" onClick={() => setOpen(false)}>💹 تابلوی قیمت</MenuLink>
-                                <MenuLink href="/about" onClick={() => setOpen(false)}>درباره ما</MenuLink>
-                                <MenuLink href="/contact" onClick={() => setOpen(false)}>تماس با ما</MenuLink>
-                                <MenuLink href="/articles" onClick={() => setOpen(false)}>📝 مقالات</MenuLink>
-                                <MenuLink href="/chart" onClick={() => setOpen(false)}>📈 چارت</MenuLink>
-                                <MenuLink href="/calculator" onClick={() => setOpen(false)}>🧮 ماشین حساب</MenuLink>
-                                <MenuLink href="/speed-test" onClick={() => setOpen(false)}>⚡ تست سرعت</MenuLink>
+                                <MenuLink href="/" icon="💹" onClick={() => setOpen(false)}>تابلوی قیمت</MenuLink>
+                                <MenuLink href="/about" icon="ℹ️" onClick={() => setOpen(false)}>درباره ما</MenuLink>
+                                <MenuLink href="/contact" icon="☎️" onClick={() => setOpen(false)}>تماس با ما</MenuLink>
+                                <MenuLink href="/articles" icon="📝" onClick={() => setOpen(false)}>مقالات</MenuLink>
+                                <MenuLink href="/chart" icon="📈" onClick={() => setOpen(false)}>چارت</MenuLink>
+                                <MenuLink href="/calculator" icon="🧮" onClick={() => setOpen(false)}>ماشین حساب</MenuLink>
+                                <MenuLink href="/speed-test" icon="⚡" onClick={() => setOpen(false)}>تست سرعت</MenuLink>
 
                                 {user ? (
                                     <>
-                                        <MenuLink href="/history" onClick={() => setOpen(false)}>📜 سوابق</MenuLink>
-                                        <MenuLink href="/wallet" onClick={() => setOpen(false)}>
-                                            💰 کیف پول {user.wallet_balance > 0 && <span style={{ color: 'var(--gold-1)' }}> — {faNum(user.wallet_balance)}</span>}
+                                        <MenuLink href="/history" icon="📜" onClick={() => setOpen(false)}>سوابق</MenuLink>
+                                        <MenuLink href="/wallet" icon="💰" onClick={() => setOpen(false)}>
+                                            کیف پول {user.wallet_balance > 0 && <span style={{ color: 'var(--gold-1)' }}> — {faNum(user.wallet_balance)}</span>}
                                         </MenuLink>
-                                        <MenuLink href="/cart" onClick={() => setOpen(false)}>
-                                            🛒 سبد خرید {user.cart_count > 0 && <span className="nav-badge" style={{ position: 'static', marginInlineStart: 6 }}>{user.cart_count}</span>}
+                                        <MenuLink href="/cart" icon="🛒" onClick={() => setOpen(false)}>
+                                            سبد خرید {user.cart_count > 0 && <span className="nav-badge" style={{ position: 'static', marginInlineStart: 6 }}>{user.cart_count}</span>}
                                         </MenuLink>
-                                        <MenuLink href="/inventory" onClick={() => setOpen(false)}>📦 موجودی انبار</MenuLink>
-                                        <MenuLink href="/notifications" onClick={() => setOpen(false)}>
-                                            🔔 اعلان‌ها {user.unread_count > 0 && <span className="nav-badge" style={{ position: 'static', marginInlineStart: 6 }}>{user.unread_count}</span>}
+                                        <MenuLink href="/inventory" icon="📦" onClick={() => setOpen(false)}>موجودی انبار</MenuLink>
+                                        <MenuLink href="/notifications" icon="🔔" onClick={() => setOpen(false)}>
+                                            اعلان‌ها {user.unread_count > 0 && <span className="nav-badge" style={{ position: 'static', marginInlineStart: 6 }}>{user.unread_count}</span>}
                                         </MenuLink>
                                         {!user.is_admin && (
-                                            <MenuLink href="/tickets" onClick={() => setOpen(false)}>🎫 تیکت‌های پشتیبانی</MenuLink>
+                                            <MenuLink href="/tickets" icon="🎫" onClick={() => setOpen(false)}>تیکت‌های پشتیبانی</MenuLink>
                                         )}
                                         {showMembershipLink && (
-                                            <MenuLink href="/membership" onClick={() => setOpen(false)}>عضویت ویژه</MenuLink>
+                                            <MenuLink href="/membership" icon="👑" onClick={() => setOpen(false)}>عضویت ویژه</MenuLink>
                                         )}
                                         {(user.is_vip || user.membership_level === 2) && (
-                                            <MenuLink href="/trade-room" onClick={() => setOpen(false)}>🤝 اتاق معاملاتی</MenuLink>
+                                            <MenuLink href="/trade-room" icon="🤝" onClick={() => setOpen(false)}>اتاق معاملاتی</MenuLink>
                                         )}
                                         {user.is_admin && (
                                             <>
-                                                <MenuLink href="/admin" onClick={() => setOpen(false)} gold>🛠️ مدیریت</MenuLink>
-                                                <MenuLink href="/admin/articles" onClick={() => setOpen(false)}>📝 مدیریت مقالات</MenuLink>
-                                                <MenuLink href="/admin/online-users" onClick={() => setOpen(false)}>🟢 کاربران آنلاین</MenuLink>
+                                                <MenuLink href="/admin" icon="🛠️" onClick={() => setOpen(false)} gold>مدیریت</MenuLink>
+                                                <MenuLink href="/admin/articles" icon="📝" onClick={() => setOpen(false)}>مدیریت مقالات</MenuLink>
+                                                <MenuLink href="/admin/online-users" icon="🟢" onClick={() => setOpen(false)}>کاربران آنلاین</MenuLink>
                                             </>
                                         )}
-                                        <div style={{ height: 1, background: 'var(--line)', margin: '6px 0' }} />
-                                        <MenuLink href="/profile" onClick={() => setOpen(false)}>👤 {user.name}</MenuLink>
-                                        <button onClick={logout} className="menu-link danger">🚪 خروج</button>
+                                        <div style={{ height: 1, background: 'var(--line)', margin: '6px 0', gridColumn: '1 / -1' }} />
+                                        <MenuLink href="/profile" icon="👤" onClick={() => setOpen(false)}>{user.name}</MenuLink>
+                                        <button onClick={logout} className="menu-link danger">
+                                            <span className="menu-link-icon">🚪</span>
+                                            <span className="menu-link-label">خروج</span>
+                                        </button>
                                     </>
                                 ) : null}
                             </div>
@@ -184,12 +188,13 @@ export default function AppLayout({ children }) {
     );
 }
 
-function MenuLink({ href, children, onClick, gold }) {
+function MenuLink({ href, children, icon, onClick, gold }) {
     const current = (usePage().url || '/').split('?')[0];
     const active = !gold && current === href;
     return (
         <Link href={href} onClick={onClick} className={`menu-link${gold ? ' gold' : ''}${active ? ' active' : ''}`}>
-            {children}
+            {icon && <span className="menu-link-icon">{icon}</span>}
+            <span className="menu-link-label">{children}</span>
         </Link>
     );
 }

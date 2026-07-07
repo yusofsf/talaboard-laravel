@@ -208,7 +208,7 @@ export default function Home({ prices: initial, refreshSeconds }) {
                 .tv-dot.off{background:var(--down); animation:none}
                 @keyframes tvpulse{0%{box-shadow:0 0 0 0 rgba(65,225,166,.5)}70%{box-shadow:0 0 0 12px rgba(65,225,166,0)}100%{box-shadow:0 0 0 0 rgba(65,225,166,0)}}
                 .tv-nav-pill{
-                  display:inline-flex;align-items:center; padding:6px 14px;border-radius:999px;
+                  display:inline-flex;align-items:center;gap:7px; padding:6px 14px;border-radius:999px;
                   font-size:clamp(11px,.85vw,14px); border:1px solid var(--line);background:rgba(255,255,255,.04);
                   color:var(--txt);text-decoration:none; white-space:nowrap;
                 }
@@ -222,8 +222,8 @@ export default function Home({ prices: initial, refreshSeconds }) {
                 }
                 .tv-menu-btn:hover{background:rgba(255,255,255,.08)}
                 .tv-menu-panel{
-                  position:absolute;top:46px;inset-inline-end:0;z-index:1002;min-width:210px;
-                  display:flex;flex-direction:column;gap:4px;padding:10px;border-radius:14px;
+                  position:absolute;top:46px;inset-inline-end:0;z-index:1002;width:min(430px,calc(100vw - 24px));
+                  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;padding:10px;border-radius:14px;
                   background:linear-gradient(160deg,var(--card),var(--card-2));
                   border:1px solid var(--line);box-shadow:0 14px 40px rgba(0,0,0,.4);
                 }
@@ -396,8 +396,8 @@ export default function Home({ prices: initial, refreshSeconds }) {
                             {menuOpen && (
                                 <div className="tv-menu-panel">
                                     <Link href="/articles" className="tv-nav-pill">📝 مقالات</Link>
-                                    <Link href="/about" className="tv-nav-pill">درباره ما</Link>
-                                    <Link href="/contact" className="tv-nav-pill">تماس با ما</Link>
+                                    <Link href="/about" className="tv-nav-pill">ℹ️ درباره ما</Link>
+                                    <Link href="/contact" className="tv-nav-pill">☎️ تماس با ما</Link>
                                     <Link href="/chart" className="tv-nav-pill">📈 چارت</Link>
                                     <Link href="/calculator" className="tv-nav-pill">🧮 ماشین حساب</Link>
                                     <Link href="/speed-test" className="tv-nav-pill">⚡ تست سرعت</Link>
@@ -405,13 +405,13 @@ export default function Home({ prices: initial, refreshSeconds }) {
                                         <>
                                             <Link href="/profile" className="tv-nav-pill user">👤 {user.name}</Link>
                                             <Link href="/cart" className="tv-nav-pill">🛒 سبد خرید{user.cart_count > 0 ? ` (${user.cart_count})` : ''}</Link>
-                                            <Link href="/logout" method="post" as="button" className="tv-nav-pill">خروج</Link>
+                                            <Link href="/logout" method="post" as="button" className="tv-nav-pill">🚪 خروج</Link>
                                         </>
                                     ) : null}
                                 </div>
                             )}
                         </div>
-                        {!user && <Link href="/login" className="tv-nav-pill gold">ورود / ثبت‌نام</Link>}
+                        {!user && <Link href="/login" className="tv-nav-pill gold">🔐 ورود / ثبت‌نام</Link>}
                         <div className="tv-live">
                             <span className={`tv-dot${online ? '' : ' off'}`} />
                             <span>{online ? 'آنلاین' : 'قطع ارتباط'}</span>

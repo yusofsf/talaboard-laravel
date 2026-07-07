@@ -42,11 +42,13 @@ nav {
 
 /* آیتم‌های منوی کشویی */
 .menu-link {
-  display: block; padding: 10px 12px; border-radius: 10px;
+  display: inline-flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px;
   font-size: 14px; color: var(--txt); cursor: pointer;
   border: none; background: none; width: 100%; text-align: start; font-family: inherit;
   transition: background .15s, color .15s, transform .08s;
 }
+.menu-link-icon { width: 20px; flex: 0 0 20px; text-align: center; line-height: 1; }
+.menu-link-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .menu-link:hover { background: rgba(255,255,255,.07); }
 .menu-link:active { transform: scale(.98); }
 .menu-link.active { background: rgba(246,207,99,.12); color: var(--gold-1); font-weight: 700; }

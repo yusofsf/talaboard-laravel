@@ -347,6 +347,10 @@ export default function Home({ prices: initial, refreshSeconds }) {
                   .tv-shopname{font-size:26px; line-height:1.9; padding-block:.2em .3em}
                   .tv-htitle{font-size:15px} .tv-hsub{font-size:11px}
                   .tv-clock .t{font-size:18px} .tv-clock .d{font-size:10px}
+                  .tv-menu-panel{
+                    position:fixed; top:12px; inset-inline-start:12px; inset-inline-end:12px;
+                    width:auto; max-width:none; grid-template-columns:repeat(2,minmax(0,1fr));
+                  }
                   .tv-main{gap:12px; margin-top:8px}
                   .tv-block{gap:6px}
                   .tv-grid{grid-template-columns:repeat(2,1fr); gap:10px}

@@ -162,6 +162,24 @@ select option { color: #15192b; background: #fff; }
 .badge.buy-b  { background: rgba(65,225,166,.1); color: var(--up);   border: 1px solid rgba(65,225,166,.3); }
 .badge.sell-b { background: rgba(255,107,120,.1);color: var(--down); border: 1px solid rgba(255,107,120,.3); }
 
+.tag-chip {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line);
+  background: rgba(255,255,255,.05); color: var(--txt); font-family: inherit;
+  font-size: 13px; font-weight: 700; line-height: 1.4; text-decoration: none; cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s, transform .1s;
+}
+.tag-chip:hover { background: rgba(246,207,99,.1); border-color: rgba(246,207,99,.35); color: var(--gold-1); }
+.tag-chip:active { transform: scale(.97); }
+.tag-chip.active {
+  background: rgba(246,207,99,.16); border-color: rgba(246,207,99,.42); color: var(--gold-1);
+}
+.article-tag {
+  color: var(--muted); font-size: 12px; font-weight: 700; text-decoration: none;
+  transition: color .15s;
+}
+.article-tag:hover { color: var(--gold-1); }
+
 /* جدول */
 .table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid var(--line); margin-top: 20px; -webkit-overflow-scrolling: touch; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }

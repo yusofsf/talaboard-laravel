@@ -3,6 +3,8 @@ import AppLayout from '../../Layouts/AppLayout';
 
 const paragraphs = text => String(text || '').split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
 const hasHtml = text => /<\/?[a-z][\s\S]*>/i.test(String(text || ''));
+const topicHref = topic => `/articles?topic=${encodeURIComponent(topic)}`;
+const tagHref = tag => `/articles?tag=${encodeURIComponent(tag)}`;
 
 export default function Show({ article }) {
     return (
@@ -11,7 +13,11 @@ export default function Show({ article }) {
                 <Link href="/articles" className="btn-sm">بازگشت به مقالات</Link>
                 <article style={{ marginTop: 18 }}>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-                        {(article.topics || []).map(t => <span key={t} className="badge gold">{t}</span>)}
+                        {(article.topics || []).map(topic => (
+                            <Link key={topic} href={topicHref(topic)} className="badge gold" style={{ textDecoration: 'none' }}>
+                                {topic}
+                            </Link>
+                        ))}
                     </div>
                     <h1 style={{ fontSize: 30, lineHeight: 1.5, margin: '0 0 10px' }}>{article.title}</h1>
                     <div style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 18 }}>{article.published_at || article.created_at}</div>
@@ -36,7 +42,11 @@ export default function Show({ article }) {
 
                     {(article.tags || []).length > 0 && (
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 28, borderTop: '1px solid var(--line)', paddingTop: 18 }}>
-                            {article.tags.map(t => <span key={t} style={{ color: 'var(--muted)', fontSize: 13 }}>#{t}</span>)}
+                            {article.tags.map(tag => (
+                                <Link key={tag} href={tagHref(tag)} className="article-tag">
+                                    #{tag}
+                                </Link>
+                            ))}
                         </div>
                     )}
                 </article>

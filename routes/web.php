@@ -18,6 +18,7 @@ use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TradeController;
 use App\Http\Controllers\TradeRoomController;
 use App\Http\Controllers\WalletController;
+use App\Models\Article;
 use App\Models\Setting;
 use Illuminate\Support\Facades\Route;
 
@@ -60,8 +61,39 @@ Route::get('/sitemap.xml', function () {
     $pages = [
         ...config('seo.public_pages', []),
         ...config('seo.keyword_pages', []),
+        [
+            'path' => '/articles',
+            'changefreq' => 'daily',
+            'priority' => '0.72',
+        ],
+        ...Article::published()
+            ->orderByDesc('published_at')
+            ->get()
+            ->map(fn (Article $article) => [
+                'path' => '/articles/' . $article->slug,
+                'lastmod' => optional($article->updated_at)->toAtomString(),
+                'changefreq' => 'monthly',
+                'priority' => '0.64',
+            ])
+            ->all(),
     ];
-    $xml = view('seo.sitemap', compact('siteUrl', 'pages'))->render();
+    $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+    $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
+
+    foreach ($pages as $page) {
+        $xml .= "  <url>\n";
+        $xml .= '    <loc>' . e($siteUrl . $page['path']) . "</loc>\n";
+
+        if (! empty($page['lastmod'])) {
+            $xml .= '    <lastmod>' . e($page['lastmod']) . "</lastmod>\n";
+        }
+
+        $xml .= '    <changefreq>' . e($page['changefreq'] ?? 'weekly') . "</changefreq>\n";
+        $xml .= '    <priority>' . e($page['priority'] ?? '0.6') . "</priority>\n";
+        $xml .= "  </url>\n";
+    }
+
+    $xml .= '</urlset>' . "\n";
 
     return response($xml, 200, ['Content-Type' => 'application/xml; charset=UTF-8']);
 })->name('sitemap');

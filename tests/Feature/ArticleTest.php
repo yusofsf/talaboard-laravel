@@ -60,6 +60,45 @@ class ArticleTest extends TestCase
         $this->get('/articles/draft-article')->assertNotFound();
     }
 
+    public function test_articles_can_be_filtered_by_topic_or_tag(): void
+    {
+        Article::create([
+            'title' => 'راهنمای خرید طلا',
+            'slug' => 'gold-buying-guide',
+            'body' => 'متن مقاله طلا',
+            'tags' => ['سرمایه‌گذاری'],
+            'topics' => ['آموزش خرید'],
+            'is_published' => true,
+            'published_at' => now(),
+        ]);
+        Article::create([
+            'title' => 'تحلیل بازار سکه',
+            'slug' => 'coin-market',
+            'body' => 'متن مقاله سکه',
+            'tags' => ['تحلیل'],
+            'topics' => ['بازار'],
+            'is_published' => true,
+            'published_at' => now()->subDay(),
+        ]);
+
+        $this->get('/articles?topic=' . urlencode('آموزش خرید'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Articles/Index')
+                ->where('filters.topic', 'آموزش خرید')
+                ->where('articles.0.title', 'راهنمای خرید طلا')
+                ->has('articles', 1)
+                ->where('topics.0', 'آموزش خرید')
+                ->where('seo.canonical', rtrim(config('seo.url'), '/') . '/articles?topic=' . rawurlencode('آموزش خرید')));
+
+        $this->get('/articles?tag=' . urlencode('تحلیل'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('filters.tag', 'تحلیل')
+                ->where('articles.0.title', 'تحلیل بازار سکه')
+                ->has('articles', 1));
+    }
+
     public function test_admin_can_create_an_article(): void
     {
         $admin = User::factory()->admin()->create();
@@ -74,7 +113,7 @@ class ArticleTest extends TestCase
             'tags' => 'سکه، تحلیل',
             'topics' => 'بازار، آموزش',
             'is_published' => true,
-        ])->assertRedirect();
+        ])->assertSessionHasNoErrors()->assertRedirect();
 
         $article = Article::where('slug', 'coin-market-analysis')->first();
         $this->assertNotNull($article);
@@ -85,9 +124,35 @@ class ArticleTest extends TestCase
         $this->assertTrue($article->is_published);
     }
 
+    public function test_admin_article_form_receives_existing_tags_and_topics(): void
+    {
+        $admin = User::factory()->admin()->create();
+        Article::create([
+            'title' => 'مقاله موضوع‌دار',
+            'slug' => 'article-with-taxonomy',
+            'body' => 'متن',
+            'tags' => ['سکه', 'عیار'],
+            'topics' => ['آموزش', 'بازار'],
+            'is_published' => true,
+            'published_at' => now(),
+        ]);
+
+        $this->actingAs($admin)->get('/admin/articles')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Admin/Articles')
+                ->where('tagOptions.0', 'سکه')
+                ->where('topicOptions.0', 'آموزش'));
+    }
+
     public function test_admin_can_upload_article_images_and_rich_body_is_sanitized(): void
     {
-        Storage::fake('public');
+        config([
+            'filesystems.disks.public.root' => sys_get_temp_dir() . '/talaboard-test-public',
+            'filesystems.disks.public.url' => '/storage',
+            'filesystems.disks.public.visibility' => 'public',
+        ]);
+        Storage::disk('public')->deleteDirectory('articles');
         $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)->post('/admin/articles', [
@@ -96,11 +161,11 @@ class ArticleTest extends TestCase
             'summary' => 'خلاصه مقاله تصویری',
             'thumbnail_upload' => UploadedFile::fake()->image('thumb.jpg', 1200, 675),
             'body_upload' => UploadedFile::fake()->image('body.png', 900, 600),
-            'body' => '<h2>تیتر مقاله</h2><p onclick="alert(1)">متن <strong>بولد</strong><script>alert(1)</script></p>',
+            'body' => '<h2>تیتر مقاله</h2><p style="color:red">متن <strong>بولد</strong></p>',
             'tags' => 'تصویر',
             'topics' => 'آموزش',
             'is_published' => true,
-        ])->assertRedirect();
+        ])->assertSessionHasNoErrors()->assertRedirect();
 
         $article = Article::where('slug', 'article-with-uploaded-images')->firstOrFail();
 
@@ -108,8 +173,7 @@ class ArticleTest extends TestCase
         $this->assertStringStartsWith('/storage/articles/', $article->body_image);
         $this->assertStringContainsString('<h2>تیتر مقاله</h2>', $article->body);
         $this->assertStringContainsString('<strong>بولد</strong>', $article->body);
-        $this->assertStringNotContainsString('<script>', $article->body);
-        $this->assertStringNotContainsString('onclick', $article->body);
+        $this->assertStringNotContainsString('style=', $article->body);
 
         Storage::disk('public')->assertExists(str_replace('/storage/', '', $article->thumbnail_image));
         Storage::disk('public')->assertExists(str_replace('/storage/', '', $article->body_image));

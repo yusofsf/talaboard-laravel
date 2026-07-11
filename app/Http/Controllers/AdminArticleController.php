@@ -29,7 +29,11 @@ class AdminArticleController extends Controller
                 'created_at' => Jalali::format($a->created_at, false),
             ]);
 
-        return Inertia::render('Admin/Articles', ['articles' => $articles]);
+        return Inertia::render('Admin/Articles', [
+            'articles' => $articles,
+            'tagOptions' => $this->listValues('tags'),
+            'topicOptions' => $this->listValues('topics'),
+        ]);
     }
 
     public function store(Request $request)
@@ -97,6 +101,18 @@ class AdminArticleController extends Controller
         return collect(preg_split('/[,،\\n]+/u', $value))
             ->map(fn ($item) => trim($item))
             ->filter()
+            ->values()
+            ->all();
+    }
+
+    private function listValues(string $field): array
+    {
+        return Article::query()
+            ->pluck($field)
+            ->flatMap(fn ($items) => $items ?: [])
+            ->filter()
+            ->unique()
+            ->sort()
             ->values()
             ->all();
     }

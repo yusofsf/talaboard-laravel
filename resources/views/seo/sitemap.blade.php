@@ -3,6 +3,9 @@
 @foreach ($pages as $page)
   <url>
     <loc>{{ $siteUrl }}{{ $page['path'] }}</loc>
+    @if (! empty($page['lastmod']))
+    <lastmod>{{ $page['lastmod'] }}</lastmod>
+    @endif
     <changefreq>{{ $page['changefreq'] ?? 'weekly' }}</changefreq>
     <priority>{{ $page['priority'] ?? '0.6' }}</priority>
   </url>

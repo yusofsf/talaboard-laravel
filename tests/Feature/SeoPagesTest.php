@@ -2,10 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Models\Article;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class SeoPagesTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_public_seo_landing_pages_render_indexable_metadata(): void
     {
         foreach (['/silver-prices', '/gold-prices', '/coin-prices', '/silver-999-price', '/gold-gram-price', '/full-coin-price', '/buy-gold', '/sell-silver'] as $path) {
@@ -33,5 +37,30 @@ class SeoPagesTest extends TestCase
             ->assertSee($siteUrl . '/sell-silver', false)
             ->assertDontSee($siteUrl . '/login', false)
             ->assertDontSee($siteUrl . '/register', false);
+    }
+
+    public function test_sitemap_lists_published_articles(): void
+    {
+        $siteUrl = rtrim(config('seo.url'), '/');
+
+        Article::create([
+            'title' => 'راهنمای بازار طلا',
+            'slug' => 'gold-market-guide',
+            'body' => 'متن مقاله',
+            'is_published' => true,
+            'published_at' => now(),
+        ]);
+        Article::create([
+            'title' => 'پیش‌نویس',
+            'slug' => 'draft-guide',
+            'body' => 'متن',
+            'is_published' => false,
+        ]);
+
+        $this->get('/sitemap.xml')
+            ->assertOk()
+            ->assertSee($siteUrl . '/articles', false)
+            ->assertSee($siteUrl . '/articles/gold-market-guide', false)
+            ->assertDontSee($siteUrl . '/articles/draft-guide', false);
     }
 }

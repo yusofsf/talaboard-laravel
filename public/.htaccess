@@ -18,6 +18,10 @@
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
+    # Always let Laravel generate the dynamic sitemap, even if a stale
+    # sitemap.xml remains in the document root after a cPanel deployment.
+    RewriteRule ^sitemap\.xml$ index.php [L]
+
     # Send Requests To Front Controller...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f

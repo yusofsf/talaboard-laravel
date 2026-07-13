@@ -16,7 +16,7 @@ const empty = {
     is_published: true,
 };
 
-const splitList = value => String(value || '').split(/[,،\n]+/).map(v => v.trim()).filter(Boolean);
+const splitList = value => String(value || '').split(/[،,\n]+/).map(v => v.trim()).filter(Boolean);
 const joinList = items => [...new Set(items)].join('، ');
 
 export default function Articles({ articles, tagOptions = [], topicOptions = [] }) {
@@ -42,20 +42,20 @@ export default function Articles({ articles, tagOptions = [], topicOptions = [] 
         form.clearErrors();
     }
 
-    function edit(a) {
-        setEditing(a.id);
+    function edit(article) {
+        setEditing(article.id);
         form.setData({
-            title: a.title || '',
-            slug: a.slug || '',
-            summary: a.summary || '',
-            thumbnail_image: a.thumbnail_image || '',
+            title: article.title || '',
+            slug: article.slug || '',
+            summary: article.summary || '',
+            thumbnail_image: article.thumbnail_image || '',
             thumbnail_upload: null,
-            body_image: a.body_image || '',
+            body_image: article.body_image || '',
             body_upload: null,
-            body: a.body || '',
-            tags: a.tags || '',
-            topics: a.topics || '',
-            is_published: !!a.is_published,
+            body: article.body || '',
+            tags: article.tags || '',
+            topics: article.topics || '',
+            is_published: !!article.is_published,
         });
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -123,7 +123,7 @@ export default function Articles({ articles, tagOptions = [], topicOptions = [] 
                         <textarea value={form.data.summary} onChange={e => form.setData('summary', e.target.value)} rows={2} />
                     </Field>
                     <Field label="متن مقاله" error={form.errors.body}>
-                        <RichTextEditor value={form.data.body} onChange={value => form.setData('body', value)} />
+                        <RichTextEditor value={form.data.body} onChange={value => form.setData('body', value)} uploadUrl="/admin/articles/embedded-image" />
                     </Field>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '12px 0' }}>
                         <input type="checkbox" checked={form.data.is_published} onChange={e => form.setData('is_published', e.target.checked)} />
@@ -141,16 +141,16 @@ export default function Articles({ articles, tagOptions = [], topicOptions = [] 
                     <table>
                         <thead><tr><th>عنوان</th><th>Slug</th><th>وضعیت</th><th>تاریخ</th><th></th></tr></thead>
                         <tbody>
-                            {articles.map(a => (
-                                <tr key={a.id}>
-                                    <td><strong>{a.title}</strong><div style={{ color: 'var(--muted)', fontSize: 12 }}>{a.summary}</div></td>
-                                    <td dir="ltr" style={{ fontSize: 12 }}>{a.slug}</td>
-                                    <td><span className={`badge ${a.is_published ? 'buy-b' : 'silver'}`}>{a.is_published ? 'منتشر شده' : 'پیش‌نویس'}</span></td>
-                                    <td style={{ color: 'var(--muted)', fontSize: 12 }}>{a.published_at || a.created_at}</td>
+                            {articles.map(article => (
+                                <tr key={article.id}>
+                                    <td><strong>{article.title}</strong><div style={{ color: 'var(--muted)', fontSize: 12 }}>{article.summary}</div></td>
+                                    <td dir="ltr" style={{ fontSize: 12 }}>{article.slug}</td>
+                                    <td><span className={`badge ${article.is_published ? 'buy-b' : 'silver'}`}>{article.is_published ? 'منتشر شده' : 'پیش‌نویس'}</span></td>
+                                    <td style={{ color: 'var(--muted)', fontSize: 12 }}>{article.published_at || article.created_at}</td>
                                     <td>
                                         <div style={{ display: 'flex', gap: 6 }}>
-                                            <button className="btn-sm" onClick={() => edit(a)}>ویرایش</button>
-                                            <button className="btn-sm danger" onClick={() => destroy(a.id)}>حذف</button>
+                                            <button className="btn-sm" onClick={() => edit(article)}>ویرایش</button>
+                                            <button className="btn-sm danger" onClick={() => destroy(article.id)}>حذف</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -223,8 +223,12 @@ function PickListField({ label, value, options, error, placeholder, onChange }) 
     );
 }
 
-function RichTextEditor({ value, onChange }) {
+function RichTextEditor({ value, onChange, uploadUrl }) {
     const editorRef = useRef(null);
+    const fileInputRef = useRef(null);
+    const selectionRef = useRef(null);
+    const [uploadingImage, setUploadingImage] = useState(false);
+    const [uploadError, setUploadError] = useState('');
 
     useEffect(() => {
         if (editorRef.current && editorRef.current.innerHTML !== value) {
@@ -232,9 +236,28 @@ function RichTextEditor({ value, onChange }) {
         }
     }, [value]);
 
+    function rememberSelection() {
+        const selection = window.getSelection();
+
+        if (!selection || selection.rangeCount === 0) return;
+
+        selectionRef.current = selection.getRangeAt(0).cloneRange();
+    }
+
+    function restoreSelection() {
+        const selection = window.getSelection();
+
+        if (!selection || !selectionRef.current) return;
+
+        selection.removeAllRanges();
+        selection.addRange(selectionRef.current);
+    }
+
     function run(command, argument = null) {
         editorRef.current?.focus();
+        restoreSelection();
         document.execCommand(command, false, argument);
+        rememberSelection();
         onChange(editorRef.current?.innerHTML || '');
     }
 
@@ -246,6 +269,58 @@ function RichTextEditor({ value, onChange }) {
         const url = prompt('آدرس لینک را وارد کنید');
         if (!url) return;
         run('createLink', url);
+    }
+
+    function openImagePicker() {
+        rememberSelection();
+        fileInputRef.current?.click();
+    }
+
+    async function uploadInlineImage(event) {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+
+        if (!file) return;
+
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+
+        if (!csrf) {
+            setUploadError('توکن امنیتی برای آپلود تصویر پیدا نشد.');
+            return;
+        }
+
+        setUploadingImage(true);
+        setUploadError('');
+
+        const formData = new FormData();
+        formData.append('image', file);
+
+        try {
+            const response = await fetch(uploadUrl, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrf,
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: formData,
+                credentials: 'same-origin',
+            });
+
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok || !payload?.url) {
+                const message = payload?.errors?.image?.[0] || payload?.message || 'آپلود تصویر ناموفق بود.';
+                throw new Error(message);
+            }
+
+            const alt = String(payload.alt || '').replace(/"/g, '&quot;');
+            run('insertHTML', `<img src="${payload.url}" alt="${alt}">`);
+        } catch (error) {
+            setUploadError(error.message || 'آپلود تصویر ناموفق بود.');
+        } finally {
+            setUploadingImage(false);
+        }
     }
 
     return (
@@ -261,14 +336,28 @@ function RichTextEditor({ value, onChange }) {
                 <button type="button" className="btn-sm" onClick={() => run('insertOrderedList')}>شماره‌دار</button>
                 <button type="button" className="btn-sm" onClick={() => formatBlock('blockquote')}>نقل‌قول</button>
                 <button type="button" className="btn-sm" onClick={addLink}>لینک</button>
+                <button type="button" className="btn-sm gold" onClick={openImagePicker} disabled={uploadingImage}>
+                    {uploadingImage ? 'در حال آپلود...' : 'عکس داخل متن'}
+                </button>
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={uploadInlineImage}
+                    hidden
+                />
             </div>
             <div
                 ref={editorRef}
                 contentEditable
                 suppressContentEditableWarning
                 onInput={e => onChange(e.currentTarget.innerHTML)}
+                onMouseUp={rememberSelection}
+                onKeyUp={rememberSelection}
+                onBlur={rememberSelection}
                 style={{ minHeight: 280, padding: 14, outline: 'none', lineHeight: 2.1, color: 'var(--txt)' }}
             />
+            {uploadError && <div className="alert err" style={{ margin: 10 }}>{uploadError}</div>}
         </div>
     );
 }

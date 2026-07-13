@@ -183,6 +183,7 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/articles', [AdminArticleController::class, 'index'])->name('articles.index');
+    Route::post('/articles/embedded-image', [AdminArticleController::class, 'uploadEmbeddedImage'])->name('articles.embedded-image');
     Route::post('/articles', [AdminArticleController::class, 'store'])->name('articles.store');
     Route::put('/articles/{id}', [AdminArticleController::class, 'update'])->name('articles.update');
     Route::delete('/articles/{id}', [AdminArticleController::class, 'destroy'])->name('articles.destroy');

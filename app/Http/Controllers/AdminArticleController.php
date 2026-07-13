@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Helpers\Jalali;
 use App\Models\Article;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -58,9 +59,21 @@ class AdminArticleController extends Controller
         return back()->with('success', 'مقاله حذف شد.');
     }
 
+    public function uploadEmbeddedImage(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'image' => 'required|image|mimes:jpg,jpeg,png,webp|max:4096',
+        ]);
+
+        return response()->json([
+            'url' => $this->storeUploadedImage($data['image']),
+            'alt' => pathinfo($data['image']->getClientOriginalName(), PATHINFO_FILENAME),
+        ]);
+    }
+
     private function validated(Request $request, ?int $ignoreId = null): array
     {
-        $unique = 'unique:articles,slug' . ($ignoreId ? ',' . $ignoreId : '');
+        $unique = 'unique:articles,slug'.($ignoreId ? ','.$ignoreId : '');
 
         $data = $request->validate([
             'title' => 'required|string|max:180',
@@ -77,11 +90,11 @@ class AdminArticleController extends Controller
         ]);
 
         if ($request->hasFile('thumbnail_upload')) {
-            $data['thumbnail_image'] = Storage::url($request->file('thumbnail_upload')->store('articles', 'public'));
+            $data['thumbnail_image'] = $this->storeUploadedImage($request->file('thumbnail_upload'));
         }
 
         if ($request->hasFile('body_upload')) {
-            $data['body_image'] = Storage::url($request->file('body_upload')->store('articles', 'public'));
+            $data['body_image'] = $this->storeUploadedImage($request->file('body_upload'));
         }
 
         unset($data['thumbnail_upload'], $data['body_upload']);
@@ -119,14 +132,62 @@ class AdminArticleController extends Controller
 
     private function cleanBody(string $body): string
     {
-        $allowedTags = '<p><br><strong><b><em><i><u><h2><h3><ul><ol><li><blockquote><a>';
+        $allowedTags = '<p><br><strong><b><em><i><u><h2><h3><ul><ol><li><blockquote><a><img>';
         $clean = strip_tags($body, $allowedTags);
 
         $clean = preg_replace('/\s+on\w+\s*=\s*(["\']).*?\1/iu', '', $clean);
         $clean = preg_replace('/\s+style\s*=\s*(["\']).*?\1/iu', '', $clean);
         $clean = preg_replace('/\s+href\s*=\s*(["\'])\s*(?!\/|https?:\/\/|mailto:|tel:)[^"\']*\1/iu', '', $clean);
+        $clean = preg_replace_callback('/<img\b[^>]*>/iu', fn (array $match) => $this->sanitizeImageTag($match[0]), $clean);
         $clean = preg_replace('/<a\b(?![^>]*\brel=)/iu', '<a rel="noopener noreferrer"', $clean);
 
         return trim($clean ?? '');
+    }
+
+    private function storeUploadedImage($file): string
+    {
+        return Storage::url($file->store('articles', 'public'));
+    }
+
+    private function sanitizeImageTag(string $tag): string
+    {
+        if (! preg_match('/\bsrc\s*=\s*(["\'])(.*?)\1/iu', $tag, $srcMatch)) {
+            return '';
+        }
+
+        $src = trim($srcMatch[2]);
+
+        if (! $this->isAllowedArticleImageSource($src)) {
+            return '';
+        }
+
+        $cleanTag = '<img src="'.e($src).'"';
+
+        if (preg_match('/\balt\s*=\s*(["\'])(.*?)\1/iu', $tag, $altMatch)) {
+            $cleanAlt = trim(strip_tags($altMatch[2]));
+
+            if ($cleanAlt !== '') {
+                $cleanTag .= ' alt="'.e($cleanAlt).'"';
+            }
+        }
+
+        return $cleanTag.'>';
+    }
+
+    private function isAllowedArticleImageSource(string $src): bool
+    {
+        if (Str::startsWith($src, '/storage/articles/')) {
+            return true;
+        }
+
+        $allowedPrefixes = collect([
+            rtrim((string) config('seo.url'), '/'),
+            rtrim((string) config('filesystems.disks.public.url'), '/'),
+        ])->filter()->unique();
+
+        return $allowedPrefixes->contains(
+            fn (string $prefix) => Str::startsWith($src, $prefix.'/storage/articles/')
+                || Str::startsWith($src, $prefix.'/articles/')
+        );
     }
 }

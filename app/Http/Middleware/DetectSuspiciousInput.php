@@ -35,6 +35,11 @@ class DetectSuspiciousInput
         ],
     ];
 
+    private const TRUSTED_HTML_FIELDS = [
+        'admin.articles.store' => ['body'],
+        'admin.articles.update' => ['body'],
+    ];
+
     public function handle(Request $request, Closure $next): Response
     {
         if (in_array($request->method(), self::MUTATING, true)) {
@@ -60,16 +65,17 @@ class DetectSuspiciousInput
         foreach ($payload as $key => $value) {
             $field = $prefix === '' ? (string) $key : "{$prefix}.{$key}";
 
-            if ($this->isSensitiveKey((string) $key)) {
+            if ($this->isSensitiveKey((string) $key) || $this->shouldSkipField($field)) {
                 continue;
             }
 
             if (is_array($value)) {
                 $matches = array_merge($matches, $this->matches($value, $field));
+
                 continue;
             }
 
-            if (!is_scalar($value) && $value !== null) {
+            if (! is_scalar($value) && $value !== null) {
                 continue;
             }
 
@@ -95,5 +101,16 @@ class DetectSuspiciousInput
     {
         return in_array($key, self::SENSITIVE_KEYS, true)
             || (bool) preg_match('/password|pass|token|otp|code|secret|api[_-]?key|authorization/i', $key);
+    }
+
+    private function shouldSkipField(string $field): bool
+    {
+        foreach (self::TRUSTED_HTML_FIELDS as $route => $fields) {
+            if (request()->routeIs($route) && in_array($field, $fields, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

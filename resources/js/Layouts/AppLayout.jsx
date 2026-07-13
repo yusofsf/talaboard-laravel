@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 
 const FA = s => String(s ?? '').replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]).replace(/,/g, '٬');
 export const faNum = n => n == null ? '—' : FA(Number(n).toLocaleString('en'));
@@ -12,9 +12,15 @@ function levelLabel(user) {
 }
 
 export default function AppLayout({ children }) {
-    const { auth, flash } = usePage().props;
+    const page = usePage();
+    const { auth, flash, seo, seoDefaults = {} } = page.props;
     const user = auth?.user;
     const [open, setOpen] = useState(false);
+    const canonical = seo?.canonical || `${seoDefaults.url || ''}${String(page.url || '/').split('?')[0]}`;
+    const title = seo?.title || seoDefaults.title || '';
+    const description = seo?.description || seoDefaults.description || '';
+    const image = seo?.image || seoDefaults.logo || '';
+    const robots = seo?.robots || (seo ? 'index, follow, max-image-preview:large' : 'noindex, nofollow');
 
     function logout(e) {
         e.preventDefault();
@@ -25,6 +31,31 @@ export default function AppLayout({ children }) {
 
     return (
         <>
+            <Head>
+                <title>{title}</title>
+                <meta head-key="description" name="description" content={description} />
+                <meta head-key="robots" name="robots" content={robots} />
+                <link head-key="canonical" rel="canonical" href={canonical} />
+                <link head-key="alternate-fa" rel="alternate" hrefLang="fa-IR" href={canonical} />
+                <meta head-key="og-type" property="og:type" content={seo?.type || 'website'} />
+                <meta head-key="og-site-name" property="og:site_name" content={seoDefaults.siteName || ''} />
+                <meta head-key="og-title" property="og:title" content={title} />
+                <meta head-key="og-description" property="og:description" content={description} />
+                <meta head-key="og-url" property="og:url" content={canonical} />
+                <meta head-key="og-image" property="og:image" content={image} />
+                <meta head-key="og-locale" property="og:locale" content={seoDefaults.locale || 'fa_IR'} />
+                <meta head-key="twitter-card" name="twitter:card" content={seoDefaults.twitterCard || 'summary_large_image'} />
+                <meta head-key="twitter-title" name="twitter:title" content={title} />
+                <meta head-key="twitter-description" name="twitter:description" content={description} />
+                <meta head-key="twitter-image" name="twitter:image" content={image} />
+                {seo?.schema && (
+                    <script
+                        head-key="page-schema"
+                        type="application/ld+json"
+                        dangerouslySetInnerHTML={{ __html: JSON.stringify(seo.schema) }}
+                    />
+                )}
+            </Head>
             <nav>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, position: 'relative' }}>
                     {user && (

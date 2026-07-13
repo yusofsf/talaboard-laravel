@@ -36,26 +36,35 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
+
         return [
             ...parent::share($request),
             'auth' => [
                 'user' => $user ? [
-                    'id'       => $user->id,
-                    'name'     => $user->name,
-                    'phone'    => $user->phone,
-                    'email'    => $user->email,
-                    'is_vip'   => $user->is_vip,
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'phone' => $user->phone,
+                    'email' => $user->email,
+                    'is_vip' => $user->is_vip,
                     'is_admin' => $user->is_admin || $user->phone === env('ADMIN_PHONE'),
-                    'membership_level'  => $user->membership_level,
+                    'membership_level' => $user->membership_level,
                     'membership_status' => $user->membership_status,
                     'wallet_balance' => $user->walletBalance(),
-                    'unread_count'   => $user->unreadCount(),
-                    'cart_count'      => $user->cartItems()->count(),
+                    'unread_count' => $user->unreadCount(),
+                    'cart_count' => $user->cartItems()->count(),
                 ] : null,
             ],
             'flash' => [
                 'success' => $request->session()->get('success'),
-                'error'   => $request->session()->get('error'),
+                'error' => $request->session()->get('error'),
+            ],
+            'seoDefaults' => [
+                ...config('seo.default'),
+                'siteName' => config('seo.site_name'),
+                'url' => rtrim(config('seo.url'), '/'),
+                'logo' => rtrim(config('seo.url'), '/').config('seo.logo'),
+                'locale' => config('seo.locale'),
+                'twitterCard' => config('seo.twitter_card'),
             ],
         ];
     }

@@ -3,15 +3,25 @@ import AppLayout from '../../Layouts/AppLayout';
 
 const paragraphs = text => String(text || '').split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
 const hasHtml = text => /<\/?[a-z][\s\S]*>/i.test(String(text || ''));
-const topicHref = topic => `/articles?topic=${encodeURIComponent(topic)}`;
-const tagHref = tag => `/articles?tag=${encodeURIComponent(tag)}`;
+const taxonomySlug = value => String(value || '')
+    .replace(/[يك]/g, char => char === 'ي' ? 'ی' : 'ک')
+    .toLocaleLowerCase('fa')
+    .trim()
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
+    .replace(/^-+|-+$/g, '');
+const taxonomyHref = (type, value) => `/articles/${type}/${encodeURIComponent(taxonomySlug(value))}`;
+const topicHref = topic => taxonomyHref('topic', topic);
+const tagHref = tag => taxonomyHref('tag', tag);
 
-export default function Show({ article }) {
+export default function Show({ article, relatedArticles = [] }) {
     return (
         <AppLayout>
             <main className="page" style={{ maxWidth: 860 }}>
                 <Link href="/articles" className="btn-sm">بازگشت به مقالات</Link>
                 <article style={{ marginTop: 18 }}>
+                    <nav aria-label="مسیر صفحه" style={{ display: 'flex', gap: 8, color: 'var(--muted)', fontSize: 13, marginBottom: 14 }}>
+                        <Link href="/">خانه</Link><span>/</span><Link href="/articles">مقالات</Link><span>/</span><span>{article.title}</span>
+                    </nav>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
                         {(article.topics || []).map(topic => (
                             <Link key={topic} href={topicHref(topic)} className="badge gold" style={{ textDecoration: 'none' }}>
@@ -50,6 +60,23 @@ export default function Show({ article }) {
                         </div>
                     )}
                 </article>
+
+                {relatedArticles.length > 0 && (
+                    <section aria-labelledby="related-articles-heading" style={{ marginTop: 42 }}>
+                        <h2 id="related-articles-heading" style={{ fontSize: 22, marginBottom: 16 }}>مقالات مرتبط</h2>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 14 }}>
+                            {relatedArticles.map(related => (
+                                <article key={related.id} className="fcard">
+                                    <h3 style={{ fontSize: 17, margin: '0 0 8px' }}>
+                                        <Link href={`/articles/${related.slug}`} style={{ color: 'var(--txt)', textDecoration: 'none' }}>{related.title}</Link>
+                                    </h3>
+                                    {related.summary && <p style={{ color: 'var(--muted)', lineHeight: 1.8, fontSize: 13 }}>{related.summary}</p>}
+                                    <Link href={`/articles/${related.slug}`} className="btn-sm gold">مطالعه مقاله</Link>
+                                </article>
+                            ))}
+                        </div>
+                    </section>
+                )}
             </main>
         </AppLayout>
     );

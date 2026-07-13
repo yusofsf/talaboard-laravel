@@ -1,10 +1,17 @@
 import { Link } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
 
-const topicHref = topic => `/articles?topic=${encodeURIComponent(topic)}`;
-const tagHref = tag => `/articles?tag=${encodeURIComponent(tag)}`;
+const taxonomySlug = value => String(value || '')
+    .replace(/[يك]/g, char => char === 'ي' ? 'ی' : 'ک')
+    .toLocaleLowerCase('fa')
+    .trim()
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
+    .replace(/^-+|-+$/g, '');
+const taxonomyHref = (type, value) => `/articles/${type}/${encodeURIComponent(taxonomySlug(value))}`;
+const topicHref = topic => taxonomyHref('topic', topic);
+const tagHref = tag => taxonomyHref('tag', tag);
 
-export default function Index({ articles, filters = {}, topics = [] }) {
+export default function Index({ articles, filters = {}, topics = [], tags = [] }) {
     const activeTopic = filters.topic || '';
     const activeTag = filters.tag || '';
     const isFiltered = activeTopic || activeTag;
@@ -27,6 +34,19 @@ export default function Index({ articles, filters = {}, topics = [] }) {
                         </Link>
                     ))}
                 </div>
+
+                {tags.length > 0 && (
+                    <section aria-labelledby="article-tags-heading" style={{ marginBottom: 24 }}>
+                        <h2 id="article-tags-heading" style={{ fontSize: 15, margin: '0 0 10px', color: 'var(--muted)' }}>برچسب‌های مقالات</h2>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            {tags.map(tag => (
+                                <Link key={tag} href={tagHref(tag)} className={`article-tag ${activeTag === tag ? 'active' : ''}`}>
+                                    #{tag}
+                                </Link>
+                            ))}
+                        </div>
+                    </section>
+                )}
 
                 {articles.length ? (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 18 }}>

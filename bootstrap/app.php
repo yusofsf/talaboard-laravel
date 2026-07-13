@@ -1,5 +1,11 @@
 <?php
 
+use App\Http\Middleware\AdminMiddleware;
+use App\Http\Middleware\DetectSuspiciousInput;
+use App\Http\Middleware\ForceHttps;
+use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\LogRequest;
+use App\Http\Middleware\UpdateLastSeen;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -12,14 +18,17 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->web(prepend: [
+            ForceHttps::class,
+        ]);
         $middleware->web(append: [
-            \App\Http\Middleware\HandleInertiaRequests::class,
-            \App\Http\Middleware\UpdateLastSeen::class,
-            \App\Http\Middleware\DetectSuspiciousInput::class,
-            \App\Http\Middleware\LogRequest::class,
+            HandleInertiaRequests::class,
+            UpdateLastSeen::class,
+            DetectSuspiciousInput::class,
+            LogRequest::class,
         ]);
         $middleware->alias([
-            'admin' => \App\Http\Middleware\AdminMiddleware::class,
+            'admin' => AdminMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

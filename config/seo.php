@@ -2,10 +2,11 @@
 
 return [
     'site_name' => 'آبشده صفرپور',
-    'url' => env('APP_URL', 'https://metalsp.ir'),
+    'url' => env('SEO_URL', 'https://metalsp.ir'),
     'logo' => '/logo.jpg',
     'locale' => 'fa_IR',
     'twitter_card' => 'summary_large_image',
+    'force_https' => env('SEO_FORCE_HTTPS', env('APP_ENV') === 'production'),
 
     'default' => [
         'title' => 'آبشده صفرپور | قیمت لحظه‌ای طلا، نقره و سکه',

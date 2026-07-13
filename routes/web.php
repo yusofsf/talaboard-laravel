@@ -1,10 +1,10 @@
 <?php
 
-use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminArticleController;
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ArticleController;
-use App\Http\Controllers\CartController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CartController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\HomeController;
@@ -21,19 +21,20 @@ use App\Http\Controllers\WalletController;
 use App\Models\Article;
 use App\Models\Setting;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 // تابلوی قیمت (عمومی)
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/api/prices', [HomeController::class, 'prices'])->name('prices.api');
-Route::get('/calculator', fn () => \Inertia\Inertia::render('Calculator', [
+Route::get('/calculator', fn () => Inertia::render('Calculator', [
     'seo' => [
         ...config('seo.public_pages.calculator'),
-        'canonical' => rtrim(config('seo.url'), '/') . '/calculator',
+        'canonical' => rtrim(config('seo.url'), '/').'/calculator',
     ],
 ]))->name('calculator');
-Route::get('/chart', fn () => \Inertia\Inertia::render('Chart'))->name('chart');
-Route::get('/speed-test', fn () => \Inertia\Inertia::render('SpeedTest'))->name('speed-test');
-Route::get('/about', fn () => \Inertia\Inertia::render('About', [
+Route::get('/chart', fn () => Inertia::render('Chart'))->name('chart');
+Route::get('/speed-test', fn () => Inertia::render('SpeedTest'))->name('speed-test');
+Route::get('/about', fn () => Inertia::render('About', [
     'content' => [
         'title' => Setting::get('about_title', config('page_content.about.title')),
         'body' => Setting::get('about_body', config('page_content.about.body')),
@@ -43,6 +44,8 @@ Route::get('/contact', [ContactController::class, 'show'])->name('contact');
 Route::post('/contact', [ContactController::class, 'send'])->middleware('throttle:5,1')->name('contact.send');
 Route::get('/articles', [ArticleController::class, 'index'])->name('articles.index');
 Route::get('/article', fn () => redirect()->route('articles.index'))->name('articles.alias');
+Route::get('/articles/topic/{slug}', [ArticleController::class, 'topic'])->name('articles.topic');
+Route::get('/articles/tag/{slug}', [ArticleController::class, 'tag'])->name('articles.tag');
 Route::get('/articles/{slug}', [ArticleController::class, 'show'])->name('articles.show');
 Route::get('/silver-prices', [SeoPageController::class, 'show'])->defaults('page', 'silver-prices')->name('seo.silver');
 Route::get('/gold-prices', [SeoPageController::class, 'show'])->defaults('page', 'gold-prices')->name('seo.gold');
@@ -58,6 +61,22 @@ foreach (config('seo.keyword_pages', []) as $page => $meta) {
 // (در پروداکشن public_html جداست؛ فایل استاتیک بدون سیملینک ۴۰۴ می‌شد و گوگل «could not be read» می‌داد)
 Route::get('/sitemap.xml', function () {
     $siteUrl = rtrim(config('seo.url'), '/');
+    $articles = Article::published()->orderByDesc('published_at')->get();
+    $taxonomyPages = collect(['topic' => 'topics', 'tag' => 'tags'])
+        ->flatMap(fn (string $field, string $type) => $articles
+            ->pluck($field)
+            ->flatten()
+            ->filter()
+            ->map(fn (string $value) => Article::taxonomySlug($value))
+            ->filter()
+            ->unique()
+            ->map(fn (string $slug) => [
+                'path' => '/articles/'.$type.'/'.rawurlencode($slug),
+                'changefreq' => 'weekly',
+                'priority' => '0.58',
+            ]))
+        ->values()
+        ->all();
     $pages = [
         ...config('seo.public_pages', []),
         ...config('seo.keyword_pages', []),
@@ -66,34 +85,33 @@ Route::get('/sitemap.xml', function () {
             'changefreq' => 'daily',
             'priority' => '0.72',
         ],
-        ...Article::published()
-            ->orderByDesc('published_at')
-            ->get()
+        ...$taxonomyPages,
+        ...$articles
             ->map(fn (Article $article) => [
-                'path' => '/articles/' . $article->slug,
+                'path' => '/articles/'.$article->slug,
                 'lastmod' => optional($article->updated_at)->toAtomString(),
                 'changefreq' => 'monthly',
                 'priority' => '0.64',
             ])
             ->all(),
     ];
-    $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
-    $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
+    $xml = '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+    $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'."\n";
 
     foreach ($pages as $page) {
         $xml .= "  <url>\n";
-        $xml .= '    <loc>' . e($siteUrl . $page['path']) . "</loc>\n";
+        $xml .= '    <loc>'.e($siteUrl.$page['path'])."</loc>\n";
 
         if (! empty($page['lastmod'])) {
-            $xml .= '    <lastmod>' . e($page['lastmod']) . "</lastmod>\n";
+            $xml .= '    <lastmod>'.e($page['lastmod'])."</lastmod>\n";
         }
 
-        $xml .= '    <changefreq>' . e($page['changefreq'] ?? 'weekly') . "</changefreq>\n";
-        $xml .= '    <priority>' . e($page['priority'] ?? '0.6') . "</priority>\n";
+        $xml .= '    <changefreq>'.e($page['changefreq'] ?? 'weekly')."</changefreq>\n";
+        $xml .= '    <priority>'.e($page['priority'] ?? '0.6')."</priority>\n";
         $xml .= "  </url>\n";
     }
 
-    $xml .= '</urlset>' . "\n";
+    $xml .= '</urlset>'."\n";
 
     return response($xml, 200, ['Content-Type' => 'application/xml; charset=UTF-8']);
 })->name('sitemap');
@@ -165,6 +183,7 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/articles', [AdminArticleController::class, 'index'])->name('articles.index');
+    Route::post('/articles/embedded-image', [AdminArticleController::class, 'uploadEmbeddedImage'])->name('articles.embedded-image');
     Route::post('/articles', [AdminArticleController::class, 'store'])->name('articles.store');
     Route::put('/articles/{id}', [AdminArticleController::class, 'update'])->name('articles.update');
     Route::delete('/articles/{id}', [AdminArticleController::class, 'destroy'])->name('articles.destroy');

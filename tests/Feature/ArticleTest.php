@@ -81,7 +81,7 @@ class ArticleTest extends TestCase
             'published_at' => now()->subDay(),
         ]);
 
-        $this->get('/articles?topic=' . urlencode('آموزش خرید'))
+        $this->get('/articles/topic/'.rawurlencode('آموزش-خرید'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Articles/Index')
@@ -89,9 +89,9 @@ class ArticleTest extends TestCase
                 ->where('articles.0.title', 'راهنمای خرید طلا')
                 ->has('articles', 1)
                 ->where('topics.0', 'آموزش خرید')
-                ->where('seo.canonical', rtrim(config('seo.url'), '/') . '/articles?topic=' . rawurlencode('آموزش خرید')));
+                ->where('seo.canonical', rtrim(config('seo.url'), '/').'/articles/topic/'.rawurlencode('آموزش-خرید')));
 
-        $this->get('/articles?tag=' . urlencode('تحلیل'))
+        $this->get('/articles/tag/'.rawurlencode('تحلیل'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->where('filters.tag', 'تحلیل')
@@ -148,7 +148,7 @@ class ArticleTest extends TestCase
     public function test_admin_can_upload_article_images_and_rich_body_is_sanitized(): void
     {
         config([
-            'filesystems.disks.public.root' => sys_get_temp_dir() . '/talaboard-test-public',
+            'filesystems.disks.public.root' => sys_get_temp_dir().'/talaboard-test-public',
             'filesystems.disks.public.url' => '/storage',
             'filesystems.disks.public.visibility' => 'public',
         ]);
@@ -177,5 +177,194 @@ class ArticleTest extends TestCase
 
         Storage::disk('public')->assertExists(str_replace('/storage/', '', $article->thumbnail_image));
         Storage::disk('public')->assertExists(str_replace('/storage/', '', $article->body_image));
+    }
+
+    public function test_admin_can_upload_an_embedded_article_image_for_the_editor(): void
+    {
+        config([
+            'filesystems.disks.public.root' => sys_get_temp_dir().'/talaboard-test-public-inline',
+            'filesystems.disks.public.url' => '/storage',
+            'filesystems.disks.public.visibility' => 'public',
+        ]);
+        Storage::disk('public')->deleteDirectory('articles');
+        $admin = User::factory()->admin()->create();
+
+        $response = $this->actingAs($admin)->post('/admin/articles/embedded-image', [
+            'image' => UploadedFile::fake()->image('inline-photo.webp', 1200, 675),
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('alt', 'inline-photo');
+
+        $this->assertStringStartsWith('/storage/articles/', $response->json('url'));
+
+        $storedPath = str_replace('/storage/', '', $response->json('url'));
+        Storage::disk('public')->assertExists($storedPath);
+    }
+
+    public function test_article_body_keeps_only_uploaded_embedded_images(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->post('/admin/articles', [
+            'title' => 'مقاله با تصویر داخل متن',
+            'slug' => 'article-with-inline-image',
+            'body' => '<p>متن آغازین</p><img src="/storage/articles/inline-image.jpg" alt="نمونه" style="width:100%"><img src="https://example.com/bad.jpg" alt="bad"><p>متن پایانی</p>',
+            'is_published' => true,
+        ])->assertSessionHasNoErrors()->assertRedirect();
+
+        $article = Article::where('slug', 'article-with-inline-image')->firstOrFail();
+
+        $this->assertStringContainsString('<img src="/storage/articles/inline-image.jpg" alt="نمونه">', $article->body);
+        $this->assertStringNotContainsString('style=', $article->body);
+        $this->assertStringNotContainsString('https://example.com/bad.jpg', $article->body);
+    }
+
+    public function test_article_body_keeps_uploaded_images_when_public_disk_url_differs_from_seo_url(): void
+    {
+        config([
+            'seo.url' => 'https://metalsp.ir',
+            'filesystems.disks.public.url' => 'https://cdn.metalsp.ir/storage',
+        ]);
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->post('/admin/articles', [
+            'title' => 'مقاله با تصویر cdn',
+            'slug' => 'article-with-cdn-image',
+            'body' => '<p>متن</p><img src="https://cdn.metalsp.ir/storage/articles/cdn-image.jpg" alt="cdn image">',
+            'is_published' => true,
+        ])->assertSessionHasNoErrors()->assertRedirect();
+
+        $article = Article::where('slug', 'article-with-cdn-image')->firstOrFail();
+
+        $this->assertStringContainsString('https://cdn.metalsp.ir/storage/articles/cdn-image.jpg', $article->body);
+    }
+
+    public function test_topic_archive_has_a_clean_canonical_url_and_only_matching_published_articles(): void
+    {
+        Article::create([
+            'title' => 'راهنمای خرید طلا',
+            'slug' => 'gold-guide',
+            'body' => 'متن مقاله',
+            'topics' => ['آموزش خرید'],
+            'is_published' => true,
+            'published_at' => now(),
+        ]);
+        Article::create([
+            'title' => 'پیش نویس طلا',
+            'slug' => 'draft-gold-guide',
+            'body' => 'متن پیش نویس',
+            'topics' => ['آموزش خرید'],
+            'is_published' => false,
+        ]);
+        Article::create([
+            'title' => 'راهنمای دوم طلا',
+            'slug' => 'second-gold-guide',
+            'body' => 'متن مقاله دوم',
+            'topics' => ['آموزش  خرید'],
+            'is_published' => true,
+            'published_at' => now()->subDay(),
+        ]);
+
+        $this->get('/articles/topic/'.rawurlencode('آموزش-خرید'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Articles/Index')
+                ->where('filters.topic', 'آموزش خرید')
+                ->where('archive.type', 'topic')
+                ->where('archive.slug', 'آموزش-خرید')
+                ->where('articles.0.title', 'راهنمای خرید طلا')
+                ->has('articles', 2)
+                ->where('seo.canonical', rtrim(config('seo.url'), '/').'/articles/topic/'.rawurlencode('آموزش-خرید')));
+
+        $this->get('/articles/topic/'.rawurlencode('آموزش---خرید'))
+            ->assertStatus(301)
+            ->assertRedirect('/articles/topic/'.rawurlencode('آموزش-خرید'));
+    }
+
+    public function test_tag_archive_has_a_clean_url_and_unknown_taxonomies_are_not_indexable(): void
+    {
+        Article::create([
+            'title' => 'تحلیل بازار سکه',
+            'slug' => 'coin-analysis',
+            'body' => 'متن مقاله',
+            'tags' => ['تحلیل بازار'],
+            'is_published' => true,
+            'published_at' => now(),
+        ]);
+
+        $this->get('/articles/tag/'.rawurlencode('تحلیل-بازار'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('filters.tag', 'تحلیل بازار')
+                ->where('archive.type', 'tag')
+                ->where('articles.0.title', 'تحلیل بازار سکه')
+                ->where('seo.canonical', rtrim(config('seo.url'), '/').'/articles/tag/'.rawurlencode('تحلیل-بازار')));
+
+        $this->get('/articles/tag/not-found')->assertNotFound();
+        $this->get('/articles/topic/not-found')->assertNotFound();
+    }
+
+    public function test_legacy_article_filters_redirect_to_the_clean_taxonomy_urls(): void
+    {
+        Article::create([
+            'title' => 'راهنمای سرمایه گذاری',
+            'slug' => 'investment-guide',
+            'body' => 'متن مقاله',
+            'topics' => ['سرمایه گذاری'],
+            'tags' => ['طلای آبشده'],
+            'is_published' => true,
+            'published_at' => now(),
+        ]);
+
+        $this->get('/articles?topic='.urlencode('سرمایه گذاری'))
+            ->assertRedirect('/articles/topic/'.rawurlencode('سرمایه-گذاری'))
+            ->assertStatus(301);
+
+        $this->get('/articles?tag='.urlencode('طلای آبشده'))
+            ->assertRedirect('/articles/tag/'.rawurlencode('طلای-آبشده'))
+            ->assertStatus(301);
+    }
+
+    public function test_article_page_includes_only_relevant_published_articles_for_internal_linking(): void
+    {
+        $article = Article::create([
+            'title' => 'راهنمای اصلی طلا',
+            'slug' => 'main-gold-guide',
+            'body' => 'متن مقاله',
+            'topics' => ['آموزش خرید'],
+            'tags' => ['طلای آبشده'],
+            'is_published' => true,
+            'published_at' => now(),
+        ]);
+        Article::create([
+            'title' => 'مقاله مرتبط',
+            'slug' => 'related-gold-guide',
+            'body' => 'متن مرتبط',
+            'topics' => ['آموزش خرید'],
+            'is_published' => true,
+            'published_at' => now()->subDay(),
+        ]);
+        Article::create([
+            'title' => 'مقاله نامرتبط',
+            'slug' => 'unrelated-coin-guide',
+            'body' => 'متن نامرتبط',
+            'topics' => ['بازار سکه'],
+            'is_published' => true,
+            'published_at' => now()->subDays(2),
+        ]);
+        Article::create([
+            'title' => 'مقاله مرتبط منتشر نشده',
+            'slug' => 'draft-related-guide',
+            'body' => 'متن پیش نویس',
+            'tags' => ['طلای آبشده'],
+            'is_published' => false,
+        ]);
+
+        $this->get('/articles/'.$article->slug)
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('relatedArticles.0.title', 'مقاله مرتبط')
+                ->has('relatedArticles', 1));
     }
 }

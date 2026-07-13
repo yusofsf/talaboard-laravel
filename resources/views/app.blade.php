@@ -18,24 +18,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title inertia>{{ $title }}</title>
-<meta name="description" content="{{ $description }}">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<title data-inertia="">{{ $title }}</title>
+<meta data-inertia="description" name="description" content="{{ $description }}">
 <meta name="author" content="{{ $siteName }}">
-<meta name="robots" content="{{ $seo['robots'] ?? 'index, follow, max-image-preview:large' }}">
-<link rel="canonical" href="{{ $canonical }}">
-<link rel="alternate" hreflang="fa-IR" href="{{ $canonical }}">
+<meta data-inertia="robots" name="robots" content="{{ $seo['robots'] ?? 'index, follow, max-image-preview:large' }}">
+<link data-inertia="canonical" rel="canonical" href="{{ $canonical }}">
+<link data-inertia="alternate-fa" rel="alternate" hreflang="fa-IR" href="{{ $canonical }}">
 
-<meta property="og:type" content="{{ $seo['type'] ?? 'website' }}">
-<meta property="og:site_name" content="{{ $siteName }}">
-<meta property="og:title" content="{{ $title }}">
-<meta property="og:description" content="{{ $description }}">
-<meta property="og:url" content="{{ $canonical }}">
-<meta property="og:image" content="{{ $seo['image'] ?? $logo }}">
-<meta property="og:locale" content="{{ config('seo.locale') }}">
-<meta name="twitter:card" content="{{ config('seo.twitter_card') }}">
-<meta name="twitter:title" content="{{ $title }}">
-<meta name="twitter:description" content="{{ $description }}">
-<meta name="twitter:image" content="{{ $seo['image'] ?? $logo }}">
+<meta data-inertia="og-type" property="og:type" content="{{ $seo['type'] ?? 'website' }}">
+<meta data-inertia="og-site-name" property="og:site_name" content="{{ $siteName }}">
+<meta data-inertia="og-title" property="og:title" content="{{ $title }}">
+<meta data-inertia="og-description" property="og:description" content="{{ $description }}">
+<meta data-inertia="og-url" property="og:url" content="{{ $canonical }}">
+<meta data-inertia="og-image" property="og:image" content="{{ $seo['image'] ?? $logo }}">
+<meta data-inertia="og-locale" property="og:locale" content="{{ config('seo.locale') }}">
+<meta data-inertia="twitter-card" name="twitter:card" content="{{ config('seo.twitter_card') }}">
+<meta data-inertia="twitter-title" name="twitter:title" content="{{ $title }}">
+<meta data-inertia="twitter-description" name="twitter:description" content="{{ $description }}">
+<meta data-inertia="twitter-image" name="twitter:image" content="{{ $seo['image'] ?? $logo }}">
 <meta name="theme-color" content="#0b0e14">
 
 <script type="application/ld+json">
@@ -56,7 +57,7 @@
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) !!}
 </script>
 @if (! empty($schema))
-<script type="application/ld+json">
+<script data-inertia="page-schema" type="application/ld+json">
 {!! json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) !!}
 </script>
 @endif

@@ -37,4 +37,15 @@ class Article extends Model
         return $query->where('is_published', true)
             ->where(fn ($q) => $q->whereNull('published_at')->orWhere('published_at', '<=', now()));
     }
+
+    public static function taxonomySlug(string $value): string
+    {
+        return Str::of($value)
+            ->replace(['ي', 'ك'], ['ی', 'ک'])
+            ->lower()
+            ->trim()
+            ->replaceMatches('/[^\pL\pN]+/u', '-')
+            ->trim('-')
+            ->toString();
+    }
 }

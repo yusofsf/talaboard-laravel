@@ -23,6 +23,20 @@ class SeoPagesTest extends TestCase
             ->assertRedirect('https://metalsp.ir/articles');
     }
 
+    public function test_non_get_requests_use_a_method_preserving_canonical_redirect(): void
+    {
+        config(['seo.force_https' => true]);
+
+        $this->post('http://www.metalsp.ir/admin/articles', [
+            'title' => 'test article',
+            'slug' => 'test-article',
+            'body' => 'body',
+            'is_published' => true,
+        ])
+            ->assertStatus(308)
+            ->assertRedirect('https://metalsp.ir/admin/articles');
+    }
+
     public function test_public_seo_landing_pages_render_indexable_metadata(): void
     {
         foreach (['/silver-prices', '/gold-prices', '/coin-prices', '/silver-999-price', '/gold-gram-price', '/full-coin-price', '/buy-gold', '/sell-silver'] as $path) {
@@ -40,6 +54,12 @@ class SeoPagesTest extends TestCase
 
         $this->get('/sitemap.xml')
             ->assertOk()
+            ->assertSee($siteUrl.'/', false)
+            ->assertSee($siteUrl.'/about', false)
+            ->assertSee($siteUrl.'/contact', false)
+            ->assertSee($siteUrl.'/calculator', false)
+            ->assertSee($siteUrl.'/chart', false)
+            ->assertSee($siteUrl.'/speed-test', false)
             ->assertSee($siteUrl.'/silver-prices', false)
             ->assertSee($siteUrl.'/gold-prices', false)
             ->assertSee($siteUrl.'/coin-prices', false)
@@ -48,6 +68,7 @@ class SeoPagesTest extends TestCase
             ->assertSee($siteUrl.'/full-coin-price', false)
             ->assertSee($siteUrl.'/buy-gold', false)
             ->assertSee($siteUrl.'/sell-silver', false)
+            ->assertDontSee($siteUrl.'/trade/geram', false)
             ->assertDontSee($siteUrl.'/login', false)
             ->assertDontSee($siteUrl.'/register', false);
     }

@@ -16,7 +16,9 @@ class ForceHttps
             && strtolower($request->getHost()) === strtolower((string) $canonicalHost);
 
         if (config('seo.force_https') && ! $hasCanonicalOrigin) {
-            return redirect()->to($canonicalUrl.$request->getRequestUri(), 301);
+            $status = $request->isMethodSafe() ? 301 : 308;
+
+            return redirect()->to($canonicalUrl.$request->getRequestUri(), $status);
         }
 
         return $next($request);

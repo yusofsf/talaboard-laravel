@@ -477,31 +477,6 @@ export default function Home({ prices: initial, refreshSeconds }) {
                     </div>
                 </main>
 
-                {/* بخش سئو — متن قابل‌خزش برای گوگل (کلمات کلیدی + لینک داخلی) */}
-                <section className="tv-seo">
-                    <h2>خرید و فروش آنلاین طلا، نقره و سکه</h2>
-                    <p>
-                        <strong>آبشده صفرپور</strong> مرجع <strong>قیمت لحظه‌ای طلا، نقره و سکه</strong> و
-                        محل مطمئن <strong>خرید نقره</strong> و <strong>فروش نقره</strong>، <strong>خرید طلا</strong> و
-                        <strong> فروش طلا</strong>، و خرید و فروش انواع <strong>سکه</strong> است. در این تابلو
-                        نرخ روز <strong>نقره آبشده</strong>، <strong>نقره عیار ۹۹۹</strong> و <strong>نقره عیار ۹۹۵</strong>
-                        (عیار ۹۹۹ و عیار ۹۹۵)، <strong>ساچمه نقره</strong>، <strong>سکه تمام</strong> (بهار آزادی)،
-                        <strong> نیم سکه</strong> و <strong>ربع سکه</strong> به‌صورت زنده نمایش داده می‌شود.
-                    </p>
-                    <p>
-                        برای <Link href="/trade/geram">خرید و فروش طلای آبشده</Link>،
-                        <Link href="/trade/gram_999"> خرید و فروش نقره عیار ۹۹۹</Link>،
-                        <Link href="/trade/gram_995"> نقره عیار ۹۹۵</Link>،
-                        <Link href="/trade/bahar"> سکه تمام بهار آزادی</Link>،
-                        <Link href="/trade/nim"> نیم سکه</Link> و
-                        <Link href="/trade/rob"> ربع سکه</Link> می‌توانید همین حالا با بهترین قیمت اقدام کنید.
-                    </p>
-                    <p className="tv-seo-tags">
-                        نقره، طلا، خرید نقره، خرید طلا، فروش نقره، فروش طلا، سکه، خرید سکه، فروش سکه،
-                        سکه تمام، ربع سکه، نیم سکه، ساچمه، صفرپور، نقره آبشده، نقره عیار، نقره عیار ۹۹۵،
-                        نقره عیار ۹۹۹، عیار ۹۹۵، عیار ۹۹۹.
-                    </p>
-                </section>
             </div>
         </>
     );

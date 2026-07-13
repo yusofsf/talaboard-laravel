@@ -1,39 +1,45 @@
-import { Link } from '@inertiajs/react';
+import { Fragment } from 'react';
 import AppLayout from '../Layouts/AppLayout';
 
 const fallbackBody = [
-    'آبشده صفرپور مرجع قیمت لحظه‌ای طلا، نقره و سکه و محل مطمئن خرید و فروش آنلاین فلزات گران‌بها است.',
-    'برای [خرید و فروش طلای آبشده](/trade/geram)، [خرید و فروش نقره عیار ۹۹۹](/trade/gram_999)، [نقره عیار ۹۹۵](/trade/gram_995)، [سکه تمام بهار آزادی](/trade/bahar)، [نیم سکه](/trade/nim) و [ربع سکه](/trade/rob) می‌توانید همین حالا با بهترین قیمت اقدام کنید.',
+    '**آبشده صفرپور** مرجع **قیمت لحظه‌ای طلا، نقره و سکه** و محل مطمئن **خرید نقره** و **فروش نقره**، **خرید طلا** و **فروش طلا**، و خرید و فروش انواع **سکه** است. در این تابلو نرخ روز **نقره آبشده**، **نقره عیار ۹۹۹** و **نقره عیار ۹۹۵**(عیار ۹۹۹ و عیار ۹۹۵)، **ساچمه نقره**، **سکه تمام** (بهار آزادی)، **نیم سکه** و **ربع سکه** به‌صورت زنده نمایش داده می‌شود.',
+    'برای [خرید و فروش طلای آبشده](https://metalsp.ir/trade/geram)، [خرید و فروش نقره عیار ۹۹۹](https://metalsp.ir/trade/gram_999)، [نقره عیار ۹۹۵](https://metalsp.ir/trade/gram_995)، [سکه تمام بهار آزادی](https://metalsp.ir/trade/bahar)، [نیم سکه](https://metalsp.ir/trade/nim) و [ربع سکه](https://metalsp.ir/trade/rob) می‌توانید همین حالا با بهترین قیمت اقدام کنید.',
+    'نقره، طلا، خرید نقره، خرید طلا، فروش نقره، فروش طلا، سکه، خرید سکه، فروش سکه، سکه تمام، ربع سکه، نیم سکه، ساچمه، صفرپور، نقره آبشده، نقره عیار، نقره عیار ۹۹۵، نقره عیار ۹۹۹، عیار ۹۹۵، عیار ۹۹۹.',
 ].join('\n\n');
 
 function paragraphs(text) {
     return String(text || '').split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
 }
 
-function renderInlineLinks(text) {
-    const parts = [];
-    const pattern = /\[([^\]]+)]\((\/[^)\s]+)\)/g;
+function renderInline(text) {
+    const nodes = [];
+    const pattern = /(\*\*([^*]+)\*\*)|(\[([^\]]+)]\((https?:\/\/[^)\s]+)\))/g;
     let lastIndex = 0;
     let match;
 
     while ((match = pattern.exec(text)) !== null) {
         if (match.index > lastIndex) {
-            parts.push(text.slice(lastIndex, match.index));
+            nodes.push(text.slice(lastIndex, match.index));
         }
 
-        parts.push(
-            <Link key={`${match[2]}-${match.index}`} href={match[2]}>
-                {match[1]}
-            </Link>
-        );
+        if (match[2]) {
+            nodes.push(<strong key={`strong-${match.index}`}>{match[2]}</strong>);
+        } else if (match[4] && match[5]) {
+            nodes.push(
+                <a key={`link-${match.index}`} href={match[5]}>
+                    {match[4]}
+                </a>
+            );
+        }
+
         lastIndex = pattern.lastIndex;
     }
 
     if (lastIndex < text.length) {
-        parts.push(text.slice(lastIndex));
+        nodes.push(text.slice(lastIndex));
     }
 
-    return parts;
+    return nodes.map((node, index) => <Fragment key={index}>{node}</Fragment>);
 }
 
 export default function About({ content }) {
@@ -47,8 +53,8 @@ export default function About({ content }) {
                 <section className="fcard">
                     <h1 style={{ fontSize: 28, margin: '0 0 14px' }}>{title}</h1>
                     <div style={{ color: 'var(--muted)', lineHeight: 2.2, fontSize: 15, textAlign: 'justify' }}>
-                        {bodyParagraphs.map((p, i) => (
-                            <p key={i}>{renderInlineLinks(p)}</p>
+                        {bodyParagraphs.map((paragraph, index) => (
+                            <p key={index}>{renderInline(paragraph)}</p>
                         ))}
                     </div>
                 </section>

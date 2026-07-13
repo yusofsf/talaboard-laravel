@@ -23,20 +23,6 @@ class SeoPagesTest extends TestCase
             ->assertRedirect('https://metalsp.ir/articles');
     }
 
-    public function test_non_get_requests_use_a_method_preserving_canonical_redirect(): void
-    {
-        config(['seo.force_https' => true]);
-
-        $this->post('http://www.metalsp.ir/admin/articles', [
-            'title' => 'test article',
-            'slug' => 'test-article',
-            'body' => 'body',
-            'is_published' => true,
-        ])
-            ->assertStatus(308)
-            ->assertRedirect('https://metalsp.ir/admin/articles');
-    }
-
     public function test_public_seo_landing_pages_render_indexable_metadata(): void
     {
         foreach (['/silver-prices', '/gold-prices', '/coin-prices', '/silver-999-price', '/gold-gram-price', '/full-coin-price', '/buy-gold', '/sell-silver'] as $path) {

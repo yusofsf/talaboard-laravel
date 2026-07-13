@@ -124,6 +124,24 @@ class ArticleTest extends TestCase
         $this->assertTrue($article->is_published);
     }
 
+    public function test_admin_can_create_an_article_from_a_non_canonical_origin(): void
+    {
+        config(['seo.force_https' => true]);
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->post('http://www.metalsp.ir/admin/articles', [
+            'title' => 'Article from admin form',
+            'slug' => 'article-from-admin-form',
+            'body' => 'Article body',
+            'is_published' => true,
+        ])->assertSessionHasNoErrors()->assertRedirect();
+
+        $this->assertDatabaseHas('articles', [
+            'slug' => 'article-from-admin-form',
+            'title' => 'Article from admin form',
+        ]);
+    }
+
     public function test_admin_article_form_receives_existing_tags_and_topics(): void
     {
         $admin = User::factory()->admin()->create();

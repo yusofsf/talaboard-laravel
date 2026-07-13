@@ -28,12 +28,14 @@ export default function Articles({ articles, tagOptions = [], topicOptions = [] 
         const options = { preserveScroll: true, forceFormData: true, onSuccess: reset };
 
         if (editing) {
-            form.transform(data => ({ ...data, _method: 'put' })).post(`/admin/articles/${editing}`, options);
+            form.transform(data => ({ ...data, _method: 'put' }));
+            form.post(`/admin/articles/${editing}`, options);
             form.transform(data => data);
             return;
         }
 
-        form.transform(data => data).post('/admin/articles', options);
+        form.transform(data => data);
+        form.post('/admin/articles', options);
     }
 
     function reset() {

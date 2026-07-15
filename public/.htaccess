@@ -5,6 +5,14 @@
 
     RewriteEngine On
 
+    # Block hidden files and directories such as .git, .env, and editor metadata.
+    # .well-known stays available for certificate/domain verification challenges.
+    RewriteRule "(^|/)\.(?!well-known(?:/|$))" - [F,L]
+
+    <FilesMatch "(^\.|composer\.(json|lock)$|package(-lock)?\.json$|phpunit\.xml$|artisan$|.*\.env$)">
+        Require all denied
+    </FilesMatch>
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
@@ -27,3 +35,14 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+<IfModule mod_headers.c>
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "camera=(self), microphone=(self), geolocation=(), payment=()"
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    Header always unset X-Powered-By
+</IfModule>
+
+ServerSignature Off

@@ -5,6 +5,7 @@ use App\Http\Middleware\DetectSuspiciousInput;
 use App\Http\Middleware\ForceHttps;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\LogRequest;
+use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\UpdateLastSeen;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -22,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
             ForceHttps::class,
         ]);
         $middleware->web(append: [
+            SecurityHeaders::class,
             HandleInertiaRequests::class,
             UpdateLastSeen::class,
             DetectSuspiciousInput::class,

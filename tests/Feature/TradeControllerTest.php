@@ -55,6 +55,17 @@ class TradeControllerTest extends TestCase
         return $this->actingAs($user)->post('/cart/checkout');
     }
 
+    public function test_trade_page_is_public_and_indexable(): void
+    {
+        $this->fakePrices();
+
+        $response = $this->get('/trade/mithqal');
+
+        $response->assertOk();
+        $response->assertSee('index, follow, max-image-preview:large', false);
+        $response->assertSee('https://metalsp.ir/trade/mithqal', false);
+    }
+
     public function test_buy_gold_adds_to_cart_without_creating_transaction(): void
     {
         $this->fakePrices();

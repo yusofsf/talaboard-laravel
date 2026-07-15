@@ -47,6 +47,7 @@ Route::get('/article', fn () => redirect()->route('articles.index'))->name('arti
 Route::get('/articles/topic/{slug}', [ArticleController::class, 'topic'])->name('articles.topic');
 Route::get('/articles/tag/{slug}', [ArticleController::class, 'tag'])->name('articles.tag');
 Route::get('/articles/{slug}', [ArticleController::class, 'show'])->name('articles.show');
+Route::get('/trade/{item}', [TradeController::class, 'show'])->name('trade');
 Route::get('/silver-prices', [SeoPageController::class, 'show'])->defaults('page', 'silver-prices')->name('seo.silver');
 Route::get('/gold-prices', [SeoPageController::class, 'show'])->defaults('page', 'gold-prices')->name('seo.gold');
 Route::get('/coin-prices', [SeoPageController::class, 'show'])->defaults('page', 'coin-prices')->name('seo.coin');
@@ -77,6 +78,13 @@ Route::get('/sitemap.xml', function () {
             ]))
         ->values()
         ->all();
+    $tradePages = collect(['mithqal', 'geram', 'bahar', 'nim', 'rob', 'mithqal_999', 'gram_999', 'mithqal_995', 'gram_995'])
+        ->map(fn (string $item) => [
+            'path' => '/trade/'.$item,
+            'changefreq' => 'hourly',
+            'priority' => '0.74',
+        ])
+        ->all();
     $pages = [
         ...config('seo.public_pages', []),
         ...config('seo.keyword_pages', []),
@@ -85,6 +93,7 @@ Route::get('/sitemap.xml', function () {
             'changefreq' => 'daily',
             'priority' => '0.72',
         ],
+        ...$tradePages,
         ...$taxonomyPages,
         ...$articles
             ->map(fn (Article $article) => [
@@ -150,7 +159,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/cart/checkout', [CartController::class, 'checkout'])->name('cart.checkout');
     Route::delete('/cart/{id}', [CartController::class, 'destroy'])->name('cart.destroy');
 
-    Route::get('/trade/{item}', [TradeController::class, 'show'])->name('trade');
     Route::post('/trade/{item}', [TradeController::class, 'store']);
 
     Route::get('/wallet', [WalletController::class, 'index'])->name('wallet');

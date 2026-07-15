@@ -40,6 +40,7 @@ class TradeController extends Controller
         return Inertia::render('Trade', [
             'item'      => $item,
             'meta'      => $meta,
+            'seo'       => $this->tradeSeo($item, $meta),
             // مشتری می‌خرد → قیمت فروش ما؛ مشتری می‌فروشد → قیمت خرید ما
             'sellPrice' => $this->lookup($data, $item, $meta, 'gold', 'silver'),
             'buyPrice'  => $this->lookup($data, $item, $meta, 'gold_buy', 'silver_buy'),
@@ -122,6 +123,33 @@ class TradeController extends Controller
         return $meta['group'] === 'gold'
             ? ($data[$goldKey][$item] ?? null)
             : ($data[$silverKey][$item] ?? null);
+    }
+
+    private function tradeSeo(string $item, array $meta): array
+    {
+        $siteUrl = rtrim(config('seo.url'), '/');
+        $siteName = config('seo.site_name');
+        $label = $meta['label'];
+        $canonical = "{$siteUrl}/trade/{$item}";
+
+        return [
+            'title' => "{$label} | خرید و فروش آنلاین | {$siteName}",
+            'description' => "مشاهده قیمت لحظه‌ای {$label} و ثبت خرید یا فروش آنلاین در {$siteName}. قیمت‌ها به‌روز هستند و معامله پس از ورود به حساب کاربری انجام می‌شود.",
+            'canonical' => $canonical,
+            'robots' => 'index, follow, max-image-preview:large',
+            'type' => 'product',
+            'schema' => [
+                '@context' => 'https://schema.org',
+                '@type' => 'Product',
+                'name' => $label,
+                'description' => "قیمت لحظه‌ای و امکان خرید و فروش آنلاین {$label}",
+                'url' => $canonical,
+                'brand' => [
+                    '@type' => 'Brand',
+                    'name' => $siteName,
+                ],
+            ],
+        ];
     }
 
     /** موجودی فعلی کاربر از یک سکه (مجموع خریدها منهای فروش‌ها از تاریخچه‌ی معاملات). */

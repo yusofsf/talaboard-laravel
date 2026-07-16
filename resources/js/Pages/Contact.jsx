@@ -3,8 +3,9 @@ import AppLayout from '../Layouts/AppLayout';
 
 export default function Contact({ content }) {
     const form = useForm({ name: '', email: '', subject: '', message: '' });
-    const title = content?.title || 'تماس با ما';
-    const intro = content?.intro || 'پیام خود را برای آبشده صفرپور بفرستید. پاسخ از طریق ایمیل ثبت‌شده پیگیری می‌شود.';
+    const supportPhone = '09936578235';
+    const title = content?.title || 'پشتیبانی';
+    const intro = content?.intro || `برای پشتیبانی با شماره ${supportPhone} تماس بگیرید یا پیام خود را از فرم زیر ارسال کنید.`;
 
     function submit(e) {
         e.preventDefault();
@@ -19,6 +20,18 @@ export default function Contact({ content }) {
                     <p style={{ color: 'var(--muted)', lineHeight: 2, marginBottom: 22 }}>
                         {intro}
                     </p>
+                    <a href={`tel:${supportPhone}`} className="fcard" style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        padding: '12px 16px',
+                        marginBottom: 22,
+                        textDecoration: 'none',
+                        color: 'var(--txt)',
+                    }}>
+                        <span style={{ color: 'var(--gold-1)', fontWeight: 800 }}>پشتیبانی</span>
+                        <span dir="ltr" className="num">{supportPhone}</span>
+                    </a>
 
                     <form onSubmit={submit}>
                         <Field label="نام" error={form.errors.name}>

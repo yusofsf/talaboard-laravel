@@ -20,4 +20,18 @@ class PublicPagesTest extends TestCase
     {
         $this->get('/article')->assertRedirect(route('articles.index'));
     }
+
+    public function test_public_pages_include_security_headers(): void
+    {
+        config(['seo.force_https' => true]);
+
+        $this->get('https://metalsp.ir/')
+            ->assertOk()
+            ->assertHeader('X-Frame-Options', 'SAMEORIGIN')
+            ->assertHeader('X-Content-Type-Options', 'nosniff')
+            ->assertHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+            ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
+            ->assertHeader('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=(), payment=()')
+            ->assertHeader('Content-Security-Policy');
+    }
 }

@@ -56,8 +56,10 @@ export default function VideoRecorder({ onRecorded, maxSeconds = 30 }) {
         }
         mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
         mr.onstop = () => {
-            const blob = new Blob(chunksRef.current, { type: 'video/webm' });
-            const file = new File([blob], 'verification.webm', { type: 'video/webm' });
+            const mimeType = mr.mimeType || chunksRef.current[0]?.type || 'video/webm';
+            const extension = mimeType.includes('mp4') ? 'mp4' : (mimeType.includes('quicktime') ? 'mov' : 'webm');
+            const blob = new Blob(chunksRef.current, { type: mimeType });
+            const file = new File([blob], `verification.${extension}`, { type: mimeType });
             const url = URL.createObjectURL(blob);
             setPreviewUrl(url);
             onRecorded(file);

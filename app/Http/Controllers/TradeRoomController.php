@@ -12,6 +12,7 @@ use App\Models\TradeRoomOffer;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\WalletTransaction;
+use App\Services\TradeRoomExpiryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -19,11 +20,15 @@ use Inertia\Inertia;
 class TradeRoomController extends Controller
 {
     private const PURITY_LABEL = ['999' => 'نقره ۹۹۹/۹', '995' => 'نقره ۹۹۵'];
-    private const COIN_LABEL   = ['bahar' => 'سکه تمام', 'nim' => 'نیم سکه', 'rob' => 'ربع سکه'];
+
+    private const COIN_LABEL = ['bahar' => 'سکه تمام', 'nim' => 'نیم سکه', 'rob' => 'ربع سکه'];
+
+    public function __construct(private TradeRoomExpiryService $expiry) {}
 
     public function index(Request $request)
     {
         $this->ensureVip($request->user());
+        $this->expiry->expireOpenOffers();
 
         // سفارش‌های فروش: ارزان‌ترین اول (برای خریدار بهترین قیمت بالاست)
         $sellOffers = TradeRoomOffer::with(['user', 'counterparty'])
@@ -50,17 +55,17 @@ class TradeRoomController extends Controller
             ->map(fn ($o) => $this->present($o, $request->user()));
 
         return Inertia::render('TradeRoom', [
-            'sellOffers'    => $sellOffers,
-            'buyOffers'     => $buyOffers,
-            'myOffers'      => $myOffers,
+            'sellOffers' => $sellOffers,
+            'buyOffers' => $buyOffers,
+            'myOffers' => $myOffers,
             'walletBalance' => $request->user()->walletBalance(),
-            'goldBalance'   => $request->user()->goldBalance(),
+            'goldBalance' => $request->user()->goldBalance(),
             'silverBalance' => [
                 '999' => $request->user()->silverBalance('999'),
                 '995' => $request->user()->silverBalance('995'),
             ],
             'commissionPercent' => (float) Setting::get('trade_room_commission_percent', 0.1),
-            'mithqalGrams'      => (float) env('MITHQAL_GRAMS', 4.3318),
+            'mithqalGrams' => (float) env('MITHQAL_GRAMS', 4.3318),
         ]);
     }
 
@@ -70,25 +75,25 @@ class TradeRoomController extends Controller
         $this->ensureVip($user);
 
         $request->validate([
-            'metal'          => 'required|in:gold,silver,coin',
-            'side'           => 'required|in:buy,sell',
-            'item'           => 'required_if:metal,coin|in:bahar,nim,rob',
-            'purity'         => 'required_if:metal,silver|in:999,995',
-            'grams'          => 'required|numeric|min:1',
+            'metal' => 'required|in:gold,silver,coin',
+            'side' => 'required|in:buy,sell',
+            'item' => 'required_if:metal,coin|nullable|in:bahar,nim,rob',
+            'purity' => 'required_if:metal,silver|nullable|in:999,995',
+            'grams' => 'required|numeric|min:1',
             'price_per_gram' => 'required|integer|min:1',
         ]);
 
-        $metal  = $request->metal;
+        $metal = $request->metal;
         $isCoin = $metal === 'coin';
-        $item   = $isCoin ? $request->item : null;
+        $item = $isCoin ? $request->item : null;
         $purity = $metal === 'silver' ? $request->purity : '';
-        $grams  = (float) $request->grams; // برای سکه = تعداد
-        $total  = (int) round($grams * $request->price_per_gram);
+        $grams = (float) $request->grams; // برای سکه = تعداد
+        $total = (int) round($grams * $request->price_per_gram);
 
         if ($isCoin && fmod($grams, 1) !== 0.0) {
             return back()->withErrors(['grams' => 'تعداد سکه باید عدد صحیح باشد.']);
         }
-        if (!$isCoin && $grams < 100) {
+        if (! $isCoin && $grams < 100) {
             return back()->withErrors(['grams' => 'حداقل مقدار پیشنهاد در اتاق معاملاتی ۱۰۰ گرم است.']);
         }
 
@@ -104,20 +109,20 @@ class TradeRoomController extends Controller
 
         DB::transaction(function () use ($user, $request, $metal, $isCoin, $item, $purity, $grams, $total) {
             $offer = TradeRoomOffer::create([
-                'user_id'        => $user->id,
-                'metal'          => $metal,
-                'item'           => $item,
-                'side'           => $request->side,
-                'purity'         => $purity,
-                'grams'          => $grams,
+                'user_id' => $user->id,
+                'metal' => $metal,
+                'item' => $item,
+                'side' => $request->side,
+                'purity' => $purity,
+                'grams' => $grams,
                 'price_per_gram' => $request->price_per_gram,
-                'status'         => 'open',
+                'status' => 'open',
             ]);
 
             // رزرو (escrow) دارایی پیشنهاددهنده تا زمان تطبیق یا لغو
             if ($request->side === 'sell') {
                 // سکه دفترکل گرمی ندارد؛ مثل فروشگاه موجودی هنگام پذیرش دوباره بررسی می‌شود (بدون رزرو).
-                if (!$isCoin) {
+                if (! $isCoin) {
                     $this->createLedger($user->id, $metal, $purity, -$grams, 'offer_escrow', $offer->id, "رزرو برای پیشنهاد فروش #{$offer->id}");
                 }
             } else {
@@ -128,13 +133,13 @@ class TradeRoomController extends Controller
             }
         });
 
-        $sideLabel  = $request->side === 'sell' ? 'فروش' : 'خرید';
-        $itemLabel  = $isCoin ? self::COIN_LABEL[$item] : ($metal === 'gold' ? 'طلا' : ('نقره ' . $purity));
-        $unit       = $isCoin ? 'عدد' : 'گرم';
+        $sideLabel = $request->side === 'sell' ? 'فروش' : 'خرید';
+        $itemLabel = $isCoin ? self::COIN_LABEL[$item] : ($metal === 'gold' ? 'طلا' : ('نقره '.$purity));
+        $unit = $isCoin ? 'عدد' : 'گرم';
         ActivityLog::record('room_offer', 'trade',
-            "ثبت پیشنهاد {$sideLabel} {$itemLabel} در اتاق معاملاتی — " . (int) $grams . " {$unit} — کاربر: {$user->name}", $user->id);
+            "ثبت پیشنهاد {$sideLabel} {$itemLabel} در اتاق معاملاتی — ".(int) $grams." {$unit} — کاربر: {$user->name}", $user->id);
 
-        return back()->with('success', 'پیشنهاد شما در اتاق معاملاتی ثبت شد.');
+        return back()->with('success', $this->expiry->thursdayNotice() ?? 'پیشنهاد شما در اتاق معاملاتی ثبت شد.');
     }
 
     public function accept(Request $request, int $id)
@@ -149,22 +154,25 @@ class TradeRoomController extends Controller
                 if ($offer->status !== 'open') {
                     throw new \RuntimeException('این پیشنهاد دیگر باز نیست.');
                 }
+                if ($this->expiry->expireOfferIfNeeded($offer)) {
+                    throw new \RuntimeException('مهلت این سفارش تمام شده و رزرو آن به ثبت‌کننده برگشت خورد.');
+                }
                 if ($offer->user_id === $acceptor->id) {
                     throw new \RuntimeException('نمی‌توانید پیشنهاد خودتان را بپذیرید.');
                 }
 
-                $metal  = $offer->metal;
+                $metal = $offer->metal;
                 $isCoin = $metal === 'coin';
                 $purity = $offer->purity;
-                $grams  = (float) $offer->grams; // برای سکه = تعداد
-                $total  = $offer->total();
+                $grams = (float) $offer->grams; // برای سکه = تعداد
+                $total = $offer->total();
                 $itemLabel = $isCoin ? self::COIN_LABEL[$offer->item] : ($metal === 'gold' ? 'طلا' : self::PURITY_LABEL[$purity]);
-                $unit   = $isCoin ? 'عدد' : 'گرم';
+                $unit = $isCoin ? 'عدد' : 'گرم';
 
                 // کارمزد اتاق معاملاتی — به‌صورت نصف‌نصف بین خریدار و فروشنده. مبلغ کارمزد از سیستم خارج می‌شود (سهم فروشگاه).
-                $rate      = (float) Setting::get('trade_room_commission_percent', 0.1) / 100;
-                $fee       = (int) round($total * $rate);
-                $buyerFee  = intdiv($fee, 2);
+                $rate = (float) Setting::get('trade_room_commission_percent', 0.1) / 100;
+                $fee = (int) round($total * $rate);
+                $buyerFee = intdiv($fee, 2);
                 $sellerFee = $fee - $buyerFee;
 
                 if ($offer->side === 'sell') {
@@ -176,8 +184,8 @@ class TradeRoomController extends Controller
                     if ($isCoin && $this->coinHolding($offer->user_id, $offer->item) < $grams) {
                         throw new \RuntimeException('موجودی فروشنده دیگر کافی نیست.');
                     }
-                    WalletTransaction::create(['user_id' => $acceptor->id, 'amount' => -($total + $buyerFee), 'type' => 'withdraw', 'description' => "خرید {$itemLabel} از اتاق معاملاتی #{$offer->id}" . ($buyerFee > 0 ? " (شامل کارمزد " . number_format($buyerFee) . " تومان)" : '')]);
-                    WalletTransaction::create(['user_id' => $offer->user_id, 'amount' => $total - $sellerFee, 'type' => 'deposit', 'description' => "فروش {$itemLabel} در اتاق معاملاتی #{$offer->id}" . ($sellerFee > 0 ? " (پس از کسر کارمزد " . number_format($sellerFee) . " تومان)" : '')]);
+                    WalletTransaction::create(['user_id' => $acceptor->id, 'amount' => -($total + $buyerFee), 'type' => 'withdraw', 'description' => "خرید {$itemLabel} از اتاق معاملاتی #{$offer->id}".($buyerFee > 0 ? ' (شامل کارمزد '.number_format($buyerFee).' تومان)' : '')]);
+                    WalletTransaction::create(['user_id' => $offer->user_id, 'amount' => $total - $sellerFee, 'type' => 'deposit', 'description' => "فروش {$itemLabel} در اتاق معاملاتی #{$offer->id}".($sellerFee > 0 ? ' (پس از کسر کارمزد '.number_format($sellerFee).' تومان)' : '')]);
                     if ($isCoin) {
                         $this->coinTransfer($acceptor->id, 'buy', $offer, $total);
                         $this->coinTransfer($offer->user_id, 'sell', $offer, $total);
@@ -197,7 +205,7 @@ class TradeRoomController extends Controller
                         $this->createLedger($acceptor->id, $metal, $purity, -$grams, 'p2p_sell', $offer->id, "فروش به اتاق معاملاتی #{$offer->id}");
                         $this->createLedger($offer->user_id, $metal, $purity, $grams, 'p2p_buy', $offer->id, "خرید از اتاق معاملاتی #{$offer->id}");
                     }
-                    WalletTransaction::create(['user_id' => $acceptor->id, 'amount' => $total - $sellerFee, 'type' => 'deposit', 'description' => "فروش {$itemLabel} در اتاق معاملاتی #{$offer->id}" . ($sellerFee > 0 ? " (پس از کسر کارمزد " . number_format($sellerFee) . " تومان)" : '')]);
+                    WalletTransaction::create(['user_id' => $acceptor->id, 'amount' => $total - $sellerFee, 'type' => 'deposit', 'description' => "فروش {$itemLabel} در اتاق معاملاتی #{$offer->id}".($sellerFee > 0 ? ' (پس از کسر کارمزد '.number_format($sellerFee).' تومان)' : '')]);
                     if ($buyerFee > 0) {
                         WalletTransaction::create(['user_id' => $offer->user_id, 'amount' => -$buyerFee, 'type' => 'withdraw', 'description' => "کارمزد خرید اتاق معاملاتی #{$offer->id}"]);
                     }
@@ -205,14 +213,14 @@ class TradeRoomController extends Controller
 
                 $offer->update(['status' => 'completed', 'counterparty_id' => $acceptor->id, 'completed_at' => now(), 'commission' => $fee]);
 
-                $feeNote = $fee > 0 ? ' — کارمزد: ' . number_format($fee) . ' تومان' : '';
-                $qtyText = ($isCoin ? (int) $grams : $grams) . " {$unit}";
+                $feeNote = $fee > 0 ? ' — کارمزد: '.number_format($fee).' تومان' : '';
+                $qtyText = ($isCoin ? (int) $grams : $grams)." {$unit}";
                 foreach ([$offer->user_id, $acceptor->id] as $uid) {
                     Notification::create([
                         'user_id' => $uid,
-                        'title'   => 'معامله‌ی اتاق معاملاتی تکمیل شد',
-                        'body'    => "{$itemLabel} — {$qtyText} — " . number_format($total) . ' تومان' . $feeNote . ' — ' . Jalali::now(),
-                        'type'    => 'trade',
+                        'title' => 'معامله‌ی اتاق معاملاتی تکمیل شد',
+                        'body' => "{$itemLabel} — {$qtyText} — ".number_format($total).' تومان'.$feeNote.' — '.Jalali::now(),
+                        'type' => 'trade',
                     ]);
                 }
 
@@ -220,9 +228,9 @@ class TradeRoomController extends Controller
                 foreach (User::where('is_admin', true)->pluck('id') as $adminId) {
                     Notification::create([
                         'user_id' => $adminId,
-                        'title'   => 'معامله‌ی جدید در اتاق معاملاتی',
-                        'body'    => "{$itemLabel} — {$qtyText} — " . number_format($total) . ' تومان' . $feeNote . ' — ' . Jalali::now(),
-                        'type'    => 'trade',
+                        'title' => 'معامله‌ی جدید در اتاق معاملاتی',
+                        'body' => "{$itemLabel} — {$qtyText} — ".number_format($total).' تومان'.$feeNote.' — '.Jalali::now(),
+                        'type' => 'trade',
                     ]);
                 }
             });
@@ -275,9 +283,10 @@ class TradeRoomController extends Controller
     /** موجودی فعلی کاربر از یک سکه (مجموع خریدها منهای فروش‌ها از تاریخچه‌ی معاملات فعال). مشابه TradeController. */
     private function coinHolding(int $userId, string $item): float
     {
-        $base   = Transaction::where('user_id', $userId)->where('item', $item)->where('status', 'active');
+        $base = Transaction::where('user_id', $userId)->where('item', $item)->where('status', 'active');
         $bought = (float) (clone $base)->where('type', 'buy')->sum('quantity');
-        $sold   = (float) (clone $base)->where('type', 'sell')->sum('quantity');
+        $sold = (float) (clone $base)->where('type', 'sell')->sum('quantity');
+
         return round($bought - $sold, 4);
     }
 
@@ -285,14 +294,14 @@ class TradeRoomController extends Controller
     private function coinTransfer(int $userId, string $type, TradeRoomOffer $offer, int $total): void
     {
         Transaction::create([
-            'user_id'        => $userId,
-            'type'           => $type, // buy | sell
-            'item'           => $offer->item,
-            'item_label'     => self::COIN_LABEL[$offer->item],
-            'quantity'       => (float) $offer->grams, // تعداد
+            'user_id' => $userId,
+            'type' => $type, // buy | sell
+            'item' => $offer->item,
+            'item_label' => self::COIN_LABEL[$offer->item],
+            'quantity' => (float) $offer->grams, // تعداد
             'price_per_unit' => (int) $offer->price_per_gram,
-            'total'          => $total,
-            'status'         => 'active',
+            'total' => $total,
+            'status' => 'active',
         ]);
     }
 
@@ -320,36 +329,36 @@ class TradeRoomController extends Controller
             : ($o->metal === 'gold' ? 'طلا (گرم)' : self::PURITY_LABEL[$o->purity]);
 
         // نوع معامله از دید بیننده: اگر پیشنهاددهنده باشد همان side پیشنهاد، اگر پذیرنده باشد برعکس می‌شود.
-        $isOfferer  = $o->user_id === $viewer->id;
+        $isOfferer = $o->user_id === $viewer->id;
         $viewerSell = ($o->side === 'sell') === $isOfferer;
 
         return [
-            'id'             => $o->id,
-            'metal'          => $o->metal,
-            'item'           => $o->item,
-            'is_coin'        => $isCoin,
-            'unit'           => $isCoin ? 'عدد' : 'گرم',
-            'side'           => $o->side,
-            'view_side'      => $viewerSell ? 'sell' : 'buy',
-            'role'           => $o->counterparty_id ? ($isOfferer ? 'پیشنهاددهنده' : 'پذیرنده') : null,
-            'purity'         => $o->purity,
-            'item_label'     => $itemLabel,
-            'grams'          => $isCoin ? (int) $o->grams : (float) $o->grams,
+            'id' => $o->id,
+            'metal' => $o->metal,
+            'item' => $o->item,
+            'is_coin' => $isCoin,
+            'unit' => $isCoin ? 'عدد' : 'گرم',
+            'side' => $o->side,
+            'view_side' => $viewerSell ? 'sell' : 'buy',
+            'role' => $o->counterparty_id ? ($isOfferer ? 'پیشنهاددهنده' : 'پذیرنده') : null,
+            'purity' => $o->purity,
+            'item_label' => $itemLabel,
+            'grams' => $isCoin ? (int) $o->grams : (float) $o->grams,
             'price_per_gram' => $o->price_per_gram,
-            'total'          => $o->total(),
-            'status'         => $o->status,
-            'is_mine'        => $o->user_id === $viewer->id,
-            'admin_note'     => $o->admin_note,
-            'commission'     => (int) $o->commission,
-            'created_at'     => Jalali::format($o->created_at),
-            'completed_at'   => $o->completed_at ? Jalali::format($o->completed_at) : null,
-            'date_raw'       => ($o->completed_at ?? $o->created_at)->format('Y-m-d'),
+            'total' => $o->total(),
+            'status' => $o->status,
+            'is_mine' => $o->user_id === $viewer->id,
+            'admin_note' => $o->admin_note,
+            'commission' => (int) $o->commission,
+            'created_at' => Jalali::format($o->created_at),
+            'completed_at' => $o->completed_at ? Jalali::format($o->completed_at) : null,
+            'date_raw' => ($o->completed_at ?? $o->created_at)->format('Y-m-d'),
         ];
     }
 
     private function ensureVip(User $user): void
     {
-        if (!$user->isVipMember()) {
+        if (! $user->isVipMember()) {
             abort(403, 'اتاق معاملاتی فقط برای اعضای ویژه است.');
         }
     }

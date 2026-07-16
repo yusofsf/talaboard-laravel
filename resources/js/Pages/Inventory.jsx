@@ -21,7 +21,7 @@ const DELIVERY_STATUS = {
 
 const DELIVERY_METHOD = {
     address: 'ارسال به آدرس',
-    pickup: 'تحویل حضوری از مغازه',
+    pickup: 'تحویل حضوری از فروشگاه',
 };
 
 function HistoryTable({ rows, showPurity }) {
@@ -144,7 +144,7 @@ export default function Inventory({ goldBalance, silverBalance, goldHistory, sil
                                     <label>روش تحویل</label>
                                     <select value={form.data.delivery_method} onChange={e => form.setData('delivery_method', e.target.value)}>
                                         <option value="address">ارسال به آدرس</option>
-                                        <option value="pickup">تحویل حضوری از مغازه</option>
+                                        <option value="pickup">تحویل حضوری از فروشگاه</option>
                                     </select>
                                 </div>
                                 {form.data.delivery_method === 'address' && (

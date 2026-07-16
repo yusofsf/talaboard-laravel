@@ -13,3 +13,7 @@ Artisan::command('inspire', function () {
 Schedule::command('prices:snapshot')
     ->everyTenSeconds()
     ->withoutOverlapping();
+
+Schedule::command('trade-room:expire-open-offers')
+    ->everyMinute()
+    ->withoutOverlapping();

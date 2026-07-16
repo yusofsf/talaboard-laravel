@@ -21,20 +21,20 @@ class SilverDeliveryController extends Controller
         $user = $request->user();
 
         $request->validate([
-            'metal'          => 'required|in:gold,silver',
-            'purity'         => 'required_if:metal,silver|in:999,995',
-            'grams'          => 'required|numeric|min:1',
+            'metal' => 'required|in:gold,silver',
+            'purity' => 'required_if:metal,silver|nullable|in:999,995',
+            'grams' => 'required|numeric|min:1',
             'recipient_name' => 'required|string|max:100',
-            'phone'          => 'required|string|max:20',
+            'phone' => 'required|string|max:20',
             'delivery_method' => 'required|in:address,pickup',
-            'address'        => 'required_if:delivery_method,address|nullable|string|max:500',
+            'address' => 'required_if:delivery_method,address|nullable|string|max:500',
         ]);
 
-        $metal  = $request->metal;
+        $metal = $request->metal;
         $purity = $metal === 'silver' ? $request->purity : '';
-        $grams  = (float) $request->grams;
+        $grams = (float) $request->grams;
         $deliveryMethod = $request->delivery_method;
-        $address = $deliveryMethod === 'address' ? $request->address : 'تحویل حضوری از مغازه';
+        $address = $deliveryMethod === 'address' ? $request->address : 'تحویل حضوری از فروشگاه';
 
         $balance = $metal === 'gold' ? $user->goldBalance() : $user->silverBalance($purity);
         if ($balance < $grams) {
@@ -46,15 +46,15 @@ class SilverDeliveryController extends Controller
 
         DB::transaction(function () use ($user, $request, $metal, $purity, $grams, $admins, $itemLabel, $deliveryMethod, $address) {
             $delivery = SilverDeliveryRequest::create([
-                'user_id'        => $user->id,
-                'metal'          => $metal,
-                'purity'         => $purity,
-                'grams'          => $grams,
+                'user_id' => $user->id,
+                'metal' => $metal,
+                'purity' => $purity,
+                'grams' => $grams,
                 'recipient_name' => $request->recipient_name,
-                'phone'          => $request->phone,
-                'address'        => $address,
+                'phone' => $request->phone,
+                'address' => $address,
                 'delivery_method' => $deliveryMethod,
-                'status'         => 'pending',
+                'status' => 'pending',
             ]);
 
             if ($metal === 'gold') {
@@ -73,17 +73,17 @@ class SilverDeliveryController extends Controller
 
             Notification::create([
                 'user_id' => $user->id,
-                'title'   => 'درخواست تحویل فیزیکی ثبت شد',
-                'body'    => "{$grams} گرم {$itemLabel} — تاریخ: " . Jalali::now() . ' — در حال بررسی.',
-                'type'    => 'system',
+                'title' => 'درخواست تحویل فیزیکی ثبت شد',
+                'body' => "{$grams} گرم {$itemLabel} — تاریخ: ".Jalali::now().' — در حال بررسی.',
+                'type' => 'system',
             ]);
 
             foreach ($admins as $admin) {
                 Notification::create([
                     'user_id' => $admin->id,
-                    'title'   => "درخواست تحویل فیزیکی — {$user->name}",
-                    'body'    => "{$grams} گرم {$itemLabel} — تاریخ: " . Jalali::now(),
-                    'type'    => 'system',
+                    'title' => "درخواست تحویل فیزیکی — {$user->name}",
+                    'body' => "{$grams} گرم {$itemLabel} — تاریخ: ".Jalali::now(),
+                    'type' => 'system',
                 ]);
             }
         });
@@ -93,7 +93,8 @@ class SilverDeliveryController extends Controller
             foreach ($admins as $admin) {
                 $this->sms->send($admin->phone, "درخواست تحویل فیزیکی جدید: {$user->name} — {$grams} گرم {$itemLabel}.");
             }
-        } catch (\Exception) {}
+        } catch (\Exception) {
+        }
 
         return back()->with('success', 'درخواست تحویل فیزیکی شما ثبت شد.');
     }

@@ -23,7 +23,7 @@ class UserSubmissionFlowTest extends TestCase
 
     public function test_user_can_submit_membership_application_with_recorded_webm_video(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
 
         $user = User::factory()->create();
         $admin = User::factory()->admin()->create();
@@ -45,10 +45,13 @@ class UserSubmissionFlowTest extends TestCase
         $this->assertNotNull($user->national_id_doc);
         $this->assertNotNull($user->identity_doc);
         $this->assertNotNull($user->verification_video);
-        Storage::disk('public')->assertExists($user->national_id_doc);
-        Storage::disk('public')->assertExists($user->identity_doc);
-        Storage::disk('public')->assertExists($user->verification_video);
+        Storage::disk('local')->assertExists($user->national_id_doc);
+        Storage::disk('local')->assertExists($user->identity_doc);
+        Storage::disk('local')->assertExists($user->verification_video);
         $this->assertTrue(Notification::where('user_id', $admin->id)->exists());
+
+        $this->actingAs($admin)->get("/admin/membership/files/{$user->id}/national_id_doc")->assertOk();
+        $this->actingAs($user)->get("/admin/membership/files/{$user->id}/national_id_doc")->assertForbidden();
     }
 
     public function test_common_user_requests_can_be_submitted(): void

@@ -12,6 +12,7 @@
     $title = $seo['title'] ?? config('seo.default.title');
     $description = $seo['description'] ?? config('seo.default.description');
     $schema = $seo['schema'] ?? [];
+    $cspNonce = request()->attributes->get('csp_nonce');
 @endphp
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
@@ -39,7 +40,7 @@
 <meta data-inertia="twitter-image" name="twitter:image" content="{{ $seo['image'] ?? $logo }}">
 <meta name="theme-color" content="#0b0e14">
 
-<script type="application/ld+json">
+<script type="application/ld+json" @if($cspNonce) nonce="{{ $cspNonce }}" @endif>
 {!! json_encode([
     '@context' => 'https://schema.org',
     '@type' => 'JewelryStore',
@@ -57,7 +58,7 @@
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) !!}
 </script>
 @if (! empty($schema))
-<script data-inertia="page-schema" type="application/ld+json">
+<script data-inertia="page-schema" type="application/ld+json" @if($cspNonce) nonce="{{ $cspNonce }}" @endif>
 {!! json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) !!}
 </script>
 @endif

@@ -105,9 +105,9 @@ class AdminController extends Controller
                 'national_id' => $u->national_id,
                 'birth_date' => $u->birth_date ? Jalali::format($u->birth_date, false) : null,
                 'residence_address' => $u->residence_address,
-                'national_id_doc' => $u->national_id_doc ? Storage::url($u->national_id_doc) : null,
-                'identity_doc' => $u->identity_doc ? Storage::url($u->identity_doc) : null,
-                'verification_video' => $u->verification_video ? Storage::url($u->verification_video) : null,
+                'national_id_doc' => $this->membershipFileUrl($u, 'national_id_doc'),
+                'identity_doc' => $this->membershipFileUrl($u, 'identity_doc'),
+                'verification_video' => $this->membershipFileUrl($u, 'verification_video'),
                 'submitted_at' => Jalali::format($u->updated_at),
             ]);
 
@@ -122,9 +122,9 @@ class AdminController extends Controller
                 'national_id' => $u->national_id,
                 'birth_date' => $u->birth_date ? Jalali::format($u->birth_date, false) : null,
                 'residence_address' => $u->residence_address,
-                'national_id_doc' => $u->national_id_doc ? Storage::url($u->national_id_doc) : null,
-                'identity_doc' => $u->identity_doc ? Storage::url($u->identity_doc) : null,
-                'verification_video' => $u->verification_video ? Storage::url($u->verification_video) : null,
+                'national_id_doc' => $this->membershipFileUrl($u, 'national_id_doc'),
+                'identity_doc' => $this->membershipFileUrl($u, 'identity_doc'),
+                'verification_video' => $this->membershipFileUrl($u, 'verification_video'),
                 'membership_status' => $u->membership_status,
                 'approved_at' => Jalali::format($u->updated_at, false),
             ]);
@@ -591,6 +591,15 @@ class AdminController extends Controller
             'title' => 'required|string|max:200',
             'body' => 'nullable|string',
             'type' => 'required|in:info,trade,wallet,promo,system',
+            'target' => ['nullable', 'string', function (string $attribute, mixed $value, \Closure $fail) {
+                if ($value === 'all') {
+                    return;
+                }
+
+                if (! ctype_digit((string) $value) || ! User::whereKey((int) $value)->exists()) {
+                    $fail('گیرنده انتخاب‌شده معتبر نیست.');
+                }
+            }],
         ]);
 
         $target = $request->input('target', 'all');
@@ -1125,6 +1134,33 @@ class AdminController extends Controller
      * و ثبت همان اقدام در گزارش فعالیت (سیستم لاگ). چون همه‌ی متدهای ادمین این تابع را صدا می‌زنند،
      * هر اقدام مدیریتی به‌صورت خودکار لاگ می‌شود.
      */
+    /** Stream sensitive membership files through the admin-only route. */
+    public function membershipFile(int $uid, string $type)
+    {
+        $allowed = ['national_id_doc', 'identity_doc', 'verification_video'];
+        abort_unless(in_array($type, $allowed, true), 404);
+
+        $user = User::findOrFail($uid);
+        $path = $user->{$type};
+
+        abort_if(blank($path), 404);
+
+        if (Storage::disk('local')->exists($path)) {
+            return response()->file(Storage::disk('local')->path($path));
+        }
+
+        if (Storage::disk('public')->exists($path)) {
+            return response()->file(Storage::disk('public')->path($path));
+        }
+
+        abort(404);
+    }
+
+    private function membershipFileUrl(User $user, string $type): ?string
+    {
+        return $user->{$type} ? route('admin.membership.file', ['uid' => $user->id, 'type' => $type]) : null;
+    }
+
     private function notifyOtherAdmins(Request $request, string $title, string $body): void
     {
         $actingId = $request->user()->id;

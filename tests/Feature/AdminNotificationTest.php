@@ -27,6 +27,24 @@ class AdminNotificationTest extends TestCase
         $this->assertSame('promo', $notif->type);
     }
 
+    public function test_admin_can_send_a_notification_to_one_user(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $target = User::factory()->create();
+
+        $this->actingAs($admin)->post('/admin/notify', [
+            'title' => 'targeted notification',
+            'body' => 'body',
+            'type' => 'info',
+            'target' => (string) $target->id,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('notifications', [
+            'title' => 'targeted notification',
+            'user_id' => $target->id,
+        ]);
+    }
+
     public function test_non_admin_cannot_edit_a_notification(): void
     {
         $user = User::factory()->create();

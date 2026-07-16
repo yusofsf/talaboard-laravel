@@ -132,16 +132,25 @@ class AdminArticleController extends Controller
 
     private function cleanBody(string $body): string
     {
-        $allowedTags = '<p><br><strong><b><em><i><u><h2><h3><ul><ol><li><blockquote><a><img>';
-        $clean = strip_tags($body, $allowedTags);
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $previous = libxml_use_internal_errors(true);
+        $dom->loadHTML('<?xml encoding="UTF-8"><div id="article-root">'.$body.'</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
 
-        $clean = preg_replace('/\s+on\w+\s*=\s*(["\']).*?\1/iu', '', $clean);
-        $clean = preg_replace('/\s+style\s*=\s*(["\']).*?\1/iu', '', $clean);
-        $clean = preg_replace('/\s+href\s*=\s*(["\'])\s*(?!\/|https?:\/\/|mailto:|tel:)[^"\']*\1/iu', '', $clean);
-        $clean = preg_replace_callback('/<img\b[^>]*>/iu', fn (array $match) => $this->sanitizeImageTag($match[0]), $clean);
-        $clean = preg_replace('/<a\b(?![^>]*\brel=)/iu', '<a rel="noopener noreferrer"', $clean);
+        $root = $dom->getElementById('article-root');
+        if (! $root) {
+            return '';
+        }
 
-        return trim($clean ?? '');
+        $this->sanitizeArticleNode($root);
+
+        $clean = '';
+        foreach (iterator_to_array($root->childNodes) as $child) {
+            $clean .= $dom->saveHTML($child);
+        }
+
+        return trim($clean);
     }
 
     private function storeUploadedImage($file): string
@@ -149,29 +158,76 @@ class AdminArticleController extends Controller
         return Storage::url($file->store('articles', 'public'));
     }
 
-    private function sanitizeImageTag(string $tag): string
+    private function sanitizeArticleNode(\DOMNode $node): void
     {
-        if (! preg_match('/\bsrc\s*=\s*(["\'])(.*?)\1/iu', $tag, $srcMatch)) {
-            return '';
+        $allowedTags = ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 'h2', 'h3', 'ul', 'ol', 'li', 'blockquote', 'a', 'img'];
+        $dropWithContent = ['script', 'style', 'iframe', 'object', 'embed', 'svg', 'math', 'meta', 'link'];
+
+        foreach (iterator_to_array($node->childNodes) as $child) {
+            if ($child->nodeType === XML_COMMENT_NODE) {
+                $node->removeChild($child);
+                continue;
+            }
+
+            if ($child->nodeType !== XML_ELEMENT_NODE) {
+                continue;
+            }
+
+            $tag = strtolower($child->nodeName);
+            if (in_array($tag, $dropWithContent, true)) {
+                $node->removeChild($child);
+                continue;
+            }
+
+            $this->sanitizeArticleNode($child);
+
+            if (! in_array($tag, $allowedTags, true)) {
+                while ($child->firstChild) {
+                    $node->insertBefore($child->firstChild, $child);
+                }
+                $node->removeChild($child);
+                continue;
+            }
+
+            if (! $this->sanitizeArticleElement($child)) {
+                $node->removeChild($child);
+            }
         }
+    }
 
-        $src = trim($srcMatch[2]);
+    private function sanitizeArticleElement(\DOMElement $element): bool
+    {
+        $tag = strtolower($element->nodeName);
+        $allowedAttrs = [
+            'a' => ['href', 'title', 'target', 'rel'],
+            'img' => ['src', 'alt'],
+        ];
 
-        if (! $this->isAllowedArticleImageSource($src)) {
-            return '';
-        }
-
-        $cleanTag = '<img src="'.e($src).'"';
-
-        if (preg_match('/\balt\s*=\s*(["\'])(.*?)\1/iu', $tag, $altMatch)) {
-            $cleanAlt = trim(strip_tags($altMatch[2]));
-
-            if ($cleanAlt !== '') {
-                $cleanTag .= ' alt="'.e($cleanAlt).'"';
+        foreach (iterator_to_array($element->attributes) as $attr) {
+            $name = strtolower($attr->nodeName);
+            if (str_starts_with($name, 'on') || $name === 'style' || ! in_array($name, $allowedAttrs[$tag] ?? [], true)) {
+                $element->removeAttributeNode($attr);
             }
         }
 
-        return $cleanTag.'>';
+        if ($tag === 'a') {
+            $href = trim($element->getAttribute('href'));
+            if ($href !== '' && ! $this->isAllowedArticleHref($href)) {
+                $element->removeAttribute('href');
+            }
+            $element->setAttribute('rel', 'noopener noreferrer');
+        }
+
+        if ($tag === 'img' && ! $this->isAllowedArticleImageSource(trim($element->getAttribute('src')))) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function isAllowedArticleHref(string $href): bool
+    {
+        return Str::startsWith($href, ['/', 'http://', 'https://', 'mailto:', 'tel:']);
     }
 
     private function isAllowedArticleImageSource(string $src): bool

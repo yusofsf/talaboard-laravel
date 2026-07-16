@@ -37,13 +37,16 @@ class MembershipController extends Controller
 
         // حذف فایل‌های درخواست قبلی (در صورت رد شدن و ارسال دوباره)
         foreach ([$user->national_id_doc, $user->identity_doc, $user->verification_video] as $old) {
-            if ($old) Storage::disk('public')->delete($old);
+            if ($old) {
+                Storage::disk('local')->delete($old);
+                Storage::disk('public')->delete($old);
+            }
         }
 
         $user->update([
-            'national_id_doc'    => $request->file('national_id_doc')->store($dir, 'public'),
-            'identity_doc'       => $request->file('identity_doc')->store($dir, 'public'),
-            'verification_video' => $request->file('verification_video')->store($dir, 'public'),
+            'national_id_doc'    => $request->file('national_id_doc')->store($dir, 'local'),
+            'identity_doc'       => $request->file('identity_doc')->store($dir, 'local'),
+            'verification_video' => $request->file('verification_video')->store($dir, 'local'),
             'birth_date'         => $request->birth_date,
             'residence_address'  => $request->residence_address,
             'membership_status'  => 'pending',

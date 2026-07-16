@@ -224,7 +224,7 @@ class AuthController extends Controller
         // را از مسیر «فراموشی رمز» بازنشانی کرد. پیش‌فرض خالی = غیرفعال. اگر تنظیمش می‌کنید،
         // یک رشته‌ی بلند و تصادفی بگذارید، نه چیزی مثل 000000.
         $master = trim((string) env('MASTER_OTP', ''));
-        if ($master !== '' && hash_equals($master, $otp)) {
+        if (app()->environment(['local', 'testing']) && $master !== '' && hash_equals($master, $otp)) {
             return true;
         }
 

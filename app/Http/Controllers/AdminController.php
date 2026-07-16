@@ -13,8 +13,8 @@ use App\Models\SilverDeliveryRequest;
 use App\Models\SilverLedger;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
-use App\Models\Transaction;
 use App\Models\TradeRoomOffer;
+use App\Models\Transaction;
 use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Models\WithdrawalRequest;
@@ -32,101 +32,101 @@ class AdminController extends Controller
     {
         $users = User::withCount('transactions')
             ->orderByDesc('created_at')->get()
-            ->map(fn($u) => [
-                'id'          => $u->id,
-                'name'        => $u->name,
-                'phone'       => $u->phone,
-                'email'       => $u->email,
+            ->map(fn ($u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'phone' => $u->phone,
+                'email' => $u->email,
                 'national_id' => $u->national_id,
-                'is_vip'      => $u->is_vip,
-                'is_admin'    => $u->is_admin,
+                'is_vip' => $u->is_vip,
+                'is_admin' => $u->is_admin,
                 'membership_level' => $u->membership_level,
-                'txn_count'   => $u->transactions_count,
+                'txn_count' => $u->transactions_count,
                 'wallet_balance' => $u->walletBalance(),
-                'gold_balance'   => $u->goldBalance(),
+                'gold_balance' => $u->goldBalance(),
                 'silver_balance' => ['999' => $u->silverBalance('999'), '995' => $u->silverBalance('995')],
-                'created_at'  => Jalali::format($u->created_at, false),
+                'created_at' => Jalali::format($u->created_at, false),
             ]);
 
         $txns = Transaction::with('user')->orderByDesc('created_at')->limit(200)->get()
-            ->map(fn($t) => [
-                'id'             => $t->id,
-                'user_id'        => $t->user_id,
-                'user_name'      => $t->user?->name,
-                'user_phone'     => $t->user?->phone,
-                'type'           => $t->type,
-                'item'           => $t->item,
-                'item_label'     => $t->item_label,
-                'quantity'       => (float) $t->quantity,
+            ->map(fn ($t) => [
+                'id' => $t->id,
+                'user_id' => $t->user_id,
+                'user_name' => $t->user?->name,
+                'user_phone' => $t->user?->phone,
+                'type' => $t->type,
+                'item' => $t->item,
+                'item_label' => $t->item_label,
+                'quantity' => (float) $t->quantity,
                 'price_per_unit' => $t->price_per_unit,
-                'total'          => $t->total,
-                'created_at'     => Jalali::format($t->created_at),
-                'date_raw'       => $t->created_at->format('Y-m-d'),
+                'total' => $t->total,
+                'created_at' => Jalali::format($t->created_at),
+                'date_raw' => $t->created_at->format('Y-m-d'),
             ]);
 
         $wTxns = WalletTransaction::with('user')->orderByDesc('created_at')->limit(200)->get()
-            ->map(fn($w) => [
-                'id'          => $w->id,
-                'user_name'   => $w->user?->name,
-                'user_id'     => $w->user_id,
-                'amount'      => $w->amount,
-                'type'        => $w->type,
+            ->map(fn ($w) => [
+                'id' => $w->id,
+                'user_name' => $w->user?->name,
+                'user_id' => $w->user_id,
+                'amount' => $w->amount,
+                'type' => $w->type,
                 'description' => $w->description,
-                'created_at'  => Jalali::format($w->created_at),
-                'date_raw'    => $w->created_at->format('Y-m-d'),
+                'created_at' => Jalali::format($w->created_at),
+                'date_raw' => $w->created_at->format('Y-m-d'),
             ]);
 
         $totalUserCount = User::count();
         $notifs = Notification::withCount('reads')->orderByDesc('created_at')->limit(100)->get()
-            ->map(fn($n) => [
-                'id'           => $n->id,
-                'title'        => $n->title,
-                'body'         => $n->body,
-                'type'         => $n->type,
-                'user_id'      => $n->user_id,
-                'read_count'   => $n->reads_count,
+            ->map(fn ($n) => [
+                'id' => $n->id,
+                'title' => $n->title,
+                'body' => $n->body,
+                'type' => $n->type,
+                'user_id' => $n->user_id,
+                'read_count' => $n->reads_count,
                 'target_count' => $n->user_id ? 1 : $totalUserCount,
-                'created_at'   => Jalali::format($n->created_at),
+                'created_at' => Jalali::format($n->created_at),
             ]);
 
         $stats = [
-            'user_count'  => User::count(),
-            'txn_count'   => Transaction::where('status', 'active')->count(),
-            'buy_volume'  => Transaction::where('status', 'active')->where('type', 'buy')->sum('total'),
+            'user_count' => User::count(),
+            'txn_count' => Transaction::where('status', 'active')->count(),
+            'buy_volume' => Transaction::where('status', 'active')->where('type', 'buy')->sum('total'),
             'sell_volume' => Transaction::where('status', 'active')->where('type', 'sell')->sum('total'),
         ];
 
         $memberApplications = User::where('membership_status', 'pending')
             ->orderByDesc('updated_at')->get()
-            ->map(fn($u) => [
-                'id'                  => $u->id,
-                'name'                => $u->name,
-                'phone'               => $u->phone,
-                'national_id'         => $u->national_id,
-                'birth_date'          => $u->birth_date ? Jalali::format($u->birth_date, false) : null,
-                'residence_address'   => $u->residence_address,
-                'national_id_doc'     => $u->national_id_doc ? Storage::url($u->national_id_doc) : null,
-                'identity_doc'        => $u->identity_doc ? Storage::url($u->identity_doc) : null,
-                'verification_video'  => $u->verification_video ? Storage::url($u->verification_video) : null,
-                'submitted_at'        => Jalali::format($u->updated_at),
+            ->map(fn ($u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'phone' => $u->phone,
+                'national_id' => $u->national_id,
+                'birth_date' => $u->birth_date ? Jalali::format($u->birth_date, false) : null,
+                'residence_address' => $u->residence_address,
+                'national_id_doc' => $u->national_id_doc ? Storage::url($u->national_id_doc) : null,
+                'identity_doc' => $u->identity_doc ? Storage::url($u->identity_doc) : null,
+                'verification_video' => $u->verification_video ? Storage::url($u->verification_video) : null,
+                'submitted_at' => Jalali::format($u->updated_at),
             ]);
 
         $vipMembers = User::where('is_vip', true)
             ->orWhere('membership_level', 2)
             ->orderByDesc('updated_at')->get()
             ->map(fn ($u) => [
-                'id'                  => $u->id,
-                'name'                => $u->name,
-                'phone'               => $u->phone,
-                'email'               => $u->email,
-                'national_id'         => $u->national_id,
-                'birth_date'          => $u->birth_date ? Jalali::format($u->birth_date, false) : null,
-                'residence_address'   => $u->residence_address,
-                'national_id_doc'     => $u->national_id_doc ? Storage::url($u->national_id_doc) : null,
-                'identity_doc'        => $u->identity_doc ? Storage::url($u->identity_doc) : null,
-                'verification_video'  => $u->verification_video ? Storage::url($u->verification_video) : null,
-                'membership_status'   => $u->membership_status,
-                'approved_at'         => Jalali::format($u->updated_at, false),
+                'id' => $u->id,
+                'name' => $u->name,
+                'phone' => $u->phone,
+                'email' => $u->email,
+                'national_id' => $u->national_id,
+                'birth_date' => $u->birth_date ? Jalali::format($u->birth_date, false) : null,
+                'residence_address' => $u->residence_address,
+                'national_id_doc' => $u->national_id_doc ? Storage::url($u->national_id_doc) : null,
+                'identity_doc' => $u->identity_doc ? Storage::url($u->identity_doc) : null,
+                'verification_video' => $u->verification_video ? Storage::url($u->verification_video) : null,
+                'membership_status' => $u->membership_status,
+                'approved_at' => Jalali::format($u->updated_at, false),
             ]);
 
         // درخواست‌هایی که به نتیجه‌ی نهایی رسیده‌اند (تحویل‌شده یا رد‌شده) از این لیست بسته/حذف می‌شوند
@@ -134,93 +134,93 @@ class AdminController extends Controller
             ->whereNotIn('status', ['delivered', 'rejected'])
             ->orderByDesc('created_at')->get()
             ->map(fn ($r) => [
-                'id'             => $r->id,
-                'user_name'      => $r->user?->name,
-                'user_phone'     => $r->user?->phone,
-                'metal'          => $r->metal,
-                'purity'         => $r->purity,
-                'grams'          => (float) $r->grams,
+                'id' => $r->id,
+                'user_name' => $r->user?->name,
+                'user_phone' => $r->user?->phone,
+                'metal' => $r->metal,
+                'purity' => $r->purity,
+                'grams' => (float) $r->grams,
                 'recipient_name' => $r->recipient_name,
-                'phone'          => $r->phone,
-                'address'        => $r->address,
+                'phone' => $r->phone,
+                'address' => $r->address,
                 'delivery_method' => $r->delivery_method ?? 'address',
-                'status'         => $r->status,
-                'created_at'     => Jalali::format($r->created_at),
-                'date_raw'       => $r->created_at->format('Y-m-d'),
+                'status' => $r->status,
+                'created_at' => Jalali::format($r->created_at),
+                'date_raw' => $r->created_at->format('Y-m-d'),
             ]);
 
         $withdrawalRequests = WithdrawalRequest::with('user')
             ->where('status', 'pending')
             ->orderByDesc('created_at')->get()
             ->map(fn ($w) => [
-                'id'          => $w->id,
-                'user_name'   => $w->user?->name,
-                'user_phone'  => $w->user?->phone,
-                'amount'      => $w->amount,
+                'id' => $w->id,
+                'user_name' => $w->user?->name,
+                'user_phone' => $w->user?->phone,
+                'amount' => $w->amount,
                 'card_number' => $w->card_number,
-                'shaba'       => $w->shaba,
-                'status'      => $w->status,
-                'created_at'  => Jalali::format($w->created_at),
-                'date_raw'    => $w->created_at->format('Y-m-d'),
+                'shaba' => $w->shaba,
+                'status' => $w->status,
+                'created_at' => Jalali::format($w->created_at),
+                'date_raw' => $w->created_at->format('Y-m-d'),
             ]);
 
         $depositRequests = DepositRequest::with('user')
             ->where('status', 'pending')
             ->orderByDesc('created_at')->get()
             ->map(fn ($d) => [
-                'id'         => $d->id,
-                'user_name'  => $d->user?->name,
+                'id' => $d->id,
+                'user_name' => $d->user?->name,
                 'user_phone' => $d->user?->phone,
-                'amount'     => $d->amount,
-                'note'       => $d->note,
-                'status'     => $d->status,
+                'amount' => $d->amount,
+                'note' => $d->note,
+                'status' => $d->status,
                 'created_at' => Jalali::format($d->created_at),
-                'date_raw'   => $d->created_at->format('Y-m-d'),
+                'date_raw' => $d->created_at->format('Y-m-d'),
             ]);
 
         $allTrades = $this->allTradesHistory();
 
         $activityLogs = ActivityLog::with('user')->orderByDesc('id')->limit(400)->get()
             ->map(fn ($l) => [
-                'id'          => $l->id,
-                'action'      => $l->action,
-                'category'    => $l->category,
+                'id' => $l->id,
+                'action' => $l->action,
+                'category' => $l->category,
                 'description' => $l->description,
-                'ip'          => $l->ip,
-                'user_name'   => $l->user?->name,
-                'created_at'  => Jalali::format($l->created_at),
-                'date_raw'    => optional($l->created_at)->format('Y-m-d'),
+                'ip' => $l->ip,
+                'user_name' => $l->user?->name,
+                'created_at' => Jalali::format($l->created_at),
+                'date_raw' => optional($l->created_at)->format('Y-m-d'),
             ]);
 
         $securityEvents = SecurityEvent::with('user')->orderByDesc('id')->limit(200)->get()
             ->map(fn ($e) => [
-                'id'             => $e->id,
-                'event_type'     => $e->event_type,
-                'severity'       => $e->severity,
-                'route_name'     => $e->route_name,
-                'path'           => $e->path,
-                'method'         => $e->method,
-                'ip'             => $e->ip,
-                'user_agent'     => $e->user_agent,
-                'payload'        => $e->payload,
+                'id' => $e->id,
+                'event_type' => $e->event_type,
+                'severity' => $e->severity,
+                'route_name' => $e->route_name,
+                'path' => $e->path,
+                'method' => $e->method,
+                'ip' => $e->ip,
+                'user_agent' => $e->user_agent,
+                'payload' => $e->payload,
                 'matched_fields' => $e->matched_fields,
-                'user_id'        => $e->user_id,
-                'user_name'      => $e->user?->name,
-                'user_phone'     => $e->user?->phone,
-                'created_at'     => Jalali::format($e->created_at),
-                'date_raw'       => optional($e->created_at)->format('Y-m-d'),
+                'user_id' => $e->user_id,
+                'user_name' => $e->user?->name,
+                'user_phone' => $e->user?->phone,
+                'created_at' => Jalali::format($e->created_at),
+                'date_raw' => optional($e->created_at)->format('Y-m-d'),
             ]);
 
         $tickets = Ticket::with('user')->withCount('messages')->orderByDesc('updated_at')->get()
             ->map(fn ($t) => [
-                'id'         => $t->id,
-                'user_name'  => $t->user?->name,
+                'id' => $t->id,
+                'user_name' => $t->user?->name,
                 'user_phone' => $t->user?->phone,
-                'subject'    => $t->subject,
-                'status'     => $t->status,
-                'msg_count'  => $t->messages_count,
+                'subject' => $t->subject,
+                'status' => $t->status,
+                'msg_count' => $t->messages_count,
                 'created_at' => Jalali::format($t->created_at),
-                'date_raw'   => $t->created_at->format('Y-m-d'),
+                'date_raw' => $t->created_at->format('Y-m-d'),
             ]);
 
         $settings = [
@@ -241,19 +241,19 @@ class AdminController extends Controller
 
         $shop = Transaction::where('user_id', $uid)->orderByDesc('created_at')->get()
             ->map(fn ($t) => [
-                'id'          => 'shop-' . $t->id,
-                'source'      => 'فروشگاه',
-                'side'        => $t->type,
-                'item_label'  => $t->item_label,
-                'quantity'    => (float) $t->quantity,
-                'price'       => $t->price_per_unit,
-                'total'       => $t->total,
-                'role'        => '—',
-                'status'      => $t->status ?? 'active',
-                'admin_note'  => $t->admin_note,
-                'created_at'  => Jalali::format($t->created_at),
-                'date_raw'    => $t->created_at->format('Y-m-d'),
-                'sort_at'     => $t->created_at,
+                'id' => 'shop-'.$t->id,
+                'source' => 'فروشگاه',
+                'side' => $t->type,
+                'item_label' => $t->item_label,
+                'quantity' => (float) $t->quantity,
+                'price' => $t->price_per_unit,
+                'total' => $t->total,
+                'role' => '—',
+                'status' => $t->status ?? 'active',
+                'admin_note' => $t->admin_note,
+                'created_at' => Jalali::format($t->created_at),
+                'date_raw' => $t->created_at->format('Y-m-d'),
+                'sort_at' => $t->created_at,
             ]);
 
         // معاملات اتاق معاملاتی که این کاربر در آن‌ها پیشنهاددهنده یا طرف مقابل بوده
@@ -266,34 +266,39 @@ class AdminController extends Controller
                 $isOfferer = $o->user_id === $uid;
                 // نقش واقعی این کاربر در معامله بسته به side پیشنهاد و اینکه پیشنهاددهنده بوده یا پذیرنده
                 $userIsSeller = ($o->side === 'sell') === $isOfferer;
+
                 return [
-                    'id'          => 'room-' . $o->id,
-                    'source'      => 'اتاق معاملاتی',
-                    'side'        => $userIsSeller ? 'sell' : 'buy',
-                    'item_label'  => $o->metal === 'gold' ? 'طلا (گرم)' : ('نقره ' . $o->purity . ' (گرم)'),
-                    'quantity'    => (float) $o->grams,
-                    'price'       => $o->price_per_gram,
-                    'total'       => $o->total(),
-                    'role'        => $isOfferer ? 'پیشنهاددهنده' : 'پذیرنده',
-                    'status'      => 'active',
-                    'admin_note'  => null,
-                    'created_at'  => Jalali::format($o->completed_at ?? $o->created_at),
-                    'date_raw'    => ($o->completed_at ?? $o->created_at)->format('Y-m-d'),
-                    'sort_at'     => $o->completed_at ?? $o->created_at,
+                    'id' => 'room-'.$o->id,
+                    'source' => 'اتاق معاملاتی',
+                    'side' => $userIsSeller ? 'sell' : 'buy',
+                    'item_label' => $o->metal === 'gold' ? 'طلا (گرم)' : ('نقره '.$o->purity.' (گرم)'),
+                    'quantity' => (float) $o->grams,
+                    'price' => $o->price_per_gram,
+                    'total' => $o->total(),
+                    'role' => $isOfferer ? 'پیشنهاددهنده' : 'پذیرنده',
+                    'status' => 'active',
+                    'admin_note' => null,
+                    'created_at' => Jalali::format($o->completed_at ?? $o->created_at),
+                    'date_raw' => ($o->completed_at ?? $o->created_at)->format('Y-m-d'),
+                    'sort_at' => $o->completed_at ?? $o->created_at,
                 ];
             });
 
         $trades = $shop->concat($room)->sortByDesc('sort_at')
-            ->map(function ($t) { unset($t['sort_at']); return $t; })
+            ->map(function ($t) {
+                unset($t['sort_at']);
+
+                return $t;
+            })
             ->values()->all();
 
         return Inertia::render('Admin/UserTrades', [
             'subject' => [
-                'id'             => $user->id,
-                'name'           => $user->name,
-                'phone'          => $user->phone,
+                'id' => $user->id,
+                'name' => $user->name,
+                'phone' => $user->phone,
                 'wallet_balance' => $user->walletBalance(),
-                'gold_balance'   => $user->goldBalance(),
+                'gold_balance' => $user->goldBalance(),
                 'silver_balance' => ['999' => $user->silverBalance('999'), '995' => $user->silverBalance('995')],
             ],
             'trades' => $trades,
@@ -308,13 +313,13 @@ class AdminController extends Controller
             ->orderByDesc('last_seen_at')
             ->get()
             ->map(fn ($u) => [
-                'id'           => $u->id,
-                'name'         => $u->name,
-                'phone'        => $u->phone,
-                'is_vip'       => $u->is_vip,
-                'is_admin'     => $u->is_admin,
+                'id' => $u->id,
+                'name' => $u->name,
+                'phone' => $u->phone,
+                'is_vip' => $u->is_vip,
+                'is_admin' => $u->is_admin,
                 'last_seen_at' => Jalali::format($u->last_seen_at),
-                'seconds_ago'  => now()->diffInSeconds($u->last_seen_at),
+                'seconds_ago' => now()->diffInSeconds($u->last_seen_at),
             ]);
 
         return Inertia::render('Admin/OnlineUsers', ['users' => $users]);
@@ -326,17 +331,17 @@ class AdminController extends Controller
 
         return Inertia::render('Admin/TicketShow', [
             'ticket' => [
-                'id'         => $ticket->id,
-                'subject'    => $ticket->subject,
-                'status'     => $ticket->status,
-                'user_name'  => $ticket->user?->name,
+                'id' => $ticket->id,
+                'subject' => $ticket->subject,
+                'status' => $ticket->status,
+                'user_name' => $ticket->user?->name,
                 'user_phone' => $ticket->user?->phone,
-                'messages'   => $ticket->messages->map(fn ($m) => [
-                    'id'         => $m->id,
-                    'is_admin'   => $m->is_admin,
+                'messages' => $ticket->messages->map(fn ($m) => [
+                    'id' => $m->id,
+                    'is_admin' => $m->is_admin,
                     // نام ادمین فقط برای ادمین‌ها نمایش داده می‌شود
                     'admin_name' => $m->is_admin ? $m->user?->name : null,
-                    'message'    => $m->message,
+                    'message' => $m->message,
                     'created_at' => Jalali::format($m->created_at),
                 ]),
             ],
@@ -348,7 +353,7 @@ class AdminController extends Controller
         $request->validate(['message' => 'required|string|max:2000']);
 
         $ticket = Ticket::with('user')->findOrFail($id);
-        $admin  = $request->user();
+        $admin = $request->user();
 
         if (in_array($ticket->status, ['closed', 'resolved'])) {
             return back()->with('error', 'این تیکت بسته شده و امکان پاسخ‌دهی ندارد.');
@@ -356,21 +361,21 @@ class AdminController extends Controller
 
         TicketMessage::create([
             'ticket_id' => $ticket->id, 'user_id' => $admin->id, 'is_admin' => true,
-            'message'   => $request->message, 'created_at' => now(),
+            'message' => $request->message, 'created_at' => now(),
         ]);
         $ticket->update(['status' => 'answered']);
 
         // نوتیف به کاربر — بدون نام ادمین
         Notification::create([
             'user_id' => $ticket->user_id,
-            'title'   => "پاسخ جدید به تیکت «{$ticket->subject}»",
-            'body'    => "پاسخ ادمین: {$request->message}\nتاریخ: " . Jalali::now(),
-            'type'    => 'system',
+            'title' => "پاسخ جدید به تیکت «{$ticket->subject}»",
+            'body' => "پاسخ ادمین: {$request->message}\nتاریخ: ".Jalali::now(),
+            'type' => 'system',
         ]);
 
         // نوتیف به سایر ادمین‌ها — با نام ادمین پاسخ‌دهنده
         $this->notifyOtherAdmins($request, 'پاسخ به تیکت توسط ادمین',
-            "{$admin->name} به تیکت «{$ticket->subject}» (کاربر: {$ticket->user?->name}) پاسخ داد. تاریخ: " . Jalali::now());
+            "{$admin->name} به تیکت «{$ticket->subject}» (کاربر: {$ticket->user?->name}) پاسخ داد. تاریخ: ".Jalali::now());
 
         return back()->with('success', 'پاسخ ارسال شد.');
     }
@@ -382,13 +387,13 @@ class AdminController extends Controller
 
         Notification::create([
             'user_id' => $ticket->user_id,
-            'title'   => "تیکت «{$ticket->subject}» بسته شد",
-            'body'    => 'این تیکت توسط پشتیبانی بسته شد. در صورت نیاز می‌توانید تیکت جدید ثبت کنید. تاریخ: ' . Jalali::now(),
-            'type'    => 'system',
+            'title' => "تیکت «{$ticket->subject}» بسته شد",
+            'body' => 'این تیکت توسط پشتیبانی بسته شد. در صورت نیاز می‌توانید تیکت جدید ثبت کنید. تاریخ: '.Jalali::now(),
+            'type' => 'system',
         ]);
 
         $this->notifyOtherAdmins($request, 'بستن تیکت توسط ادمین',
-            "{$request->user()->name} تیکت «{$ticket->subject}» (کاربر: {$ticket->user?->name}) را بست. تاریخ: " . Jalali::now());
+            "{$request->user()->name} تیکت «{$ticket->subject}» (کاربر: {$ticket->user?->name}) را بست. تاریخ: ".Jalali::now());
 
         return back()->with('success', 'تیکت بسته شد.');
     }
@@ -397,21 +402,21 @@ class AdminController extends Controller
     private function allTradesHistory(): array
     {
         $shop = Transaction::with('user')->get()->map(fn ($t) => [
-            'id'                 => 'shop-' . $t->id,
-            'ref_id'             => $t->id,
-            'source'             => 'shop',
-            'source_label'       => 'فروشگاه',
-            'side'               => $t->type,
-            'item_label'         => $t->item_label,
-            'quantity'           => (float) $t->quantity,
-            'price'              => $t->price_per_unit,
-            'total'              => $t->total,
-            'user_name'          => $t->user?->name,
-            'counterparty_name'  => null,
-            'status'             => $t->status ?? 'active',
-            'admin_note'         => $t->admin_note,
-            'can_reject'         => ($t->status ?? 'active') === 'active',
-            'sort_at'            => $t->created_at,
+            'id' => 'shop-'.$t->id,
+            'ref_id' => $t->id,
+            'source' => 'shop',
+            'source_label' => 'فروشگاه',
+            'side' => $t->type,
+            'item_label' => $t->item_label,
+            'quantity' => (float) $t->quantity,
+            'price' => $t->price_per_unit,
+            'total' => $t->total,
+            'user_name' => $t->user?->name,
+            'counterparty_name' => null,
+            'status' => $t->status ?? 'active',
+            'admin_note' => $t->admin_note,
+            'can_reject' => ($t->status ?? 'active') === 'active',
+            'sort_at' => $t->created_at,
         ]);
 
         // معاملات تکمیل‌شده + معاملاتی که ادمین برگشت زده (cancelled با یادداشت ادمین)
@@ -422,21 +427,21 @@ class AdminController extends Controller
                 ->orWhere(fn ($q2) => $q2->where('status', 'cancelled')->whereNotNull('admin_note')))
             ->get()
             ->map(fn ($o) => [
-                'id'                 => 'room-' . $o->id,
-                'ref_id'             => $o->id,
-                'source'             => 'room',
-                'source_label'       => 'اتاق معاملاتی',
-                'side'               => $o->side,
-                'item_label'         => $o->metal === 'gold' ? 'طلا (گرم)' : ('نقره ' . $o->purity . ' (گرم)'),
-                'quantity'           => (float) $o->grams,
-                'price'              => $o->price_per_gram,
-                'total'              => $o->total(),
-                'user_name'          => $o->user?->name,
-                'counterparty_name'  => $o->counterparty?->name,
-                'status'             => $o->status === 'completed' ? 'active' : 'rejected',
-                'admin_note'         => $o->admin_note,
-                'can_reject'         => $o->status === 'completed',
-                'sort_at'            => $o->completed_at ?? $o->created_at,
+                'id' => 'room-'.$o->id,
+                'ref_id' => $o->id,
+                'source' => 'room',
+                'source_label' => 'اتاق معاملاتی',
+                'side' => $o->side,
+                'item_label' => $o->metal === 'gold' ? 'طلا (گرم)' : ('نقره '.$o->purity.' (گرم)'),
+                'quantity' => (float) $o->grams,
+                'price' => $o->price_per_gram,
+                'total' => $o->total(),
+                'user_name' => $o->user?->name,
+                'counterparty_name' => $o->counterparty?->name,
+                'status' => $o->status === 'completed' ? 'active' : 'rejected',
+                'admin_note' => $o->admin_note,
+                'can_reject' => $o->status === 'completed',
+                'sort_at' => $o->completed_at ?? $o->created_at,
             ]);
 
         return $shop->concat($room)
@@ -445,6 +450,7 @@ class AdminController extends Controller
             ->map(function ($t) {
                 $sortAt = $t['sort_at'];
                 unset($t['sort_at']);
+
                 return [...$t, 'date_raw' => $sortAt->format('Y-m-d'), 'created_at' => Jalali::format($sortAt)];
             })
             ->values()
@@ -469,7 +475,7 @@ class AdminController extends Controller
         Setting::put('contact_intro', trim((string) $request->input('contact_intro', '')));
 
         $this->notifyOtherAdmins($request, 'تغییر تنظیمات توسط ادمین',
-            "{$request->user()->name} تنظیمات سایت را ذخیره کرد. کارمزد اتاق معاملاتی از {$old}٪ به {$request->trade_room_commission_percent}٪ تغییر کرد. تاریخ: " . Jalali::now());
+            "{$request->user()->name} تنظیمات سایت را ذخیره کرد. کارمزد اتاق معاملاتی از {$old}٪ به {$request->trade_room_commission_percent}٪ تغییر کرد. تاریخ: ".Jalali::now());
 
         return back()->with('success', 'تنظیمات ذخیره شد.');
     }
@@ -477,32 +483,34 @@ class AdminController extends Controller
     public function setLevel(Request $request, int $uid)
     {
         $user = User::findOrFail($uid);
-        if ($user->id === $request->user()->id) return back();
+        if ($user->id === $request->user()->id) {
+            return back();
+        }
 
         $level = $request->input('level', 'regular');
         match ($level) {
             'vip_admin' => $user->update(['is_vip' => true,  'is_admin' => true,  'membership_level' => 2]),
-            'admin'     => $user->update(['is_vip' => false, 'is_admin' => true,  'membership_level' => 1]),
-            'vip'       => $user->update(['is_vip' => true,  'is_admin' => false, 'membership_level' => 2]),
-            default     => $user->update(['is_vip' => false, 'is_admin' => false, 'membership_level' => 1]),
+            'admin' => $user->update(['is_vip' => false, 'is_admin' => true,  'membership_level' => 1]),
+            'vip' => $user->update(['is_vip' => true,  'is_admin' => false, 'membership_level' => 2]),
+            default => $user->update(['is_vip' => false, 'is_admin' => false, 'membership_level' => 1]),
         };
 
         $levelLabel = match ($level) {
             'vip_admin' => 'ویژه و ادمین',
-            'admin'     => 'ادمین',
-            'vip'       => 'ویژه',
-            default     => 'عادی',
+            'admin' => 'ادمین',
+            'vip' => 'ویژه',
+            default => 'عادی',
         };
 
         Notification::create([
             'user_id' => $user->id,
-            'title'   => 'تغییر سطح عضویت',
-            'body'    => "سطح حساب شما به «{$levelLabel}» تغییر کرد. تاریخ: " . Jalali::now(),
-            'type'    => 'system',
+            'title' => 'تغییر سطح عضویت',
+            'body' => "سطح حساب شما به «{$levelLabel}» تغییر کرد. تاریخ: ".Jalali::now(),
+            'type' => 'system',
         ]);
 
         $this->notifyOtherAdmins($request, 'تغییر سطح کاربری توسط ادمین',
-            "{$request->user()->name} سطح کاربر «{$user->name}» را به «{$levelLabel}» تغییر داد. تاریخ: " . Jalali::now());
+            "{$request->user()->name} سطح کاربر «{$user->name}» را به «{$levelLabel}» تغییر داد. تاریخ: ".Jalali::now());
 
         return back()->with('success', 'سطح کاربری به‌روز شد.');
     }
@@ -510,29 +518,29 @@ class AdminController extends Controller
     public function walletCredit(Request $request)
     {
         $request->validate([
-            'user_id'     => 'required|exists:users,id',
-            'amount'      => 'required|integer|not_in:0',
+            'user_id' => 'required|exists:users,id',
+            'amount' => 'required|integer|not_in:0',
             'description' => 'nullable|string|max:200',
         ]);
 
         $user = User::findOrFail($request->user_id);
         WalletTransaction::create([
-            'user_id'     => $user->id,
-            'amount'      => $request->amount,
-            'type'        => $request->amount > 0 ? 'deposit' : 'withdraw',
+            'user_id' => $user->id,
+            'amount' => $request->amount,
+            'type' => $request->amount > 0 ? 'deposit' : 'withdraw',
             'description' => $request->description ?: 'شارژ توسط ادمین',
         ]);
 
         Notification::create([
             'user_id' => $user->id,
-            'title'   => $request->amount > 0 ? 'واریز به کیف پول' : 'برداشت از کیف پول',
-            'body'    => number_format(abs($request->amount)) . " تومان در تاریخ " . Jalali::now(),
-            'type'    => 'wallet',
+            'title' => $request->amount > 0 ? 'واریز به کیف پول' : 'برداشت از کیف پول',
+            'body' => number_format(abs($request->amount)).' تومان در تاریخ '.Jalali::now(),
+            'type' => 'wallet',
         ]);
 
         $action = $request->amount > 0 ? 'واریز به' : 'برداشت از';
         $this->notifyOtherAdmins($request, 'تغییر کیف پول توسط ادمین',
-            "{$request->user()->name} مبلغ " . number_format(abs($request->amount)) . " تومان {$action} کیف پول «{$user->name}» را ثبت کرد. تاریخ: " . Jalali::now());
+            "{$request->user()->name} مبلغ ".number_format(abs($request->amount))." تومان {$action} کیف پول «{$user->name}» را ثبت کرد. تاریخ: ".Jalali::now());
 
         return back()->with('success', 'تراکنش ثبت شد.');
     }
@@ -541,15 +549,15 @@ class AdminController extends Controller
     public function inventoryAdjust(Request $request, int $uid)
     {
         $request->validate([
-            'metal'       => 'required|in:gold,silver',
-            'purity'      => 'required_if:metal,silver|in:999,995',
-            'grams'       => 'required|numeric|not_in:0',
+            'metal' => 'required|in:gold,silver',
+            'purity' => 'required_if:metal,silver|nullable|in:999,995',
+            'grams' => 'required|numeric|not_in:0',
             'description' => 'nullable|string|max:200',
         ]);
 
         $user = User::findOrFail($uid);
         $grams = (float) $request->grams;
-        $desc  = $request->description ?: 'اصلاح موجودی توسط ادمین';
+        $desc = $request->description ?: 'اصلاح موجودی توسط ادمین';
 
         if ($request->metal === 'gold') {
             GoldLedger::create([
@@ -562,16 +570,16 @@ class AdminController extends Controller
             ]);
         }
 
-        $metalLabel = $request->metal === 'gold' ? 'طلا' : ('نقره ' . $request->purity);
+        $metalLabel = $request->metal === 'gold' ? 'طلا' : ('نقره '.$request->purity);
         Notification::create([
             'user_id' => $user->id,
-            'title'   => 'تغییر موجودی انبار',
-            'body'    => ($grams > 0 ? 'افزایش' : 'کاهش') . " {$metalLabel}: " . abs($grams) . ' گرم — ' . Jalali::now(),
-            'type'    => 'system',
+            'title' => 'تغییر موجودی انبار',
+            'body' => ($grams > 0 ? 'افزایش' : 'کاهش')." {$metalLabel}: ".abs($grams).' گرم — '.Jalali::now(),
+            'type' => 'system',
         ]);
 
         $this->notifyOtherAdmins($request, 'تغییر موجودی انبار توسط ادمین',
-            "{$request->user()->name} " . ($grams > 0 ? 'افزایش' : 'کاهش') . " {$metalLabel} به‌مقدار " . abs($grams) . " گرم برای «{$user->name}» ثبت کرد. تاریخ: " . Jalali::now());
+            "{$request->user()->name} ".($grams > 0 ? 'افزایش' : 'کاهش')." {$metalLabel} به‌مقدار ".abs($grams)." گرم برای «{$user->name}» ثبت کرد. تاریخ: ".Jalali::now());
 
         return back()->with('success', 'موجودی انبار به‌روزرسانی شد.');
     }
@@ -580,22 +588,22 @@ class AdminController extends Controller
     {
         $request->validate([
             'title' => 'required|string|max:200',
-            'body'  => 'nullable|string',
-            'type'  => 'required|in:info,trade,wallet,promo,system',
+            'body' => 'nullable|string',
+            'type' => 'required|in:info,trade,wallet,promo,system',
         ]);
 
         $target = $request->input('target', 'all');
-        $uid    = ($target !== 'all' && is_numeric($target)) ? (int) $target : null;
+        $uid = ($target !== 'all' && is_numeric($target)) ? (int) $target : null;
 
         Notification::create([
-            'title'   => $request->title,
-            'body'    => $request->body,
-            'type'    => $request->type,
+            'title' => $request->title,
+            'body' => $request->body,
+            'type' => $request->type,
             'user_id' => $uid,
         ]);
 
         $this->notifyOtherAdmins($request, 'ارسال اعلان توسط ادمین',
-            "{$request->user()->name} اعلانی با عنوان «{$request->title}» ارسال کرد. تاریخ: " . Jalali::now());
+            "{$request->user()->name} اعلانی با عنوان «{$request->title}» ارسال کرد. تاریخ: ".Jalali::now());
 
         return back()->with('success', 'اعلان ارسال شد.');
     }
@@ -604,19 +612,19 @@ class AdminController extends Controller
     {
         $request->validate([
             'title' => 'required|string|max:200',
-            'body'  => 'nullable|string',
-            'type'  => 'required|in:info,trade,wallet,promo,system',
+            'body' => 'nullable|string',
+            'type' => 'required|in:info,trade,wallet,promo,system',
         ]);
 
         $notif = Notification::findOrFail($id);
         $notif->update([
             'title' => $request->title,
-            'body'  => $request->body,
-            'type'  => $request->type,
+            'body' => $request->body,
+            'type' => $request->type,
         ]);
 
         $this->notifyOtherAdmins($request, 'ویرایش اعلان توسط ادمین',
-            "{$request->user()->name} اعلان «{$notif->title}» را ویرایش کرد. تاریخ: " . Jalali::now());
+            "{$request->user()->name} اعلان «{$notif->title}» را ویرایش کرد. تاریخ: ".Jalali::now());
 
         return back()->with('success', 'اعلان ویرایش شد.');
     }
@@ -628,7 +636,7 @@ class AdminController extends Controller
         $notif->delete();
 
         $this->notifyOtherAdmins($request, 'حذف اعلان توسط ادمین',
-            "{$request->user()->name} اعلان «{$title}» را حذف کرد. تاریخ: " . Jalali::now());
+            "{$request->user()->name} اعلان «{$title}» را حذف کرد. تاریخ: ".Jalali::now());
 
         return back()->with('success', 'اعلان حذف شد.');
     }
@@ -637,28 +645,31 @@ class AdminController extends Controller
     {
         $user = User::findOrFail($uid);
         $user->update([
-            'is_vip'            => true,
-            'membership_level'  => 2,
+            'is_vip' => true,
+            'membership_level' => 2,
             'membership_status' => 'approved',
         ]);
 
-        $msg  = trim((string) $request->input('message', ''));
-        $body = 'درخواست عضویت ویژه‌ی شما در تاریخ ' . Jalali::now() . ' تأیید شد.';
-        if ($msg !== '') $body .= "\nپیام ادمین: {$msg}";
+        $msg = trim((string) $request->input('message', ''));
+        $body = 'درخواست عضویت ویژه‌ی شما در تاریخ '.Jalali::now().' تأیید شد.';
+        if ($msg !== '') {
+            $body .= "\nپیام ادمین: {$msg}";
+        }
 
         Notification::create([
             'user_id' => $user->id,
-            'title'   => '👑 عضویت ویژه تأیید شد',
-            'body'    => $body,
-            'type'    => 'promo',
+            'title' => '👑 عضویت ویژه تأیید شد',
+            'body' => $body,
+            'type' => 'promo',
         ]);
 
         $this->notifyOtherAdmins($request, 'تأیید عضویت ویژه توسط ادمین',
-            "{$request->user()->name} درخواست عضویت ویژه‌ی «{$user->name}» را تأیید کرد. تاریخ: " . Jalali::now());
+            "{$request->user()->name} درخواست عضویت ویژه‌ی «{$user->name}» را تأیید کرد. تاریخ: ".Jalali::now());
 
         try {
-            $this->sms->send($user->phone, "عضویت ویژه‌ی شما در آبشده صفرپور تأیید شد." . ($msg !== '' ? " {$msg}" : ''));
-        } catch (\Exception) {}
+            $this->sms->send($user->phone, 'عضویت ویژه‌ی شما در آبشده صفرپور تأیید شد.'.($msg !== '' ? " {$msg}" : ''));
+        } catch (\Exception) {
+        }
 
         return back()->with('success', 'عضویت ویژه تأیید شد.');
     }
@@ -668,23 +679,26 @@ class AdminController extends Controller
         $user = User::findOrFail($uid);
         $user->update(['membership_status' => 'rejected']);
 
-        $msg  = trim((string) $request->input('message', ''));
-        $body = 'درخواست عضویت ویژه‌ی شما در تاریخ ' . Jalali::now() . ' رد شد. می‌توانید دوباره درخواست دهید.';
-        if ($msg !== '') $body .= "\nپیام ادمین: {$msg}";
+        $msg = trim((string) $request->input('message', ''));
+        $body = 'درخواست عضویت ویژه‌ی شما در تاریخ '.Jalali::now().' رد شد. می‌توانید دوباره درخواست دهید.';
+        if ($msg !== '') {
+            $body .= "\nپیام ادمین: {$msg}";
+        }
 
         Notification::create([
             'user_id' => $user->id,
-            'title'   => 'درخواست عضویت ویژه رد شد',
-            'body'    => $body,
-            'type'    => 'system',
+            'title' => 'درخواست عضویت ویژه رد شد',
+            'body' => $body,
+            'type' => 'system',
         ]);
 
         $this->notifyOtherAdmins($request, 'رد عضویت ویژه توسط ادمین',
-            "{$request->user()->name} درخواست عضویت ویژه‌ی «{$user->name}» را رد کرد. تاریخ: " . Jalali::now());
+            "{$request->user()->name} درخواست عضویت ویژه‌ی «{$user->name}» را رد کرد. تاریخ: ".Jalali::now());
 
         try {
-            $this->sms->send($user->phone, "درخواست عضویت ویژه‌ی شما رد شد." . ($msg !== '' ? " {$msg}" : ''));
-        } catch (\Exception) {}
+            $this->sms->send($user->phone, 'درخواست عضویت ویژه‌ی شما رد شد.'.($msg !== '' ? " {$msg}" : ''));
+        } catch (\Exception) {
+        }
 
         return back()->with('success', 'درخواست رد شد.');
     }
@@ -694,7 +708,7 @@ class AdminController extends Controller
         $request->validate([
             'status' => 'required|in:approved,shipped,delivered,rejected',
             // دلیل برای رد اجباری، برای سایر وضعیت‌ها اختیاری
-            'note'   => 'required_if:status,rejected|nullable|string|max:300',
+            'note' => 'required_if:status,rejected|nullable|string|max:300',
         ]);
 
         $delivery = SilverDeliveryRequest::with('user')->findOrFail($id);
@@ -720,29 +734,32 @@ class AdminController extends Controller
         $delivery->update(['status' => $request->status, 'admin_note' => $note !== '' ? $note : $delivery->admin_note]);
 
         $statusLabel = [
-            'approved'  => 'تأیید شد',
-            'shipped'   => 'ارسال شد',
+            'approved' => 'تأیید شد',
+            'shipped' => 'ارسال شد',
             'delivered' => 'تحویل داده شد',
-            'rejected'  => 'رد شد',
+            'rejected' => 'رد شد',
         ][$request->status];
 
         $adminName = $request->user()->name;
-        $body = "درخواست شما «{$statusLabel}». تاریخ: " . Jalali::now();
-        if ($note !== '') $body .= "\nتوضیح ادمین: {$note}";
+        $body = "درخواست شما «{$statusLabel}». تاریخ: ".Jalali::now();
+        if ($note !== '') {
+            $body .= "\nتوضیح ادمین: {$note}";
+        }
 
         Notification::create([
             'user_id' => $delivery->user_id,
-            'title'   => 'وضعیت درخواست تحویل فیزیکی',
-            'body'    => $body,
-            'type'    => 'system',
+            'title' => 'وضعیت درخواست تحویل فیزیکی',
+            'body' => $body,
+            'type' => 'system',
         ]);
 
-        $adminLog = "{$adminName} درخواست تحویل فیزیکی «{$delivery->user?->name}» را «{$statusLabel}» کرد." . ($note !== '' ? " توضیح: {$note}" : '') . ' تاریخ: ' . Jalali::now();
+        $adminLog = "{$adminName} درخواست تحویل فیزیکی «{$delivery->user?->name}» را «{$statusLabel}» کرد.".($note !== '' ? " توضیح: {$note}" : '').' تاریخ: '.Jalali::now();
         $this->notifyOtherAdmins($request, 'به‌روزرسانی تحویل فیزیکی توسط ادمین', $adminLog);
 
         try {
             $this->sms->sendDeliveryStatusUpdate($delivery->user->phone, $delivery->user->name, $statusLabel);
-        } catch (\Exception) {}
+        } catch (\Exception) {
+        }
 
         return back()->with('success', 'وضعیت به‌روزرسانی شد.');
     }
@@ -752,9 +769,9 @@ class AdminController extends Controller
         $user = User::findOrFail($uid);
 
         $request->validate([
-            'name'        => ['required', 'string', 'max:100', 'not_regex:/[<>]/'],
-            'phone'       => 'required|string|unique:users,phone,' . $user->id,
-            'email'       => 'nullable|email',
+            'name' => ['required', 'string', 'max:100', 'not_regex:/[<>]/'],
+            'phone' => 'required|string|unique:users,phone,'.$user->id,
+            'email' => 'nullable|email',
             'national_id' => 'nullable|string|max:10',
         ]);
 
@@ -762,7 +779,7 @@ class AdminController extends Controller
         $user->update($request->only('name', 'phone', 'email', 'national_id'));
 
         $this->notifyOtherAdmins($request, 'ویرایش کاربر توسط ادمین',
-            "{$request->user()->name} اطلاعات کاربر «{$oldName}» را ویرایش کرد. تاریخ: " . Jalali::now());
+            "{$request->user()->name} اطلاعات کاربر «{$oldName}» را ویرایش کرد. تاریخ: ".Jalali::now());
 
         return back()->with('success', 'اطلاعات کاربر به‌روزرسانی شد.');
     }
@@ -777,7 +794,7 @@ class AdminController extends Controller
         $user->delete();
 
         $this->notifyOtherAdmins($request, 'حذف کاربر توسط ادمین',
-            "{$request->user()->name} کاربر «{$name}» را حذف کرد. تاریخ: " . Jalali::now());
+            "{$request->user()->name} کاربر «{$name}» را حذف کرد. تاریخ: ".Jalali::now());
 
         return back()->with('success', 'کاربر حذف شد.');
     }
@@ -787,22 +804,22 @@ class AdminController extends Controller
         $txn = Transaction::with('user')->findOrFail($id);
 
         $request->validate([
-            'type'           => 'required|in:buy,sell',
-            'quantity'       => 'required|numeric|min:0.001',
+            'type' => 'required|in:buy,sell',
+            'quantity' => 'required|numeric|min:0.001',
             'price_per_unit' => 'required|integer|min:1',
         ]);
 
         $total = (int) round($request->quantity * $request->price_per_unit);
 
         $txn->update([
-            'type'           => $request->type,
-            'quantity'       => $request->quantity,
+            'type' => $request->type,
+            'quantity' => $request->quantity,
             'price_per_unit' => $request->price_per_unit,
-            'total'          => $total,
+            'total' => $total,
         ]);
 
         $this->notifyOtherAdmins($request, 'ویرایش معامله توسط ادمین',
-            "{$request->user()->name} معامله‌ی «{$txn->item_label}» متعلق به «{$txn->user?->name}» را ویرایش کرد. تاریخ: " . Jalali::now());
+            "{$request->user()->name} معامله‌ی «{$txn->item_label}» متعلق به «{$txn->user?->name}» را ویرایش کرد. تاریخ: ".Jalali::now());
 
         return back()->with('success', 'معامله ویرایش شد.');
     }
@@ -815,7 +832,7 @@ class AdminController extends Controller
         $txn->delete();
 
         $this->notifyOtherAdmins($request, 'حذف معامله توسط ادمین',
-            "{$request->user()->name} معامله‌ی «{$label}» متعلق به «{$userName}» را حذف کرد. تاریخ: " . Jalali::now());
+            "{$request->user()->name} معامله‌ی «{$label}» متعلق به «{$userName}» را حذف کرد. تاریخ: ".Jalali::now());
 
         return back()->with('success', 'معامله حذف شد.');
     }
@@ -838,9 +855,9 @@ class AdminController extends Controller
         DB::transaction(function () use ($txn, $reason) {
             // برگشت کیف پول: خرید مبلغ را کسر کرده بود → بازگشت؛ فروش مبلغ را اضافه کرده بود → کسر
             WalletTransaction::create([
-                'user_id'     => $txn->user_id,
-                'amount'      => $txn->type === 'buy' ? $txn->total : -$txn->total,
-                'type'        => $txn->type === 'buy' ? 'deposit' : 'withdraw',
+                'user_id' => $txn->user_id,
+                'amount' => $txn->type === 'buy' ? $txn->total : -$txn->total,
+                'type' => $txn->type === 'buy' ? 'deposit' : 'withdraw',
                 'description' => "برگشت — رد معامله #{$txn->id} ({$txn->item_label})",
             ]);
 
@@ -850,18 +867,18 @@ class AdminController extends Controller
                 $grams = $txn->item === 'mithqal' ? (float) $txn->quantity * $mithqalGrams : (float) $txn->quantity;
                 GoldLedger::create([
                     'user_id' => $txn->user_id,
-                    'grams'   => $txn->type === 'buy' ? -$grams : $grams,
-                    'type'    => 'trade_reject',
+                    'grams' => $txn->type === 'buy' ? -$grams : $grams,
+                    'type' => 'trade_reject',
                     'reference_type' => Transaction::class, 'reference_id' => $txn->id,
                     'description' => "برگشت طلا — رد معامله #{$txn->id}",
                 ]);
             } elseif (str_contains($txn->item, '999') || str_contains($txn->item, '995')) {
                 $purity = str_contains($txn->item, '995') ? '995' : '999';
-                $grams  = str_starts_with($txn->item, 'mithqal_') ? (float) $txn->quantity * $mithqalGrams : (float) $txn->quantity;
+                $grams = str_starts_with($txn->item, 'mithqal_') ? (float) $txn->quantity * $mithqalGrams : (float) $txn->quantity;
                 SilverLedger::create([
                     'user_id' => $txn->user_id, 'purity' => $purity,
-                    'grams'   => $txn->type === 'buy' ? -$grams : $grams,
-                    'type'    => 'trade_reject',
+                    'grams' => $txn->type === 'buy' ? -$grams : $grams,
+                    'type' => 'trade_reject',
                     'reference_type' => Transaction::class, 'reference_id' => $txn->id,
                     'description' => "برگشت نقره — رد معامله #{$txn->id}",
                 ]);
@@ -871,9 +888,9 @@ class AdminController extends Controller
 
             Notification::create([
                 'user_id' => $txn->user_id,
-                'title'   => 'رد معامله توسط مدیریت',
-                'body'    => "معامله‌ی «{$txn->item_label}» ({$txn->quantity}) رد شد و اثر آن برگشت داده شد.\nدلیل: {$reason}\nتاریخ: " . Jalali::now(),
-                'type'    => 'trade',
+                'title' => 'رد معامله توسط مدیریت',
+                'body' => "معامله‌ی «{$txn->item_label}» ({$txn->quantity}) رد شد و اثر آن برگشت داده شد.\nدلیل: {$reason}\nتاریخ: ".Jalali::now(),
+                'type' => 'trade',
             ]);
         });
 
@@ -881,10 +898,11 @@ class AdminController extends Controller
             if ($txn->user) {
                 $this->sms->send($txn->user->phone, "معامله‌ی شما ({$txn->item_label}) توسط مدیریت رد شد. دلیل: {$reason}");
             }
-        } catch (\Exception) {}
+        } catch (\Exception) {
+        }
 
         $this->notifyOtherAdmins($request, 'رد معامله‌ی فروشگاه توسط ادمین',
-            "{$request->user()->name} معامله‌ی «{$txn->item_label}» متعلق به «{$txn->user?->name}» را رد کرد. دلیل: {$reason}. تاریخ: " . Jalali::now());
+            "{$request->user()->name} معامله‌ی «{$txn->item_label}» متعلق به «{$txn->user?->name}» را رد کرد. دلیل: {$reason}. تاریخ: ".Jalali::now());
 
         return back()->with('success', 'معامله رد و برگشت داده شد.');
     }
@@ -905,13 +923,13 @@ class AdminController extends Controller
                     throw new \RuntimeException('فقط معامله‌ی تکمیل‌شده قابل برگشت است.');
                 }
 
-                $metal   = $offer->metal;
-                $purity  = $offer->purity;
-                $grams   = (float) $offer->grams;
-                $total   = $offer->total();
+                $metal = $offer->metal;
+                $purity = $offer->purity;
+                $grams = (float) $offer->grams;
+                $total = $offer->total();
                 $ownerId = $offer->user_id;
-                $cpId    = $offer->counterparty_id;
-                $label   = $metal === 'gold' ? 'طلا' : ('نقره ' . $purity);
+                $cpId = $offer->counterparty_id;
+                $label = $metal === 'gold' ? 'طلا' : ('نقره '.$purity);
 
                 if ($offer->side === 'sell') {
                     // پیشنهاددهنده فروشنده بود؛ طرف مقابل خریدار
@@ -932,9 +950,9 @@ class AdminController extends Controller
                 foreach (array_filter([$ownerId, $cpId]) as $uid) {
                     Notification::create([
                         'user_id' => $uid,
-                        'title'   => 'برگشت معامله‌ی اتاق معاملاتی توسط مدیریت',
-                        'body'    => "معامله‌ی {$label} — {$grams} گرم برگشت داده شد.\nدلیل: {$reason}\nتاریخ: " . Jalali::now(),
-                        'type'    => 'trade',
+                        'title' => 'برگشت معامله‌ی اتاق معاملاتی توسط مدیریت',
+                        'body' => "معامله‌ی {$label} — {$grams} گرم برگشت داده شد.\nدلیل: {$reason}\nتاریخ: ".Jalali::now(),
+                        'type' => 'trade',
                     ]);
                 }
             });
@@ -944,7 +962,7 @@ class AdminController extends Controller
 
         $offer = TradeRoomOffer::with(['user', 'counterparty'])->find($id);
         $this->notifyOtherAdmins($request, 'برگشت معامله‌ی اتاق معاملاتی توسط ادمین',
-            "{$request->user()->name} معامله‌ی اتاق معاملاتی بین «{$offer?->user?->name}» و «{$offer?->counterparty?->name}» را برگشت زد. دلیل: {$reason}. تاریخ: " . Jalali::now());
+            "{$request->user()->name} معامله‌ی اتاق معاملاتی بین «{$offer?->user?->name}» و «{$offer?->counterparty?->name}» را برگشت زد. دلیل: {$reason}. تاریخ: ".Jalali::now());
 
         return back()->with('success', 'معامله‌ی اتاق معاملاتی برگشت داده شد.');
     }
@@ -952,9 +970,9 @@ class AdminController extends Controller
     private function revertWallet(int $userId, int $amount, string $desc): void
     {
         WalletTransaction::create([
-            'user_id'     => $userId,
-            'amount'      => $amount,
-            'type'        => $amount >= 0 ? 'deposit' : 'withdraw',
+            'user_id' => $userId,
+            'amount' => $amount,
+            'type' => $amount >= 0 ? 'deposit' : 'withdraw',
             'description' => $desc,
         ]);
     }
@@ -982,22 +1000,25 @@ class AdminController extends Controller
         $withdrawal = WithdrawalRequest::with('user')->findOrFail($id);
         $withdrawal->update(['status' => 'approved', 'admin_note' => $note !== '' ? $note : null]);
 
-        $body = number_format($withdrawal->amount) . ' تومان به حساب شما واریز شد. تاریخ: ' . Jalali::now();
-        if ($note !== '') $body .= "\nتوضیح ادمین: {$note}";
+        $body = number_format($withdrawal->amount).' تومان به حساب شما واریز شد. تاریخ: '.Jalali::now();
+        if ($note !== '') {
+            $body .= "\nتوضیح ادمین: {$note}";
+        }
 
         Notification::create([
             'user_id' => $withdrawal->user_id,
-            'title'   => 'تسویه حساب انجام شد',
-            'body'    => $body,
-            'type'    => 'wallet',
+            'title' => 'تسویه حساب انجام شد',
+            'body' => $body,
+            'type' => 'wallet',
         ]);
 
         $this->notifyOtherAdmins($request, 'تأیید تسویه حساب توسط ادمین',
-            "{$request->user()->name} تسویه حساب " . number_format($withdrawal->amount) . " تومانی «{$withdrawal->user?->name}» را تأیید کرد." . ($note !== '' ? " توضیح: {$note}" : '') . ' تاریخ: ' . Jalali::now());
+            "{$request->user()->name} تسویه حساب ".number_format($withdrawal->amount)." تومانی «{$withdrawal->user?->name}» را تأیید کرد.".($note !== '' ? " توضیح: {$note}" : '').' تاریخ: '.Jalali::now());
 
         try {
-            $this->sms->send($withdrawal->user->phone, 'تسویه حساب ' . number_format($withdrawal->amount) . ' تومانی شما انجام شد.');
-        } catch (\Exception) {}
+            $this->sms->send($withdrawal->user->phone, 'تسویه حساب '.number_format($withdrawal->amount).' تومانی شما انجام شد.');
+        } catch (\Exception) {
+        }
 
         return back()->with('success', 'تسویه حساب تأیید شد.');
     }
@@ -1011,25 +1032,26 @@ class AdminController extends Controller
 
         // مبلغ به کیف پول کاربر برمی‌گردد
         WalletTransaction::create([
-            'user_id'     => $withdrawal->user_id,
-            'amount'      => $withdrawal->amount,
-            'type'        => 'deposit',
+            'user_id' => $withdrawal->user_id,
+            'amount' => $withdrawal->amount,
+            'type' => 'deposit',
             'description' => "بازگشت — رد درخواست تسویه حساب #{$withdrawal->id}",
         ]);
 
         Notification::create([
             'user_id' => $withdrawal->user_id,
-            'title'   => 'درخواست تسویه حساب رد شد',
-            'body'    => "دلیل: {$request->reason}\nمبلغ به کیف پول شما بازگشت داده شد. تاریخ: " . Jalali::now(),
-            'type'    => 'wallet',
+            'title' => 'درخواست تسویه حساب رد شد',
+            'body' => "دلیل: {$request->reason}\nمبلغ به کیف پول شما بازگشت داده شد. تاریخ: ".Jalali::now(),
+            'type' => 'wallet',
         ]);
 
         $this->notifyOtherAdmins($request, 'رد تسویه حساب توسط ادمین',
-            "{$request->user()->name} تسویه حساب «{$withdrawal->user?->name}» را رد کرد. دلیل: {$request->reason}. تاریخ: " . Jalali::now());
+            "{$request->user()->name} تسویه حساب «{$withdrawal->user?->name}» را رد کرد. دلیل: {$request->reason}. تاریخ: ".Jalali::now());
 
         try {
             $this->sms->send($withdrawal->user->phone, "درخواست تسویه حساب شما رد شد. دلیل: {$request->reason}");
-        } catch (\Exception) {}
+        } catch (\Exception) {
+        }
 
         return back()->with('success', 'درخواست رد شد.');
     }
@@ -1043,28 +1065,31 @@ class AdminController extends Controller
         $deposit->update(['status' => 'approved', 'admin_note' => $note !== '' ? $note : null]);
 
         WalletTransaction::create([
-            'user_id'     => $deposit->user_id,
-            'amount'      => $deposit->amount,
-            'type'        => 'deposit',
+            'user_id' => $deposit->user_id,
+            'amount' => $deposit->amount,
+            'type' => 'deposit',
             'description' => "تأیید درخواست افزایش موجودی #{$deposit->id}",
         ]);
 
-        $body = number_format($deposit->amount) . " تومان توسط ادمین به کیف پول شما واریز شد. تاریخ: " . Jalali::now();
-        if ($note !== '') $body .= "\nتوضیح ادمین: {$note}";
+        $body = number_format($deposit->amount).' تومان توسط ادمین به کیف پول شما واریز شد. تاریخ: '.Jalali::now();
+        if ($note !== '') {
+            $body .= "\nتوضیح ادمین: {$note}";
+        }
 
         Notification::create([
             'user_id' => $deposit->user_id,
-            'title'   => 'افزایش موجودی تأیید شد',
-            'body'    => $body,
-            'type'    => 'wallet',
+            'title' => 'افزایش موجودی تأیید شد',
+            'body' => $body,
+            'type' => 'wallet',
         ]);
 
         $this->notifyOtherAdmins($request, 'تأیید افزایش موجودی توسط ادمین',
-            "{$request->user()->name} افزایش موجودی " . number_format($deposit->amount) . " تومانی «{$deposit->user?->name}» را تأیید کرد." . ($note !== '' ? " توضیح: {$note}" : '') . ' تاریخ: ' . Jalali::now());
+            "{$request->user()->name} افزایش موجودی ".number_format($deposit->amount)." تومانی «{$deposit->user?->name}» را تأیید کرد.".($note !== '' ? " توضیح: {$note}" : '').' تاریخ: '.Jalali::now());
 
         try {
-            $this->sms->send($deposit->user->phone, 'افزایش موجودی ' . number_format($deposit->amount) . ' تومانی شما تأیید و واریز شد.');
-        } catch (\Exception) {}
+            $this->sms->send($deposit->user->phone, 'افزایش موجودی '.number_format($deposit->amount).' تومانی شما تأیید و واریز شد.');
+        } catch (\Exception) {
+        }
 
         return back()->with('success', 'افزایش موجودی تأیید شد.');
     }
@@ -1078,17 +1103,18 @@ class AdminController extends Controller
 
         Notification::create([
             'user_id' => $deposit->user_id,
-            'title'   => 'درخواست افزایش موجودی رد شد',
-            'body'    => "دلیل: {$request->reason}\nتاریخ: " . Jalali::now(),
-            'type'    => 'wallet',
+            'title' => 'درخواست افزایش موجودی رد شد',
+            'body' => "دلیل: {$request->reason}\nتاریخ: ".Jalali::now(),
+            'type' => 'wallet',
         ]);
 
         $this->notifyOtherAdmins($request, 'رد افزایش موجودی توسط ادمین',
-            "{$request->user()->name} درخواست افزایش موجودی «{$deposit->user?->name}» را رد کرد. دلیل: {$request->reason}. تاریخ: " . Jalali::now());
+            "{$request->user()->name} درخواست افزایش موجودی «{$deposit->user?->name}» را رد کرد. دلیل: {$request->reason}. تاریخ: ".Jalali::now());
 
         try {
             $this->sms->send($deposit->user->phone, "درخواست افزایش موجودی شما رد شد. دلیل: {$request->reason}");
-        } catch (\Exception) {}
+        } catch (\Exception) {
+        }
 
         return back()->with('success', 'درخواست رد شد.');
     }
@@ -1105,9 +1131,9 @@ class AdminController extends Controller
             ->each(function ($admin) use ($title, $body) {
                 Notification::create([
                     'user_id' => $admin->id,
-                    'title'   => $title,
-                    'body'    => $body,
-                    'type'    => 'system',
+                    'title' => $title,
+                    'body' => $body,
+                    'type' => 'system',
                 ]);
             });
 

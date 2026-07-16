@@ -224,7 +224,7 @@ function WTxnRow({ w }) {
 
 const DELIVERY_STATUS_LABEL = { pending: 'در انتظار', approved: 'تأییدشده', shipped: 'ارسال‌شده', rejected: 'رد‌شده', delivered: 'تحویل داده‌شده' };
 
-const DELIVERY_METHOD_LABEL = { address: 'ارسال به آدرس', pickup: 'تحویل حضوری از مغازه' };
+const DELIVERY_METHOD_LABEL = { address: 'ارسال به آدرس', pickup: 'تحویل حضوری از فروشگاه' };
 
 function DeliveryRow({ r, printOnly, deliveryNote, setDeliveryNote, updateDelivery }) {
     return (

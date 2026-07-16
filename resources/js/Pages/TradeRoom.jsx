@@ -185,8 +185,10 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
         const payload = (!isCoinForm && unit === 'mithqal')
             ? { ...form.data, grams: +(qty * M).toFixed(4), price_per_gram: Math.round(perUnit / M) }
             : form.data;
-        form.transform(() => payload).post('/trade-room', {
-            onSuccess: () => { form.transform(d => d); form.reset('grams', 'price_per_gram'); },
+        form.transform(() => payload);
+        form.post('/trade-room', {
+            onSuccess: () => { form.reset('grams', 'price_per_gram'); },
+            onFinish: () => form.transform(data => data),
         });
     }
 

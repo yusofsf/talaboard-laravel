@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class SilverDeliveryRequest extends Model
 {
-    protected $fillable = ['user_id', 'metal', 'purity', 'grams', 'recipient_name', 'phone', 'address', 'delivery_method', 'status', 'admin_note'];
+    protected $fillable = ['user_id', 'metal', 'purity', 'grams', 'recipient_name', 'phone', 'address', 'postal_code', 'delivery_method', 'status', 'admin_note'];
 
     protected $casts = ['grams' => 'decimal:4'];
 

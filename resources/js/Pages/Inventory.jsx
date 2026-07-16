@@ -63,13 +63,13 @@ export default function Inventory({ goldBalance, silverBalance, goldHistory, sil
     const deliveryPager = usePager(deliveryRequests);
     const form = useForm({
         metal: 'gold', purity: '999', grams: '',
-        recipient_name: '', phone: '', delivery_method: 'address', address: '',
+        recipient_name: '', phone: '', delivery_method: 'address', address: '', postal_code: '',
     });
 
     function submit(e) {
         e.preventDefault();
         form.post('/silver-delivery', {
-            onSuccess: () => { form.reset('grams', 'recipient_name', 'phone', 'delivery_method', 'address'); setShowForm(false); },
+            onSuccess: () => { form.reset('grams', 'recipient_name', 'phone', 'delivery_method', 'address', 'postal_code'); setShowForm(false); },
         });
     }
 
@@ -148,10 +148,17 @@ export default function Inventory({ goldBalance, silverBalance, goldHistory, sil
                                     </select>
                                 </div>
                                 {form.data.delivery_method === 'address' && (
-                                    <div className="field">
-                                        <label>آدرس تحویل</label>
-                                        <input value={form.data.address} onChange={e => form.setData('address', e.target.value)} required />
-                                    </div>
+                                    <>
+                                        <div className="field">
+                                            <label>آدرس تحویل</label>
+                                            <input value={form.data.address} onChange={e => form.setData('address', e.target.value)} required />
+                                        </div>
+                                        <div className="field">
+                                            <label>کد پستی</label>
+                                            <input dir="ltr" inputMode="numeric" value={form.data.postal_code}
+                                                onChange={e => form.setData('postal_code', e.target.value)} required />
+                                        </div>
+                                    </>
                                 )}
                                 <button className="btn" type="submit" disabled={form.processing}>
                                     {form.processing ? 'در حال ارسال...' : 'ثبت درخواست'}
@@ -178,7 +185,10 @@ export default function Inventory({ goldBalance, silverBalance, goldHistory, sil
                                                 <td>
                                                     {DELIVERY_METHOD[r.delivery_method] || DELIVERY_METHOD.address}
                                                     {r.delivery_method === 'address' && r.address && (
-                                                        <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{r.address}</div>
+                                                        <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
+                                                            {r.address}
+                                                            {r.postal_code && <><br />کد پستی: <span dir="ltr">{r.postal_code}</span></>}
+                                                        </div>
                                                     )}
                                                 </td>
                                                 <td><span className={`badge ${cls}`}>{label}</span></td>

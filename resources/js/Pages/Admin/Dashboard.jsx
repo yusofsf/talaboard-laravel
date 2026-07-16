@@ -4,6 +4,7 @@ import AppLayout, { faNum } from '../../Layouts/AppLayout';
 import Pager, { usePager } from '../../Components/Pager';
 import DateRangeFilter, { filterByDateRange } from '../../Components/DateRangeFilter';
 import SearchBox, { filterBySearch } from '../../Components/SearchBox';
+import SearchableSelect from '../../Components/SearchableSelect';
 
 const LOG_CAT = {
     auth:       { label: 'ورود/احراز', badge: 'silver' },
@@ -235,7 +236,10 @@ function DeliveryRow({ r, printOnly, deliveryNote, setDeliveryNote, updateDelive
             <td className="num">{r.grams} گرم</td>
             <td>{r.recipient_name}<br /><span dir="ltr" style={{ fontSize: 12, color: 'var(--muted)' }}>{r.phone}</span></td>
             <td>{DELIVERY_METHOD_LABEL[r.delivery_method] || DELIVERY_METHOD_LABEL.address}</td>
-            <td style={{ fontSize: 12, color: 'var(--muted)', maxWidth: 220 }}>{r.address}</td>
+            <td style={{ fontSize: 12, color: 'var(--muted)', maxWidth: 220 }}>
+                {r.address}
+                {r.postal_code && <><br />کد پستی: <span dir="ltr">{r.postal_code}</span></>}
+            </td>
             <td>
                 <span className={`badge ${r.status === 'pending' ? 'silver' : r.status === 'rejected' ? 'sell-b' : 'buy-b'}`}>
                     {DELIVERY_STATUS_LABEL[r.status]}
@@ -446,6 +450,17 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
         contact_title: settings?.contact_title ?? '',
         contact_intro: settings?.contact_intro ?? '',
     });
+    const userOptions = useMemo(() => users.map(u => ({
+        value: String(u.id),
+        label: u.name,
+        description: u.phone,
+        descriptionDir: 'ltr',
+        search: `${u.name} ${u.phone} ${u.email || ''} ${u.national_id || ''}`,
+    })), [users]);
+    const notificationTargetOptions = useMemo(() => [
+        { value: 'all', label: 'همه کاربران', search: 'همه کاربران all' },
+        ...userOptions,
+    ], [userOptions]);
 
     const [usersQ, setUsersQ] = useState('');
     const [txnsQ, setTxnsQ] = useState('');
@@ -474,7 +489,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     const filteredMemberApps = useMemo(() => filterBySearch(memberApplications || [], memberQ, ['name', 'phone', 'national_id']), [memberApplications, memberQ]);
     const filteredVipMembers = useMemo(() => filterBySearch(vipMembers || [], vipQ, ['name', 'phone', 'national_id', 'email']), [vipMembers, vipQ]);
     const filteredDeliveryRequests = useMemo(
-        () => filterBySearch(filterByDateRange(deliveryRequests || [], deliveryFrom, deliveryTo), deliveryQ, ['user_name', 'user_phone', 'recipient_name', 'phone', 'address', 'delivery_method']),
+        () => filterBySearch(filterByDateRange(deliveryRequests || [], deliveryFrom, deliveryTo), deliveryQ, ['user_name', 'user_phone', 'recipient_name', 'phone', 'address', 'postal_code', 'delivery_method']),
         [deliveryRequests, deliveryFrom, deliveryTo, deliveryQ]
     );
     const filteredWithdrawalRequests = useMemo(
@@ -736,10 +751,14 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                             <div className="alert info" style={{ fontSize: 13 }}>واریز دستی فعلاً توسط ادمین ثبت می‌شود؛ بعداً به درگاه پرداخت آنلاین وصل خواهد شد.</div>
                             <form onSubmit={e => { e.preventDefault(); wallet.post('/admin/wallet-credit', { preserveScroll: true, onSuccess: () => wallet.reset() }); }}>
                                 <div className="field"><label>کاربر</label>
-                                    <select value={wallet.data.user_id} onChange={e => wallet.setData('user_id', e.target.value)} required style={{ background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 12, padding: '11px 14px', fontFamily: 'inherit', fontSize: 14, width: '100%' }}>
-                                        <option value="">— انتخاب کاربر —</option>
-                                        {users.map(u => <option key={u.id} value={u.id}>{u.name} — {u.phone}</option>)}
-                                    </select></div>
+                                    <SearchableSelect
+                                        value={wallet.data.user_id}
+                                        onChange={value => wallet.setData('user_id', value)}
+                                        options={userOptions}
+                                        placeholder="— انتخاب کاربر —"
+                                        searchPlaceholder="جستجو با نام، موبایل، ایمیل یا کد ملی..."
+                                        required
+                                    /></div>
                                 <div className="field"><label>مبلغ (منفی = برداشت)</label>
                                     <input type="number" value={wallet.data.amount} onChange={e => wallet.setData('amount', e.target.value)} placeholder="500000" required /></div>
                                 <div className="field"><label>شرح</label>
@@ -796,10 +815,13 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                                             <option value="system">⚙️ سیستمی</option>
                                         </select></div>
                                     <div className="field"><label>گیرنده</label>
-                                        <select value={notify.data.target} onChange={e => notify.setData('target', e.target.value)} style={{ background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 12, padding: '11px 14px', fontFamily: 'inherit', fontSize: 14, width: '100%' }}>
-                                            <option value="all">همه کاربران</option>
-                                            {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                                        </select></div>
+                                        <SearchableSelect
+                                            value={notify.data.target}
+                                            onChange={value => notify.setData('target', value)}
+                                            options={notificationTargetOptions}
+                                            placeholder="— انتخاب گیرنده —"
+                                            searchPlaceholder="جستجو در کاربران..."
+                                        /></div>
                                 </div>
                                 <button className="btn" type="submit" style={{ width: 'auto', padding: '11px 28px' }}>ارسال</button>
                             </form>

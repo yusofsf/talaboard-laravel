@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useForm, usePage } from '@inertiajs/react';
 import AppLayout, { faNum } from '../Layouts/AppLayout';
+import SearchableSelect from '../Components/SearchableSelect';
 
 const STATUS = {
     pending: ['در انتظار بررسی', 'silver'],
@@ -15,6 +16,13 @@ export default function Wallet({ balance, txns, withdrawals, deposits, bankCards
 
     const [showDepositForm, setShowDepositForm] = useState(false);
     const depositForm = useForm({ amount: '', note: '' });
+    const bankCardOptions = useMemo(() => (bankCards || []).map(card => ({
+        value: String(card.id),
+        label: card.bank_name || 'کارت بانکی',
+        description: card.card_number,
+        descriptionDir: 'ltr',
+        search: `${card.bank_name || ''} ${card.card_number} ${card.shaba || ''}`,
+    })), [bankCards]);
 
     function submit(e) {
         e.preventDefault();
@@ -89,13 +97,14 @@ export default function Wallet({ balance, txns, withdrawals, deposits, bankCards
                                 </div>
                                 <div className="field">
                                     <label>کارت بانکی</label>
-                                    <select value={form.data.bank_card_id} onChange={e => form.setData('bank_card_id', e.target.value)} required
-                                        style={{ background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 12, padding: '11px 14px', fontFamily: 'inherit', fontSize: 15, width: '100%' }}>
-                                        <option value="">— انتخاب کارت —</option>
-                                        {bankCards.map(c => (
-                                            <option key={c.id} value={c.id}>{c.bank_name || 'کارت'} — {c.card_number}</option>
-                                        ))}
-                                    </select>
+                                    <SearchableSelect
+                                        value={form.data.bank_card_id}
+                                        onChange={value => form.setData('bank_card_id', value)}
+                                        options={bankCardOptions}
+                                        placeholder="— انتخاب کارت —"
+                                        searchPlaceholder="جستجو با نام بانک، شماره کارت یا شبا..."
+                                        required
+                                    />
                                 </div>
                                 <button className="btn" type="submit" disabled={form.processing}>
                                     {form.processing ? 'در حال ارسال...' : 'ثبت درخواست'}

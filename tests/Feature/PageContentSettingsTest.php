@@ -50,4 +50,15 @@ class PageContentSettingsTest extends TestCase
                 ->where('content.title', 'عنوان تماس ذخیره‌شده')
                 ->where('content.intro', 'متن تماس ذخیره‌شده'));
     }
+
+    public function test_contact_page_does_not_expose_support_phone_number(): void
+    {
+        Setting::put('contact_intro', 'برای پشتیبانی با شماره 09936578235 تماس بگیرید یا پیام خود را از فرم زیر ارسال کنید.');
+
+        $this->get('/contact')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Contact')
+                ->where('content.intro', 'پیام خود را از فرم زیر ارسال کنید.'));
+    }
 }

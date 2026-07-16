@@ -3,6 +3,10 @@ import { useEffect, useRef, useState } from 'react';
 // محدودیت‌های پایین‌تر برای ضبط، تا حجم فایل خام از همان ابتدا کوچک بماند
 const VIDEO_CONSTRAINTS = { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24 } };
 const RECORDER_OPTIONS = { mimeType: 'video/webm;codecs=vp8,opus', videoBitsPerSecond: 600_000, audioBitsPerSecond: 64_000 };
+const CAMERA_OPTIONS = [
+    { value: 'user', label: 'دوربین جلو' },
+    { value: 'environment', label: 'دوربین عقب' },
+];
 
 export default function VideoRecorder({ onRecorded, maxSeconds = 30 }) {
     const videoRef = useRef(null);
@@ -15,6 +19,7 @@ export default function VideoRecorder({ onRecorded, maxSeconds = 30 }) {
     const [seconds, setSeconds] = useState(0);
     const [error, setError] = useState('');
     const [previewUrl, setPreviewUrl] = useState(null);
+    const [cameraFacing, setCameraFacing] = useState('user');
 
     useEffect(() => () => stopStream(), []);
 
@@ -22,10 +27,15 @@ export default function VideoRecorder({ onRecorded, maxSeconds = 30 }) {
     // *بعد* از آن رندر انجام شود، نه داخل openCamera (وگرنه ref هنوز null است و صفحه سیاه می‌ماند).
     useEffect(() => {
         if (phase === 'live' && videoRef.current && streamRef.current) {
-            videoRef.current.srcObject = streamRef.current;
-            videoRef.current.play().catch(() => {});
+            attachStream();
         }
     }, [phase]);
+
+    function attachStream() {
+        if (!videoRef.current || !streamRef.current) return;
+        videoRef.current.srcObject = streamRef.current;
+        videoRef.current.play().catch(() => {});
+    }
 
     function stopStream() {
         streamRef.current?.getTracks().forEach(t => t.stop());
@@ -33,15 +43,28 @@ export default function VideoRecorder({ onRecorded, maxSeconds = 30 }) {
         clearInterval(timerRef.current);
     }
 
-    async function openCamera() {
+    async function openCamera(facing = cameraFacing) {
         setError('');
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: VIDEO_CONSTRAINTS, audio: true });
+            stopStream();
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { ...VIDEO_CONSTRAINTS, facingMode: { ideal: facing } },
+                audio: true,
+            });
             streamRef.current = stream;
+            setCameraFacing(facing);
             setPhase('live');
+            attachStream();
         } catch (e) {
             setError('دسترسی به دوربین ممکن نشد. مرورگر یا دستگاه شما اجازه‌ی دسترسی به دوربین/میکروفون را نداد.');
             setPhase('error');
+        }
+    }
+
+    function selectCamera(facing) {
+        setCameraFacing(facing);
+        if (phase === 'live' || phase === 'error') {
+            openCamera(facing);
         }
     }
 
@@ -101,8 +124,33 @@ export default function VideoRecorder({ onRecorded, maxSeconds = 30 }) {
 
             {error && <div className="alert err" style={{ marginBottom: 12 }}>{error}</div>}
 
+            {(phase === 'idle' || phase === 'live' || phase === 'error') && (
+                <div style={{ marginBottom: 12 }}>
+                    <label style={{ display: 'block', fontSize: 13, color: 'var(--muted)', marginBottom: 8 }}>انتخاب دوربین</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                        {CAMERA_OPTIONS.map(option => (
+                            <button
+                                key={option.value}
+                                type="button"
+                                className="btn-sm"
+                                onClick={() => selectCamera(option.value)}
+                                aria-pressed={cameraFacing === option.value}
+                                style={{
+                                    minHeight: 44,
+                                    borderColor: cameraFacing === option.value ? 'rgba(246,207,99,.75)' : undefined,
+                                    color: cameraFacing === option.value ? 'var(--gold-1)' : 'var(--muted)',
+                                    background: cameraFacing === option.value ? 'rgba(246,207,99,.12)' : undefined,
+                                }}
+                            >
+                                {option.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {phase === 'idle' && (
-                <button type="button" className="btn" onClick={openCamera} style={{ width: 'auto', padding: '10px 24px' }}>
+                <button type="button" className="btn" onClick={() => openCamera()} style={{ width: 'auto', padding: '10px 24px' }}>
                     🎥 باز کردن دوربین و ضبط فیلم
                 </button>
             )}
@@ -110,7 +158,7 @@ export default function VideoRecorder({ onRecorded, maxSeconds = 30 }) {
             {(phase === 'live' || phase === 'recording') && (
                 <div>
                     <video ref={videoRef} muted autoPlay playsInline
-                        style={{ width: '100%', maxHeight: 360, borderRadius: 10, background: '#000', transform: 'scaleX(-1)' }} />
+                        style={{ width: '100%', maxHeight: 360, borderRadius: 10, background: '#000', transform: cameraFacing === 'user' ? 'scaleX(-1)' : 'none' }} />
                     <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
                         {phase === 'live' && (
                             <button type="button" className="btn" onClick={startRecording} style={{ width: 'auto', padding: '9px 22px', background: 'linear-gradient(135deg,var(--down),#c93c46)' }}>
@@ -143,7 +191,7 @@ export default function VideoRecorder({ onRecorded, maxSeconds = 30 }) {
             )}
 
             {phase === 'error' && (
-                <button type="button" className="btn" onClick={openCamera} style={{ width: 'auto', padding: '10px 24px' }}>
+                <button type="button" className="btn" onClick={() => openCamera()} style={{ width: 'auto', padding: '10px 24px' }}>
                     تلاش دوباره
                 </button>
             )}

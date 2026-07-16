@@ -162,7 +162,7 @@ export default function AppLayout({ children }) {
                 padding: '28px 16px 32px', textAlign: 'center',
             }}>
                 <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 18, marginBottom: 14 }}>
-                    <a href="https://instagram.com/noghresazanshargh" target="_blank" rel="noopener noreferrer"
+                    <a href="https://instagram.com/safarpour.metals" target="_blank" rel="noopener noreferrer"
                         style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--muted)', fontSize: 14 }}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                             <defs>
@@ -178,7 +178,7 @@ export default function AppLayout({ children }) {
                             <circle cx="12" cy="12" r="3.2" fill="none" stroke="#fff" strokeWidth="1.6" />
                             <circle cx="17" cy="7" r="1" fill="#fff" />
                         </svg>
-                        noghresazanshargh@
+                        safarpour.metals@
                     </a>
                     <a href="https://t.me/sachme_kaf" target="_blank" rel="noopener noreferrer"
                         style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--muted)', fontSize: 14 }}>

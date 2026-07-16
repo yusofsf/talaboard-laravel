@@ -93,6 +93,7 @@ class UserSubmissionFlowTest extends TestCase
             'phone' => '09120000000',
             'delivery_method' => 'address',
             'address' => 'مشهد',
+            'postal_code' => '9177945678',
         ])->assertRedirect()->assertSessionHasNoErrors();
 
         $this->actingAs($user)->post('/tickets', [
@@ -112,6 +113,7 @@ class UserSubmissionFlowTest extends TestCase
         $this->assertSame(1, DepositRequest::count());
         $this->assertSame(1, WithdrawalRequest::count());
         $this->assertSame(1, SilverDeliveryRequest::count());
+        $this->assertSame('9177945678', SilverDeliveryRequest::first()->postal_code);
         $this->assertSame(1, Ticket::count());
         $this->assertSame(1, TradeRoomOffer::count());
         $this->assertTrue(Notification::where('user_id', $admin->id)->exists());

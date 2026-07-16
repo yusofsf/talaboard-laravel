@@ -26,8 +26,8 @@ class MembershipController extends Controller
         }
 
         $request->validate([
-            'national_id_doc'    => 'required|file|mimes:jpg,jpeg,png|max:200',
-            'identity_doc'       => 'required|file|mimes:jpg,jpeg,png|max:200',
+            'national_id_doc'    => 'required|file|mimes:jpg,jpeg,png|max:5120',
+            'identity_doc'       => 'required|file|mimes:jpg,jpeg,png|max:5120',
             'verification_video' => 'required|file|mimes:mp4,mov,avi,webm|max:5120',
             'birth_date'         => 'required|date',
             'residence_address'  => 'required|string|max:500',

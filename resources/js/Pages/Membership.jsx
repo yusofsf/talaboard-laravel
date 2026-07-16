@@ -6,7 +6,7 @@ import JalaliDatePicker from '../Components/JalaliDatePicker';
 
 const DECLARATION = `اینجانب [نام و نام خانوادگی] فرزند [نام پدر] با کد ملی [کد ملی]، در تاریخ [تاریخ روز]، درخواست احراز هویت در سایت metalsp.ir را ثبت می‌کنم و تأیید می‌نمایم که این حساب کاربری متعلق به شخص اینجانب بوده و مسئولیت تمامی فعالیت‌های انجام‌شده با آن را می‌پذیرم.`;
 
-const MAX_IMAGE = 200 * 1024;       // ۲۰۰ کیلوبایت
+const MAX_IMAGE = 5 * 1024 * 1024;  // ۵ مگابایت
 const MAX_VIDEO = 5 * 1024 * 1024;  // ۵ مگابایت
 
 export default function Membership({ user }) {
@@ -23,7 +23,7 @@ export default function Membership({ user }) {
     function handleImage(field, e) {
         const file = e.target.files[0] || null;
         if (file && file.size > MAX_IMAGE) {
-            setFileErrors(s => ({ ...s, [field]: `حجم فایل (${Math.round(file.size / 1024).toLocaleString('fa-IR')} کیلوبایت) بیشتر از حد مجاز (۲۰۰ کیلوبایت) است.` }));
+            setFileErrors(s => ({ ...s, [field]: `حجم فایل (${(file.size / 1024 / 1024).toFixed(1).toLocaleString('fa-IR')} مگابایت) بیشتر از حد مجاز (۵ مگابایت) است.` }));
             apply.setData(field, null);
             e.target.value = '';
             return;
@@ -116,13 +116,13 @@ export default function Membership({ user }) {
                                 placeholder="استان، شهر، خیابان، پلاک..." required />
                         </div>
                         <div className="field">
-                            <label>تصویر کارت ملی (jpg یا png — حداکثر ۲۰۰ کیلوبایت)</label>
+                            <label>تصویر کارت ملی (jpg یا png — حداکثر ۵ مگابایت)</label>
                             <input type="file" accept=".jpg,.jpeg,.png" disabled={apply.processing}
                                 onChange={e => handleImage('national_id_doc', e)} required />
                             {fileErrors.national_id_doc && <div className="alert err" style={{ marginTop: 8 }}>{fileErrors.national_id_doc}</div>}
                         </div>
                         <div className="field">
-                            <label>تصویر جواز صنفی (jpg یا png — حداکثر ۲۰۰ کیلوبایت)</label>
+                            <label>تصویر جواز صنفی (jpg یا png — حداکثر ۵ مگابایت)</label>
                             <input type="file" accept=".jpg,.jpeg,.png" disabled={apply.processing}
                                 onChange={e => handleImage('identity_doc', e)} required />
                             {fileErrors.identity_doc && <div className="alert err" style={{ marginTop: 8 }}>{fileErrors.identity_doc}</div>}

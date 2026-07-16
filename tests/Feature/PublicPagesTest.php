@@ -25,7 +25,7 @@ class PublicPagesTest extends TestCase
     {
         config(['seo.force_https' => true]);
 
-        $this->get('https://metalsp.ir/')
+        $response = $this->get('https://metalsp.ir/')
             ->assertOk()
             ->assertHeader('X-Frame-Options', 'SAMEORIGIN')
             ->assertHeader('X-Content-Type-Options', 'nosniff')
@@ -33,5 +33,9 @@ class PublicPagesTest extends TestCase
             ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
             ->assertHeader('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=(), payment=()')
             ->assertHeader('Content-Security-Policy');
+
+        $csp = $response->headers->get('Content-Security-Policy');
+        $this->assertMatchesRegularExpression("/script-src 'self' 'nonce-[a-f0-9]{32}' https:\/\/s3\.tradingview\.com/", $csp);
+        $this->assertStringNotContainsString("script-src 'self' 'unsafe-inline'", $csp);
     }
 }

@@ -10,6 +10,8 @@ class SecurityHeaders
 {
     public function handle(Request $request, Closure $next): Response
     {
+        $request->attributes->set('csp_nonce', bin2hex(random_bytes(16)));
+
         $response = $next($request);
 
         $this->setHeaderIfMissing($response, 'X-Frame-Options', 'SAMEORIGIN');
@@ -36,13 +38,16 @@ class SecurityHeaders
 
     private function contentSecurityPolicy(): string
     {
+        $nonce = (string) request()->attributes->get('csp_nonce', '');
+        $scriptNonce = $nonce !== '' ? " 'nonce-{$nonce}'" : '';
+
         return implode('; ', [
             "default-src 'self'",
             "base-uri 'self'",
             "frame-ancestors 'self'",
             "form-action 'self'",
             "object-src 'none'",
-            "script-src 'self' 'unsafe-inline' https://s3.tradingview.com",
+            "script-src 'self'{$scriptNonce} https://s3.tradingview.com",
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://*.tradingview.com",
             "font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com",
             "img-src 'self' data: https:",

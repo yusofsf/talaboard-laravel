@@ -238,6 +238,26 @@ class ArticleTest extends TestCase
         $this->assertStringNotContainsString('https://example.com/bad.jpg', $article->body);
     }
 
+    public function test_article_body_removes_unquoted_event_handlers_and_unsafe_links(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->post('/admin/articles', [
+            'title' => 'Ù…Ù‚Ø§Ù„Ù‡ Ø¨Ø§ HTML Ù…Ø´Ú©ÙˆÚ©',
+            'slug' => 'article-with-suspicious-html',
+            'body' => '<p onclick=alert(1)>Ù…ØªÙ†</p><a href=javascript:alert(1) target="_blank">Ù„ÛŒÙ†Ú©</a><script>alert(1)</script>',
+            'is_published' => true,
+        ])->assertSessionHasNoErrors()->assertRedirect();
+
+        $article = Article::where('slug', 'article-with-suspicious-html')->firstOrFail();
+
+        $this->assertStringContainsString('<p>Ù…ØªÙ†</p>', $article->body);
+        $this->assertStringContainsString('<a target="_blank" rel="noopener noreferrer">Ù„ÛŒÙ†Ú©</a>', $article->body);
+        $this->assertStringNotContainsString('onclick', $article->body);
+        $this->assertStringNotContainsString('javascript:', $article->body);
+        $this->assertStringNotContainsString('<script', $article->body);
+    }
+
     public function test_article_body_keeps_uploaded_images_when_public_disk_url_differs_from_seo_url(): void
     {
         config([

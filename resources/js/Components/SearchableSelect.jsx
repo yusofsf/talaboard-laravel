@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const norm = value => String(value ?? '').trim().toLowerCase();
 
@@ -12,6 +12,7 @@ export default function SearchableSelect({
     required = false,
     disabled = false,
 }) {
+    const rootRef = useRef(null);
     const [query, setQuery] = useState('');
     const [open, setOpen] = useState(false);
     const selected = options.find(option => String(option.value) === String(value));
@@ -25,6 +26,19 @@ export default function SearchableSelect({
         });
     }, [options, query]);
 
+    useEffect(() => {
+        if (!open) return undefined;
+
+        function closeOnOutsidePointer(event) {
+            if (rootRef.current && !rootRef.current.contains(event.target)) {
+                setOpen(false);
+            }
+        }
+
+        document.addEventListener('pointerdown', closeOnOutsidePointer);
+        return () => document.removeEventListener('pointerdown', closeOnOutsidePointer);
+    }, [open]);
+
     function choose(nextValue) {
         onChange(String(nextValue));
         setQuery('');
@@ -32,10 +46,9 @@ export default function SearchableSelect({
     }
 
     return (
-        <div style={{ position: 'relative' }}>
+        <div ref={rootRef} style={{ position: 'relative' }}>
             <button type="button" disabled={disabled}
                 onClick={() => setOpen(v => !v)}
-                onBlur={() => setTimeout(() => setOpen(false), 120)}
                 style={{
                     width: '100%', minHeight: 44, textAlign: 'start',
                     background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)',

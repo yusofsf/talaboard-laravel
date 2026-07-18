@@ -19,7 +19,7 @@ const empty = {
 const splitList = value => String(value || '').split(/[،,\n]+/).map(v => v.trim()).filter(Boolean);
 const joinList = items => [...new Set(items)].join('، ');
 
-export default function Articles({ articles, tagOptions = [], topicOptions = [] }) {
+export default function Articles({ articles, tagOptions = [], topicOptions = [], tags = [], topics = [] }) {
     const form = useForm(empty);
     const [editing, setEditing] = useState(null);
 
@@ -104,11 +104,11 @@ export default function Articles({ articles, tagOptions = [], topicOptions = [] 
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 12, marginTop: 12 }}>
                         <PickListField
-                            label="موضوعات"
+                            label="موضوعات کلی"
                             value={form.data.topics}
                             options={topicOptions}
                             error={form.errors.topics}
-                            placeholder="طلا، آموزش خرید"
+                            placeholder="نقره، سکه، تحلیل بازار"
                             onChange={value => form.setData('topics', value)}
                         />
                         <PickListField
@@ -139,6 +139,25 @@ export default function Articles({ articles, tagOptions = [], topicOptions = [] 
                     </div>
                 </form>
 
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 14, marginBottom: 24 }}>
+                    <TaxonomyManager
+                        title="موضوعات کلی"
+                        help="موضوع‌ها دسته‌بندی‌های اصلی مقاله‌ها هستند؛ مثل نقره، سکه یا تحلیل بازار."
+                        items={topics}
+                        storeUrl="/admin/article-topics"
+                        baseUrl="/admin/article-topics"
+                        deleteMessage="این موضوع حذف شود؟ از مقاله‌های مرتبط هم برداشته می‌شود."
+                    />
+                    <TaxonomyManager
+                        title="تگ‌ها"
+                        help="تگ‌ها برچسب‌های جزئی‌تر مقاله هستند و برای عبارت‌های فعلی/قدیمی مناسب‌اند."
+                        items={tags}
+                        storeUrl="/admin/article-tags"
+                        baseUrl="/admin/article-tags"
+                        deleteMessage="این تگ حذف شود؟ از مقاله‌های مرتبط هم برداشته می‌شود."
+                    />
+                </div>
+
                 <div className="table-wrap">
                     <table>
                         <thead><tr><th>عنوان</th><th>Slug</th><th>وضعیت</th><th>تاریخ</th><th></th></tr></thead>
@@ -162,6 +181,107 @@ export default function Articles({ articles, tagOptions = [], topicOptions = [] 
                 </div>
             </main>
         </AppLayout>
+    );
+}
+
+function TaxonomyManager({ title, help, items, storeUrl, baseUrl, deleteMessage }) {
+    const taxonomyForm = useForm({ name: '' });
+    const [editingId, setEditingId] = useState(null);
+
+    function submit(e) {
+        e.preventDefault();
+
+        const options = {
+            preserveScroll: true,
+            onSuccess: () => {
+                taxonomyForm.reset();
+                taxonomyForm.clearErrors();
+                setEditingId(null);
+            },
+        };
+
+        if (editingId) {
+            taxonomyForm.transform(data => ({ ...data, _method: 'put' }));
+            taxonomyForm.post(`${baseUrl}/${editingId}`, options);
+            taxonomyForm.transform(data => data);
+            return;
+        }
+
+        taxonomyForm.post(storeUrl, options);
+    }
+
+    function edit(item) {
+        setEditingId(item.id);
+        taxonomyForm.setData('name', item.name || '');
+        taxonomyForm.clearErrors();
+    }
+
+    function cancel() {
+        setEditingId(null);
+        taxonomyForm.reset();
+        taxonomyForm.clearErrors();
+    }
+
+    function destroy(item) {
+        if (!confirm(deleteMessage)) return;
+        router.delete(`${baseUrl}/${item.id}`, { preserveScroll: true });
+    }
+
+    return (
+        <section className="fcard">
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start', marginBottom: 12 }}>
+                <div>
+                    <h2 style={{ fontSize: 16, margin: '0 0 6px' }}>{title}</h2>
+                    <p style={{ color: 'var(--muted)', fontSize: 12, lineHeight: 1.8, margin: 0 }}>{help}</p>
+                </div>
+                {editingId && <button type="button" className="btn-sm" onClick={cancel}>لغو</button>}
+            </div>
+
+            <form onSubmit={submit} style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'flex-start' }}>
+                <div style={{ flex: 1 }}>
+                    <input
+                        value={taxonomyForm.data.name}
+                        onChange={e => taxonomyForm.setData('name', e.target.value)}
+                        placeholder={editingId ? 'نام جدید' : 'نام جدید'}
+                        required
+                    />
+                    {taxonomyForm.errors.name && <div className="alert err" style={{ marginTop: 6 }}>{taxonomyForm.errors.name}</div>}
+                </div>
+                <button className="btn-sm gold" type="submit" disabled={taxonomyForm.processing} style={{ minHeight: 44 }}>
+                    {editingId ? 'ذخیره' : 'افزودن'}
+                </button>
+            </form>
+
+            {items.length ? (
+                <div style={{ display: 'grid', gap: 8 }}>
+                    {items.map(item => (
+                        <div key={item.id} style={{
+                            display: 'grid',
+                            gridTemplateColumns: '1fr auto',
+                            gap: 8,
+                            alignItems: 'center',
+                            padding: '9px 10px',
+                            border: '1px solid var(--line)',
+                            borderRadius: 8,
+                            background: 'rgba(255,255,255,.03)',
+                        }}>
+                            <div style={{ minWidth: 0 }}>
+                                <strong>{item.name}</strong>
+                                <div dir="ltr" style={{ color: 'var(--muted)', fontSize: 11, marginTop: 3 }}>
+                                    {item.slug} · {item.article_count || 0}
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                <button type="button" className="btn-sm" onClick={() => edit(item)}>ویرایش</button>
+                                <button type="button" className="btn-sm danger" onClick={() => destroy(item)}>حذف</button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="empty" style={{ padding: 18 }}>موردی ثبت نشده است.</div>
+            )}
+        </section>
     );
 }
 

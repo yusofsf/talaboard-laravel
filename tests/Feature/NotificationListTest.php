@@ -57,17 +57,22 @@ class NotificationListTest extends TestCase
         $this->assertFalse(NotificationRead::where('notification_id', $private->id)->where('user_id', $user->id)->exists());
     }
 
-    public function test_admins_can_see_all_notifications(): void
+    public function test_admins_only_see_their_own_and_broadcast_notifications(): void
     {
         $admin = User::factory()->admin()->create();
         $user = User::factory()->create();
 
         Notification::create(['title' => 'broadcast', 'type' => 'info', 'user_id' => null]);
-        Notification::create(['title' => 'user private', 'type' => 'info', 'user_id' => $user->id]);
+        Notification::create(['title' => 'admin private', 'type' => 'info', 'user_id' => $admin->id]);
+        $private = Notification::create(['title' => 'user private', 'type' => 'info', 'user_id' => $user->id]);
 
         $this->actingAs($admin)->get('/notifications')
-            ->assertInertia(fn ($page) => $page->has('notifications', 2));
+            ->assertInertia(fn ($page) => $page
+                ->has('notifications', 2)
+                ->where('notifications.0.title', 'admin private')
+                ->where('notifications.1.title', 'broadcast'));
 
         $this->assertSame(2, $admin->unreadCount());
+        $this->actingAs($admin)->post("/notifications/read/{$private->id}")->assertNotFound();
     }
 }

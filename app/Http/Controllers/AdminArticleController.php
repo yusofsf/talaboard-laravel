@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Helpers\Jalali;
 use App\Models\Article;
+use App\Models\ArticleTag;
+use App\Models\ArticleTopic;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -34,12 +36,16 @@ class AdminArticleController extends Controller
             'articles' => $articles,
             'tagOptions' => $this->listValues('tags'),
             'topicOptions' => $this->listValues('topics'),
+            'tags' => $this->listTaxonomies('tags'),
+            'topics' => $this->listTaxonomies('topics'),
         ]);
     }
 
     public function store(Request $request)
     {
-        Article::create($this->validated($request));
+        $data = $this->validated($request);
+        Article::create($data);
+        $this->syncTaxonomyOptions($data);
 
         return back()->with('success', 'مقاله ذخیره شد.');
     }
@@ -47,7 +53,9 @@ class AdminArticleController extends Controller
     public function update(Request $request, int $id)
     {
         $article = Article::findOrFail($id);
-        $article->update($this->validated($request, $article->id));
+        $data = $this->validated($request, $article->id);
+        $article->update($data);
+        $this->syncTaxonomyOptions($data);
 
         return back()->with('success', 'مقاله به‌روزرسانی شد.');
     }
@@ -69,6 +77,58 @@ class AdminArticleController extends Controller
             'url' => $this->storeUploadedImage($data['image']),
             'alt' => pathinfo($data['image']->getClientOriginalName(), PATHINFO_FILENAME),
         ]);
+    }
+
+    public function storeTopic(Request $request)
+    {
+        ArticleTopic::create($this->validatedTaxonomy($request, ArticleTopic::class));
+
+        return back()->with('success', 'موضوع ذخیره شد.');
+    }
+
+    public function updateTopic(Request $request, int $id)
+    {
+        $topic = ArticleTopic::findOrFail($id);
+        $oldName = $topic->name;
+        $topic->update($this->validatedTaxonomy($request, ArticleTopic::class, $topic->id));
+        $this->renameTaxonomyValue('topics', $oldName, $topic->name);
+
+        return back()->with('success', 'موضوع به‌روزرسانی شد.');
+    }
+
+    public function destroyTopic(int $id)
+    {
+        $topic = ArticleTopic::findOrFail($id);
+        $this->removeTaxonomyValue('topics', $topic->name);
+        $topic->delete();
+
+        return back()->with('success', 'موضوع حذف شد.');
+    }
+
+    public function storeTag(Request $request)
+    {
+        ArticleTag::create($this->validatedTaxonomy($request, ArticleTag::class));
+
+        return back()->with('success', 'تگ ذخیره شد.');
+    }
+
+    public function updateTag(Request $request, int $id)
+    {
+        $tag = ArticleTag::findOrFail($id);
+        $oldName = $tag->name;
+        $tag->update($this->validatedTaxonomy($request, ArticleTag::class, $tag->id));
+        $this->renameTaxonomyValue('tags', $oldName, $tag->name);
+
+        return back()->with('success', 'تگ به‌روزرسانی شد.');
+    }
+
+    public function destroyTag(int $id)
+    {
+        $tag = ArticleTag::findOrFail($id);
+        $this->removeTaxonomyValue('tags', $tag->name);
+        $tag->delete();
+
+        return back()->with('success', 'تگ حذف شد.');
     }
 
     private function validated(Request $request, ?int $ignoreId = null): array
@@ -113,21 +173,135 @@ class AdminArticleController extends Controller
     {
         return collect(preg_split('/[,،\\n]+/u', $value))
             ->map(fn ($item) => trim($item))
-            ->filter()
+            ->filter(fn ($item) => $item !== '' && Article::taxonomySlug($item) !== '')
+            ->unique(fn ($item) => Article::taxonomySlug($item))
             ->values()
             ->all();
     }
 
     private function listValues(string $field): array
     {
-        return Article::query()
-            ->pluck($field)
-            ->flatMap(fn ($items) => $items ?: [])
-            ->filter()
-            ->unique()
+        $model = $field === 'topics' ? ArticleTopic::class : ArticleTag::class;
+
+        return collect($model::query()->orderBy('name')->pluck('name')->all())
+            ->merge(Article::query()
+                ->pluck($field)
+                ->flatMap(fn ($items) => $items ?: [])
+                ->all())
+            ->map(fn ($item) => preg_replace('/\s+/u', ' ', trim((string) $item)))
+            ->filter(fn (?string $item) => $item && Article::taxonomySlug($item) !== '')
+            ->unique(fn (string $item) => Article::taxonomySlug($item))
             ->sort()
             ->values()
             ->all();
+    }
+
+    private function listTaxonomies(string $field): array
+    {
+        $model = $field === 'topics' ? ArticleTopic::class : ArticleTag::class;
+        $counts = Article::query()
+            ->pluck($field)
+            ->flatMap(fn ($items) => $items ?: [])
+            ->map(fn ($item) => Article::taxonomySlug((string) $item))
+            ->countBy();
+
+        return $model::query()
+            ->orderBy('name')
+            ->get()
+            ->map(fn ($item) => [
+                'id' => $item->id,
+                'name' => $item->name,
+                'slug' => $item->slug,
+                'article_count' => (int) ($counts[$item->slug] ?? 0),
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function validatedTaxonomy(Request $request, string $model, ?int $ignoreId = null): array
+    {
+        $table = $model === ArticleTopic::class ? 'article_topics' : 'article_tags';
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+        ]);
+
+        $data['name'] = preg_replace('/\s+/u', ' ', trim($data['name']));
+        $data['slug'] = Article::taxonomySlug($data['name']);
+
+        $request->validate([
+            'name' => [
+                function (string $attribute, mixed $value, \Closure $fail) use ($table, $data, $ignoreId) {
+                    if ($data['slug'] === '') {
+                        $fail('نام معتبر نیست.');
+                        return;
+                    }
+
+                    $exists = \Illuminate\Support\Facades\DB::table($table)
+                        ->where('slug', $data['slug'])
+                        ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
+                        ->exists();
+
+                    if ($exists) {
+                        $fail('این مورد قبلاً ثبت شده است.');
+                    }
+                },
+            ],
+        ]);
+
+        return $data;
+    }
+
+    private function syncTaxonomyOptions(array $data): void
+    {
+        foreach ($data['topics'] ?? [] as $topic) {
+            ArticleTopic::firstOrCreate(
+                ['slug' => Article::taxonomySlug($topic)],
+                ['name' => $topic],
+            );
+        }
+
+        foreach ($data['tags'] ?? [] as $tag) {
+            ArticleTag::firstOrCreate(
+                ['slug' => Article::taxonomySlug($tag)],
+                ['name' => $tag],
+            );
+        }
+    }
+
+    private function renameTaxonomyValue(string $field, string $oldName, string $newName): void
+    {
+        $oldSlug = Article::taxonomySlug($oldName);
+
+        Article::query()->get()->each(function (Article $article) use ($field, $oldSlug, $newName) {
+            $values = collect($article->{$field} ?: [])
+                ->map(fn ($item) => Article::taxonomySlug((string) $item) === $oldSlug ? $newName : $item)
+                ->map(fn ($item) => preg_replace('/\s+/u', ' ', trim((string) $item)))
+                ->filter(fn (?string $item) => $item && Article::taxonomySlug($item) !== '')
+                ->unique(fn (string $item) => Article::taxonomySlug($item))
+                ->values()
+                ->all();
+
+            if ($values !== ($article->{$field} ?: [])) {
+                $article->forceFill([$field => $values])->save();
+            }
+        });
+    }
+
+    private function removeTaxonomyValue(string $field, string $name): void
+    {
+        $slug = Article::taxonomySlug($name);
+
+        Article::query()->get()->each(function (Article $article) use ($field, $slug) {
+            $values = collect($article->{$field} ?: [])
+                ->reject(fn ($item) => Article::taxonomySlug((string) $item) === $slug)
+                ->values()
+                ->all();
+
+            if ($values !== ($article->{$field} ?: [])) {
+                $article->forceFill([$field => $values])->save();
+            }
+        });
     }
 
     private function cleanBody(string $body): string

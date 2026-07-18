@@ -89,12 +89,11 @@ class User extends Authenticatable
     public function unreadCount(): int
     {
         $readIds = NotificationRead::where('user_id', $this->id)->pluck('notification_id');
-        $isAdmin = $this->is_admin || ($this->phone && $this->phone === env('ADMIN_PHONE'));
 
         return Notification::query()
-            ->when(! $isAdmin, fn ($q) => $q->where(function ($q) {
+            ->where(function ($q) {
                 $q->where('user_id', $this->id)->orWhereNull('user_id');
-            }))
+            })
             ->whereNotIn('id', $readIds)
             ->count();
     }

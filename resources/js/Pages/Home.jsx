@@ -36,6 +36,23 @@ function UsdIcon() {
     );
 }
 
+function MenuIcon({ kind }) {
+    const common = { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '1.8', strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true };
+    const paths = {
+        chart: <><path d="M4 19V5M4 19h16" /><path d="m7 15 4-4 3 2 4-6" /></>,
+        calculator: <><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01" /></>,
+        article: <><path d="M6 3h9l4 4v14H6z" /><path d="M15 3v5h5M9 12h6M9 16h6" /></>,
+        support: <><path d="M5 4h14v11H9l-4 4z" /><path d="M9 9h6M9 12h4" /></>,
+        wallet: <><path d="M4 7h15a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h12" /><path d="M16 13h3" /></>,
+        inventory: <><path d="m4 8 8-4 8 4-8 4zM4 8v8l8 4 8-4V8M12 12v8" /></>,
+        membership: <><path d="m4 7 3 3 5-6 5 6 3-3-2 11H6z" /><path d="M9 18h6" /></>,
+        cart: <><path d="M3 4h2l2 11h10l2-7H7" /><circle cx="9" cy="20" r="1" /><circle cx="17" cy="20" r="1" /></>,
+        profile: <><circle cx="12" cy="8" r="4" /><path d="M4 21c.8-4 3.4-6 8-6s7.2 2 8 6" /></>,
+        logout: <><path d="M10 5H5v14h5M14 8l4 4-4 4M8 12h10" /></>,
+    };
+    return <svg {...common}>{paths[kind]}</svg>;
+}
+
 function PriceCard({ id, name, sub, icon, cls, price, open, buyable, href, roomHref }) {
     const [flash, setFlash] = useState(false);
     const prevRef = useRef(undefined);
@@ -229,6 +246,7 @@ export default function Home({ prices: initial, refreshSeconds }) {
                   border:1px solid var(--line);box-shadow:0 14px 40px rgba(0,0,0,.4);
                 }
                 .tv-menu-panel .tv-nav-pill{justify-content:flex-start;border-radius:12px;width:100%;min-height:58px;padding:10px 12px;font-weight:700}
+                .tv-menu-panel .tv-nav-pill svg{width:18px;height:18px;flex:none}
                 .tv-menu-heading{grid-column:1/-1;font-size:16px;font-weight:900;margin:2px 2px -2px}
                 .tv-menu-caption{grid-column:1/-1;color:var(--muted);font-size:12px;margin:-2px 2px 4px}
                 .tv-menu-split{grid-column:1/-1;height:1px;background:var(--line);margin:2px 0}
@@ -405,19 +423,19 @@ export default function Home({ prices: initial, refreshSeconds }) {
                                 <div className="tv-menu-panel">
                                     <div className="tv-menu-heading">کدام کار را می‌خواهی انجام دهی؟</div>
                                     <div className="tv-menu-caption">هر گزینه یک کار ساده و مشخص دارد.</div>
-                                    <Link href="/chart" className="tv-nav-pill">نمودار قیمت</Link>
-                                    <Link href="/calculator" className="tv-nav-pill">ماشین حساب</Link>
-                                    <Link href="/articles" className="tv-nav-pill">راهنما و مقاله</Link>
-                                    <Link href="/contact" className="tv-nav-pill">کمک و تماس</Link>
+                                    <Link href="/chart" className="tv-nav-pill"><MenuIcon kind="chart" />نمودار قیمت</Link>
+                                    <Link href="/calculator" className="tv-nav-pill"><MenuIcon kind="calculator" />ماشین حساب</Link>
+                                    <Link href="/articles" className="tv-nav-pill"><MenuIcon kind="article" />راهنما و مقاله</Link>
+                                    <Link href="/contact" className="tv-nav-pill"><MenuIcon kind="support" />کمک و تماس</Link>
                                     {user ? (
                                         <>
                                             <div className="tv-menu-split" />
-                                            <Link href="/wallet" className="tv-nav-pill user">کیف پول</Link>
-                                            <Link href="/inventory" className="tv-nav-pill user">دارایی‌های من</Link>
-                                            {showMembershipLink && <Link href="/membership" className="tv-nav-pill user">درخواست عضویت ویژه</Link>}
-                                            <Link href="/cart" className="tv-nav-pill">سبد خرید{user.cart_count > 0 ? ` (${user.cart_count})` : ''}</Link>
-                                            <Link href="/profile" className="tv-nav-pill">حساب من</Link>
-                                            <Link href="/logout" method="post" as="button" className="tv-nav-pill">خروج از حساب</Link>
+                                            <Link href="/wallet" className="tv-nav-pill user"><MenuIcon kind="wallet" />کیف پول</Link>
+                                            <Link href="/inventory" className="tv-nav-pill user"><MenuIcon kind="inventory" />دارایی‌های من</Link>
+                                            {showMembershipLink && <Link href="/membership" className="tv-nav-pill user"><MenuIcon kind="membership" />درخواست عضویت ویژه</Link>}
+                                            <Link href="/cart" className="tv-nav-pill"><MenuIcon kind="cart" />سبد خرید{user.cart_count > 0 ? ` (${user.cart_count})` : ''}</Link>
+                                            <Link href="/profile" className="tv-nav-pill"><MenuIcon kind="profile" />حساب من</Link>
+                                            <Link href="/logout" method="post" as="button" className="tv-nav-pill"><MenuIcon kind="logout" />خروج از حساب</Link>
                                         </>
                                     ) : null}
                                 </div>

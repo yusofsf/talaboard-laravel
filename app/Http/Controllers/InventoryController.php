@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Helpers\Jalali;
 use App\Models\SilverDeliveryRequest;
+use App\Models\InventoryIncreaseRequest;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -38,12 +39,26 @@ class InventoryController extends Controller
                 'created_at' => Jalali::format($r->created_at),
             ]);
 
+        $inventoryIncreaseRequests = InventoryIncreaseRequest::where('user_id', $user->id)
+            ->orderByDesc('created_at')->get()
+            ->map(fn ($r) => [
+                'id' => $r->id,
+                'metal' => $r->metal,
+                'purity' => $r->purity,
+                'grams' => (float) $r->grams,
+                'note' => $r->note,
+                'status' => $r->status,
+                'admin_note' => $r->admin_note,
+                'created_at' => Jalali::format($r->created_at),
+            ]);
+
         return Inertia::render('Inventory', [
             'goldBalance'      => $user->goldBalance(),
             'silverBalance'    => ['999' => $user->silverBalance('999'), '995' => $user->silverBalance('995')],
             'goldHistory'      => $gold,
             'silverHistory'    => $silver,
             'deliveryRequests' => $deliveryRequests,
+            'inventoryIncreaseRequests' => $inventoryIncreaseRequests,
         ]);
     }
 }

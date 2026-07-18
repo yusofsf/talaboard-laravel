@@ -57,19 +57,28 @@ function HistoryTable({ rows, showPurity }) {
     );
 }
 
-export default function Inventory({ goldBalance, silverBalance, goldHistory, silverHistory, deliveryRequests }) {
+export default function Inventory({ goldBalance, silverBalance, goldHistory, silverHistory, deliveryRequests, inventoryIncreaseRequests }) {
     const { errors } = usePage().props;
     const [showForm, setShowForm] = useState(false);
+    const [showIncreaseForm, setShowIncreaseForm] = useState(false);
     const deliveryPager = usePager(deliveryRequests);
     const form = useForm({
         metal: 'gold', purity: '999', grams: '',
         recipient_name: '', phone: '', delivery_method: 'address', address: '', postal_code: '',
     });
+    const increaseForm = useForm({ metal: 'gold', purity: '999', grams: '', note: '' });
 
     function submit(e) {
         e.preventDefault();
         form.post('/silver-delivery', {
             onSuccess: () => { form.reset('grams', 'recipient_name', 'phone', 'delivery_method', 'address', 'postal_code'); setShowForm(false); },
+        });
+    }
+
+    function submitIncrease(e) {
+        e.preventDefault();
+        increaseForm.post('/inventory-increase-requests', {
+            onSuccess: () => { increaseForm.reset('grams', 'note'); setShowIncreaseForm(false); },
         });
     }
 
@@ -96,9 +105,45 @@ export default function Inventory({ goldBalance, silverBalance, goldHistory, sil
                 </div>
 
                 <div style={{ marginBottom: 28 }}>
+                    <button onClick={() => setShowIncreaseForm(s => !s)} className="btn" style={{ width: 'auto', padding: '10px 24px', marginLeft: 8 }}>
+                        {showIncreaseForm ? 'بستن فرم افزایش موجودی' : 'درخواست افزایش موجودی'}
+                    </button>
                     <button onClick={() => setShowForm(s => !s)} className="btn" style={{ width: 'auto', padding: '10px 24px' }}>
                         🚚 {showForm ? 'بستن فرم' : 'درخواست تحویل فیزیکی'}
                     </button>
+
+                    {showIncreaseForm && (
+                        <div className="fcard" style={{ marginTop: 16, maxWidth: 560 }}>
+                            <form onSubmit={submitIncrease}>
+                                <div className="btn-row" style={{ marginBottom: 14 }}>
+                                    {[['gold', 'طلا'], ['silver', 'نقره']].map(([metal, label]) => (
+                                        <button key={metal} type="button" onClick={() => increaseForm.setData('metal', metal)}
+                                            style={{ padding: 9, borderRadius: 10, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer', border: 'none', background: increaseForm.data.metal === metal ? 'rgba(246,207,99,.2)' : 'rgba(255,255,255,.06)', color: increaseForm.data.metal === metal ? 'var(--gold-1)' : 'var(--muted)', outline: increaseForm.data.metal === metal ? '2px solid var(--gold-1)' : '2px solid transparent' }}>
+                                            {label}
+                                        </button>
+                                    ))}
+                                </div>
+                                {increaseForm.data.metal === 'silver' && (
+                                    <div className="field">
+                                        <label>عیار نقره</label>
+                                        <select value={increaseForm.data.purity} onChange={e => increaseForm.setData('purity', e.target.value)}>
+                                            <option value="999">نقره ۹۹۹</option>
+                                            <option value="995">نقره ۹۹۵</option>
+                                        </select>
+                                    </div>
+                                )}
+                                <div className="field">
+                                    <label>مقدار درخواستی (گرم)</label>
+                                    <input type="number" step="0.0001" min="0.0001" value={increaseForm.data.grams} onChange={e => increaseForm.setData('grams', e.target.value)} required />
+                                </div>
+                                <div className="field">
+                                    <label>توضیحات (اختیاری)</label>
+                                    <input value={increaseForm.data.note} onChange={e => increaseForm.setData('note', e.target.value)} maxLength="500" />
+                                </div>
+                                <button className="btn" type="submit" disabled={increaseForm.processing}>{increaseForm.processing ? 'در حال ارسال...' : 'ثبت درخواست افزایش موجودی'}</button>
+                            </form>
+                        </div>
+                    )}
 
                     {showForm && (
                         <div className="fcard" style={{ marginTop: 16, maxWidth: 560 }}>
@@ -167,6 +212,27 @@ export default function Inventory({ goldBalance, silverBalance, goldHistory, sil
                         </div>
                     )}
                 </div>
+
+                {inventoryIncreaseRequests.length > 0 && (
+                    <>
+                        <div className="section-title">درخواست‌های افزایش موجودی</div>
+                        <div className="table-wrap" style={{ marginBottom: 28 }}>
+                            <table>
+                                <thead><tr><th>تاریخ</th><th>مورد</th><th>مقدار</th><th>توضیحات</th><th>وضعیت</th><th>یادداشت مدیریت</th></tr></thead>
+                                <tbody>{inventoryIncreaseRequests.map(r => (
+                                    <tr key={r.id}>
+                                        <td style={{ fontSize: 12, color: 'var(--muted)' }}>{r.created_at}</td>
+                                        <td>{r.metal === 'gold' ? 'طلا' : `نقره ${r.purity}`}</td>
+                                        <td className="num">{r.grams} گرم</td>
+                                        <td>{r.note || '—'}</td>
+                                        <td><span className={`badge ${r.status === 'approved' ? 'buy-b' : r.status === 'rejected' ? 'sell-b' : 'silver'}`}>{r.status === 'approved' ? 'تأیید شده' : r.status === 'rejected' ? 'رد شده' : 'در انتظار بررسی'}</span></td>
+                                        <td>{r.admin_note || '—'}</td>
+                                    </tr>
+                                ))}</tbody>
+                            </table>
+                        </div>
+                    </>
+                )}
 
                 {deliveryRequests.length > 0 && (
                     <>

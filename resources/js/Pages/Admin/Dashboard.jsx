@@ -33,10 +33,11 @@ function levelOf(u) {
 }
 
 function UserRow({ u, isSelf }) {
-    const [expand, setExpand] = useState(null); // null | 'inventory' | 'edit'
+    const [expand, setExpand] = useState(null); // null | 'inventory' | 'edit' | 'password'
 
     const inv = useForm({ metal: 'gold', purity: '999', grams: '', description: '' });
     const edit = useForm({ name: u.name, phone: u.phone, email: u.email || '', national_id: u.national_id || '' });
+    const passwordReset = useForm({ password: '', password_confirmation: '' });
 
     function setLevel(level) {
         router.post(`/admin/set-level/${u.id}`, { level }, { preserveScroll: true });
@@ -53,6 +54,14 @@ function UserRow({ u, isSelf }) {
     function submitEdit(e) {
         e.preventDefault();
         router.put(`/admin/users/${u.id}`, edit.data, { preserveScroll: true, onSuccess: () => setExpand(null) });
+    }
+
+    function submitPasswordReset(e) {
+        e.preventDefault();
+        passwordReset.post(`/admin/users/${u.id}/password`, {
+            preserveScroll: true,
+            onSuccess: () => { passwordReset.reset(); setExpand(null); },
+        });
     }
 
     function destroyUser() {
@@ -89,6 +98,7 @@ function UserRow({ u, isSelf }) {
                         <Link href={`/admin/users/${u.id}/trades`} className="btn-sm">ریز معاملات</Link>
                         <button onClick={() => setExpand(expand === 'inventory' ? null : 'inventory')} className="btn-sm">موجودی</button>
                         <button onClick={() => setExpand(expand === 'edit' ? null : 'edit')} className="btn-sm">ویرایش</button>
+                        <button onClick={() => setExpand(expand === 'password' ? null : 'password')} className="btn-sm">تغییر رمز</button>
                         {!isSelf && <button onClick={destroyUser} className="btn-sm danger">حذف</button>}
                     </div>
                 </td>
@@ -146,6 +156,29 @@ function UserRow({ u, isSelf }) {
                                 </div>
                             ))}
                             <button type="submit" className="btn-sm" style={{ background: 'linear-gradient(135deg,var(--gold-1),var(--gold-2))', color: '#1a1200', fontWeight: 700, border: 'none' }}>ذخیره</button>
+                        </form>
+                    </td>
+                </tr>
+            )}
+
+            {expand === 'password' && (
+                <tr>
+                    <td colSpan={10} style={{ background: 'rgba(255,255,255,.02)' }}>
+                        <form onSubmit={submitPasswordReset} style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', padding: '14px 6px' }}>
+                            <div>
+                                <label htmlFor={`password-${u.id}`} style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>رمز جدید</label>
+                                <input id={`password-${u.id}`} type="password" minLength="6" autoComplete="new-password" required
+                                    value={passwordReset.data.password} onChange={e => passwordReset.setData('password', e.target.value)}
+                                    style={{ width: 180, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 13 }} />
+                                {passwordReset.errors.password && <div style={{ color: 'var(--down)', fontSize: 12, marginTop: 4 }}>{passwordReset.errors.password}</div>}
+                            </div>
+                            <div>
+                                <label htmlFor={`password-confirmation-${u.id}`} style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>تکرار رمز جدید</label>
+                                <input id={`password-confirmation-${u.id}`} type="password" minLength="6" autoComplete="new-password" required
+                                    value={passwordReset.data.password_confirmation} onChange={e => passwordReset.setData('password_confirmation', e.target.value)}
+                                    style={{ width: 180, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 13 }} />
+                            </div>
+                            <button type="submit" className="btn-sm" disabled={passwordReset.processing} style={{ background: 'linear-gradient(135deg,var(--gold-1),var(--gold-2))', color: '#1a1200', fontWeight: 700, border: 'none' }}>{passwordReset.processing ? 'در حال ثبت…' : 'ثبت رمز جدید'}</button>
                         </form>
                     </td>
                 </tr>
@@ -410,7 +443,7 @@ function SecurityEventRow({ e }) {
     );
 }
 
-export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApplications, vipMembers, deliveryRequests, withdrawalRequests, depositRequests, allTrades, activityLogs, securityEvents, tickets, settings }) {
+export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApplications, vipMembers, deliveryRequests, withdrawalRequests, depositRequests, inventoryIncreaseRequests, allTrades, activityLogs, securityEvents, tickets, settings }) {
     const { auth } = usePage().props;
     const [tab, setTab] = useState('users');
 
@@ -422,6 +455,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     const [depositReason, setDepositReason] = useState({});
     const [depositNote, setDepositNote] = useState({});
     const [deliveryNote, setDeliveryNote] = useState({});
+    const [inventoryIncreaseNote, setInventoryIncreaseNote] = useState({});
     const [tradeFrom, setTradeFrom] = useState('');
     const [tradeTo, setTradeTo] = useState('');
     const [txnsFrom, setTxnsFrom] = useState('');
@@ -607,6 +641,17 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
         router.post(`/admin/deposits/${id}/reject`, { reason }, { preserveScroll: true });
     }
 
+    function approveInventoryIncrease(id) {
+        if (!confirm('افزایش موجودی تأیید شود؟ مقدار درخواست‌شده به دفترکل کاربر اضافه می‌شود.')) return;
+        router.post(`/admin/inventory-increase-requests/${id}/approve`, { note: (inventoryIncreaseNote[id] || '').trim() }, { preserveScroll: true });
+    }
+
+    function rejectInventoryIncrease(id) {
+        const reason = (inventoryIncreaseNote[id] || '').trim();
+        if (!reason) { alert('برای رد درخواست، دلیل را وارد کنید.'); return; }
+        router.post(`/admin/inventory-increase-requests/${id}/reject`, { reason }, { preserveScroll: true });
+    }
+
     const TABS = [
         ['users', 'کاربران'],
         ['txns', 'معاملات'],
@@ -618,6 +663,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
         ['delivery', `تحویل فیزیکی${deliveryRequests?.length ? ` (${deliveryRequests.length})` : ''}`],
         ['withdrawals', `تسویه حساب${withdrawalRequests?.length ? ` (${withdrawalRequests.length})` : ''}`],
         ['deposits', `افزایش موجودی${depositRequests?.length ? ` (${depositRequests.length})` : ''}`],
+        ['inventory_increases', `افزایش موجودی انبار${inventoryIncreaseRequests?.length ? ` (${inventoryIncreaseRequests.length})` : ''}`],
         ['tickets', `تیکت‌ها${tickets?.filter(t => t.status === 'open').length ? ` (${tickets.filter(t => t.status === 'open').length})` : ''}`],
         ['security', `امنیت${securityEvents?.length ? ` (${securityEvents.length})` : ''}`],
         ['logs', 'گزارش فعالیت'],
@@ -1141,6 +1187,36 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                                 </tbody>
                             </table>
                         </div>
+                    </>
+                )}
+
+                {tab === 'inventory_increases' && (
+                    <>
+                        {inventoryIncreaseRequests?.length ? (
+                            <div className="table-wrap">
+                                <table>
+                                    <thead><tr><th>کاربر</th><th>موبایل</th><th>مورد</th><th>مقدار</th><th>توضیحات کاربر</th><th>تاریخ</th><th>اقدام</th></tr></thead>
+                                    <tbody>{inventoryIncreaseRequests.map(r => (
+                                        <tr key={r.id}>
+                                            <td><strong>{r.user_name}</strong></td>
+                                            <td className="num" dir="ltr" style={{ fontSize: 13 }}>{r.user_phone}</td>
+                                            <td>{r.metal === 'gold' ? 'طلا' : `نقره ${r.purity}`}</td>
+                                            <td className="num">{r.grams} گرم</td>
+                                            <td>{r.note || '—'}</td>
+                                            <td style={{ fontSize: 12, color: 'var(--muted)' }}>{r.created_at}</td>
+                                            <td style={{ minWidth: 220 }}>
+                                                <input value={inventoryIncreaseNote[r.id] || ''} onChange={e => setInventoryIncreaseNote(s => ({ ...s, [r.id]: e.target.value }))} placeholder="یادداشت / دلیل رد"
+                                                    style={{ width: '100%', marginBottom: 6, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '5px 8px', fontFamily: 'inherit', fontSize: 12 }} />
+                                                <div style={{ display: 'flex', gap: 6 }}>
+                                                    <button onClick={() => approveInventoryIncrease(r.id)} className="btn-sm" style={{ borderColor: 'rgba(65,225,166,.4)', color: 'var(--up)', background: 'rgba(65,225,166,.08)' }}>تأیید</button>
+                                                    <button onClick={() => rejectInventoryIncrease(r.id)} className="btn-sm danger">رد</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}</tbody>
+                                </table>
+                            </div>
+                        ) : <div className="empty"><div className="ico">+</div>درخواست افزایش موجودی انبار در انتظار بررسی نیست.</div>}
                     </>
                 )}
 

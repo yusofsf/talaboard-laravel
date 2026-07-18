@@ -9,6 +9,7 @@ use App\Http\Controllers\ContactController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\InventoryIncreaseRequestController;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
@@ -179,6 +180,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/trade-room/{id}/cancel', [TradeRoomController::class, 'cancel'])->name('trade-room.cancel');
 
     Route::post('/silver-delivery', [SilverDeliveryController::class, 'store'])->name('silver-delivery.store');
+    Route::post('/inventory-increase-requests', [InventoryIncreaseRequestController::class, 'store'])->name('inventory-increase-requests.store');
 
     Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
     Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
@@ -220,8 +222,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/withdrawals/{id}/reject', [AdminController::class, 'withdrawalReject'])->name('withdrawals.reject');
     Route::post('/deposits/{id}/approve', [AdminController::class, 'depositApprove'])->name('deposits.approve');
     Route::post('/deposits/{id}/reject', [AdminController::class, 'depositReject'])->name('deposits.reject');
+    Route::post('/inventory-increase-requests/{id}/approve', [AdminController::class, 'inventoryIncreaseApprove'])->name('inventory-increase-requests.approve');
+    Route::post('/inventory-increase-requests/{id}/reject', [AdminController::class, 'inventoryIncreaseReject'])->name('inventory-increase-requests.reject');
 
     Route::put('/users/{uid}', [AdminController::class, 'userUpdate'])->name('users.update');
+    Route::post('/users/{uid}/password', [AdminController::class, 'userPasswordReset'])->name('users.password.reset');
     Route::delete('/users/{uid}', [AdminController::class, 'userDestroy'])->name('users.destroy');
     Route::get('/users/{uid}/trades', [AdminController::class, 'userTrades'])->name('users.trades');
 

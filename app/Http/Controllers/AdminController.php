@@ -6,6 +6,7 @@ use App\Helpers\Jalali;
 use App\Models\ActivityLog;
 use App\Models\DepositRequest;
 use App\Models\GoldLedger;
+use App\Models\InventoryIncreaseRequest;
 use App\Models\Notification;
 use App\Models\SecurityEvent;
 use App\Models\Setting;
@@ -19,6 +20,7 @@ use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Models\WithdrawalRequest;
 use App\Services\SmsService;
+use App\Support\UserPassword;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -179,6 +181,21 @@ class AdminController extends Controller
                 'date_raw' => $d->created_at->format('Y-m-d'),
             ]);
 
+        $inventoryIncreaseRequests = InventoryIncreaseRequest::with('user')
+            ->where('status', 'pending')
+            ->orderByDesc('created_at')->get()
+            ->map(fn ($r) => [
+                'id' => $r->id,
+                'user_name' => $r->user?->name,
+                'user_phone' => $r->user?->phone,
+                'metal' => $r->metal,
+                'purity' => $r->purity,
+                'grams' => (float) $r->grams,
+                'note' => $r->note,
+                'created_at' => Jalali::format($r->created_at),
+                'date_raw' => $r->created_at->format('Y-m-d'),
+            ]);
+
         $allTrades = $this->allTradesHistory();
 
         $activityLogs = ActivityLog::with('user')->orderByDesc('id')->limit(400)->get()
@@ -232,7 +249,7 @@ class AdminController extends Controller
             'contact_intro' => Setting::get('contact_intro', config('page_content.contact.intro')),
         ];
 
-        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'stats', 'memberApplications', 'vipMembers', 'deliveryRequests', 'withdrawalRequests', 'depositRequests', 'allTrades', 'activityLogs', 'securityEvents', 'tickets', 'settings'));
+        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'stats', 'memberApplications', 'vipMembers', 'deliveryRequests', 'withdrawalRequests', 'depositRequests', 'inventoryIncreaseRequests', 'allTrades', 'activityLogs', 'securityEvents', 'tickets', 'settings'));
     }
 
     /** ریز معاملات یک کاربر خاص (فروشگاه + اتاق معاملاتی) برای مشاهده و خروجی PDF ادمین. */
@@ -585,6 +602,73 @@ class AdminController extends Controller
         return back()->with('success', 'موجودی انبار به‌روزرسانی شد.');
     }
 
+    public function inventoryIncreaseApprove(Request $request, int $id)
+    {
+        DB::transaction(function () use ($request, $id) {
+            $increase = InventoryIncreaseRequest::with('user')->lockForUpdate()->findOrFail($id);
+            if ($increase->status !== 'pending') {
+                abort(422, 'این درخواست قبلاً بررسی شده است.');
+            }
+
+            $itemLabel = $increase->metal === 'gold' ? 'طلا' : "نقره {$increase->purity}";
+            if ($increase->metal === 'gold') {
+                GoldLedger::create([
+                    'user_id' => $increase->user_id,
+                    'grams' => $increase->grams,
+                    'type' => 'inventory_increase',
+                    'reference_type' => InventoryIncreaseRequest::class,
+                    'reference_id' => $increase->id,
+                    'description' => "تأیید درخواست افزایش موجودی #{$increase->id}",
+                ]);
+            } else {
+                SilverLedger::create([
+                    'user_id' => $increase->user_id,
+                    'purity' => $increase->purity,
+                    'grams' => $increase->grams,
+                    'type' => 'inventory_increase',
+                    'reference_type' => InventoryIncreaseRequest::class,
+                    'reference_id' => $increase->id,
+                    'description' => "تأیید درخواست افزایش موجودی #{$increase->id}",
+                ]);
+            }
+
+            $increase->update(['status' => 'approved', 'admin_note' => trim((string) $request->input('note', '')) ?: null]);
+            Notification::create([
+                'user_id' => $increase->user_id,
+                'title' => 'درخواست افزایش موجودی تأیید شد',
+                'body' => "{$increase->grams} گرم {$itemLabel} به موجودی انبار شما اضافه شد. تاریخ: ".Jalali::now(),
+                'type' => 'system',
+            ]);
+        });
+
+        $this->notifyOtherAdmins($request, 'تأیید افزایش موجودی توسط ادمین',
+            "{$request->user()->name} یک درخواست افزایش موجودی را تأیید کرد. تاریخ: ".Jalali::now());
+
+        return back()->with('success', 'درخواست افزایش موجودی تأیید و به دفترکل اضافه شد.');
+    }
+
+    public function inventoryIncreaseReject(Request $request, int $id)
+    {
+        $request->validate(['reason' => 'required|string|max:500']);
+
+        $increase = InventoryIncreaseRequest::with('user')->findOrFail($id);
+        if ($increase->status !== 'pending') {
+            return back()->with('error', 'این درخواست قبلاً بررسی شده است.');
+        }
+
+        $increase->update(['status' => 'rejected', 'admin_note' => trim($request->reason)]);
+        Notification::create([
+            'user_id' => $increase->user_id,
+            'title' => 'درخواست افزایش موجودی رد شد',
+            'body' => 'دلیل: '.trim($request->reason).' — تاریخ: '.Jalali::now(),
+            'type' => 'system',
+        ]);
+        $this->notifyOtherAdmins($request, 'رد افزایش موجودی توسط ادمین',
+            "{$request->user()->name} یک درخواست افزایش موجودی را رد کرد. تاریخ: ".Jalali::now());
+
+        return back()->with('success', 'درخواست افزایش موجودی رد شد.');
+    }
+
     public function notify(Request $request)
     {
         $request->validate([
@@ -807,6 +891,32 @@ class AdminController extends Controller
             "{$request->user()->name} کاربر «{$name}» را حذف کرد. تاریخ: ".Jalali::now());
 
         return back()->with('success', 'کاربر حذف شد.');
+    }
+
+    public function userPasswordReset(Request $request, int $uid)
+    {
+        $request->validate([
+            'password' => ['required', 'string', 'min:6', 'confirmed'],
+        ]);
+
+        $user = User::findOrFail($uid);
+        UserPassword::set($user, $request->password);
+        $user->update([
+            'must_reset_password' => false,
+            'legacy_password_hash' => null,
+        ]);
+
+        Notification::create([
+            'user_id' => $user->id,
+            'title' => 'تغییر رمز عبور توسط مدیریت',
+            'body' => 'رمز عبور حساب شما توسط مدیریت تغییر کرد. تاریخ: '.Jalali::now(),
+            'type' => 'system',
+        ]);
+
+        $this->notifyOtherAdmins($request, 'تغییر رمز کاربر توسط ادمین',
+            "{$request->user()->name} رمز عبور کاربر «{$user->name}» را تغییر داد. تاریخ: ".Jalali::now());
+
+        return back()->with('success', 'رمز عبور کاربر تغییر کرد.');
     }
 
     public function transactionUpdate(Request $request, int $id)

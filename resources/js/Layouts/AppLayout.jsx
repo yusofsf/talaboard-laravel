@@ -177,8 +177,27 @@ function MenuLink({ href, children, hint, onClick }) {
     const active = current === href;
     return (
         <Link href={href} onClick={onClick} className={`simple-menu-link${active ? ' active' : ''}`}>
+            <MenuIcon href={href} />
             <strong>{children}</strong>
             {hint && <small>{hint}</small>}
         </Link>
     );
+}
+
+function MenuIcon({ href }) {
+    const common = { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '1.8', strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true };
+    let icon = <><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M8 12h8M12 8v8" /></>;
+    if (href === '/' || href === '/chart' || href === '/history') icon = <><path d="M4 19V5M4 19h16" /><path d="m7 15 4-4 3 2 4-6" /></>;
+    if (href === '/calculator') icon = <><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M8 8h8M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01M16 17h.01" /></>;
+    if (href === '/articles' || href === '/admin/articles') icon = <><path d="M6 3h9l4 4v14H6z" /><path d="M15 3v5h5M9 12h6M9 16h6" /></>;
+    if (href === '/wallet') icon = <><path d="M4 7h15a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h12" /><path d="M16 13h3" /></>;
+    if (href === '/cart') icon = <><path d="M3 4h2l2 11h10l2-7H7" /><circle cx="9" cy="20" r="1" /><circle cx="17" cy="20" r="1" /></>;
+    if (href === '/inventory') icon = <><path d="m4 8 8-4 8 4-8 4zM4 8v8l8 4 8-4V8M12 12v8" /></>;
+    if (href === '/profile') icon = <><circle cx="12" cy="8" r="4" /><path d="M4 21c.8-4 3.4-6 8-6s7.2 2 8 6" /></>;
+    if (href === '/membership') icon = <><path d="m4 7 3 3 5-6 5 6 3-3-2 11H6z" /><path d="M9 18h6" /></>;
+    if (href === '/tickets' || href === '/contact') icon = <><path d="M5 4h14v11H9l-4 4z" /><path d="M9 9h6M9 12h4" /></>;
+    if (href === '/notifications') icon = <><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></>;
+    if (href === '/about') icon = <><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></>;
+    if (href.startsWith('/admin')) icon = <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.2 2.2-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5v.2h-3.2v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1-2.2-2.2.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H5V11h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1 2.2-2.2.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5V4.5h3.2v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1 2.2 2.2-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.2v3.2h-.2a1.7 1.7 0 0 0-1.5 1Z" /></>;
+    return <svg {...common}>{icon}</svg>;
 }

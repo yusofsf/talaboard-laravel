@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 
 function faNum(n) {
     if (n === null || n === undefined || isNaN(n)) return '—';
@@ -191,6 +191,7 @@ export default function Home({ prices: initial, refreshSeconds }) {
 
     return (
         <>
+            <Head title="تابلوی قیمت طلا و نقره | آبشده صفرپور" />
             <style>{`
                 .tv-wrap{min-height:100vh; display:flex; flex-direction:column; padding:clamp(12px,1.6vw,28px);}
                 .tv-wrap header{

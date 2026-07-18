@@ -222,12 +222,15 @@ export default function Home({ prices: initial, refreshSeconds }) {
                 }
                 .tv-menu-btn:hover{background:rgba(255,255,255,.08)}
                 .tv-menu-panel{
-                  position:absolute;top:46px;inset-inline-end:0;z-index:1002;width:min(430px,calc(100vw - 24px));
-                  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;padding:10px;border-radius:14px;
+                  position:absolute;top:46px;inset-inline-end:0;z-index:1002;width:min(360px,calc(100vw - 24px));
+                  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px;border-radius:18px;
                   background:linear-gradient(160deg,var(--card),var(--card-2));
                   border:1px solid var(--line);box-shadow:0 14px 40px rgba(0,0,0,.4);
                 }
-                .tv-menu-panel .tv-nav-pill{justify-content:flex-start;border-radius:10px;width:100%}
+                .tv-menu-panel .tv-nav-pill{justify-content:flex-start;border-radius:12px;width:100%;min-height:58px;padding:10px 12px;font-weight:700}
+                .tv-menu-heading{grid-column:1/-1;font-size:16px;font-weight:900;margin:2px 2px -2px}
+                .tv-menu-caption{grid-column:1/-1;color:var(--muted);font-size:12px;margin:-2px 2px 4px}
+                .tv-menu-split{grid-column:1/-1;height:1px;background:var(--line);margin:2px 0}
 
                 .tv-banner{margin-top:10px; padding:8px 16px; border-radius:12px;
                   background:rgba(255,107,120,.12); border:1px solid rgba(255,107,120,.3);
@@ -399,17 +402,20 @@ export default function Home({ prices: initial, refreshSeconds }) {
                             <button type="button" className="tv-menu-btn" aria-label="منو" onClick={() => setMenuOpen(v => !v)}>☰</button>
                             {menuOpen && (
                                 <div className="tv-menu-panel">
-                                    <Link href="/articles" className="tv-nav-pill">📝 مقالات</Link>
-                                    <Link href="/about" className="tv-nav-pill">ℹ️ درباره ما</Link>
-                                    <Link href="/contact" className="tv-nav-pill">☎️ تماس با ما</Link>
-                                    <Link href="/chart" className="tv-nav-pill">📈 چارت</Link>
-                                    <Link href="/calculator" className="tv-nav-pill">🧮 ماشین حساب</Link>
-                                    <Link href="/speed-test" className="tv-nav-pill">⚡ تست سرعت</Link>
+                                    <div className="tv-menu-heading">کدام کار را می‌خواهی انجام دهی؟</div>
+                                    <div className="tv-menu-caption">هر گزینه یک کار ساده و مشخص دارد.</div>
+                                    <Link href="/chart" className="tv-nav-pill">نمودار قیمت</Link>
+                                    <Link href="/calculator" className="tv-nav-pill">ماشین حساب</Link>
+                                    <Link href="/articles" className="tv-nav-pill">راهنما و مقاله</Link>
+                                    <Link href="/contact" className="tv-nav-pill">کمک و تماس</Link>
                                     {user ? (
                                         <>
-                                            <Link href="/profile" className="tv-nav-pill user">👤 {user.name}</Link>
-                                            <Link href="/cart" className="tv-nav-pill">🛒 سبد خرید{user.cart_count > 0 ? ` (${user.cart_count})` : ''}</Link>
-                                            <Link href="/logout" method="post" as="button" className="tv-nav-pill">🚪 خروج</Link>
+                                            <div className="tv-menu-split" />
+                                            <Link href="/wallet" className="tv-nav-pill user">کیف پول</Link>
+                                            <Link href="/inventory" className="tv-nav-pill user">دارایی‌های من</Link>
+                                            <Link href="/cart" className="tv-nav-pill">سبد خرید{user.cart_count > 0 ? ` (${user.cart_count})` : ''}</Link>
+                                            <Link href="/profile" className="tv-nav-pill">حساب من</Link>
+                                            <Link href="/logout" method="post" as="button" className="tv-nav-pill">خروج از حساب</Link>
                                         </>
                                     ) : null}
                                 </div>

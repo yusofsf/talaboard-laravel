@@ -135,6 +135,7 @@ export default function Home({ prices: initial, refreshSeconds }) {
     const { auth } = usePage().props;
     const user = auth?.user;
     const isVip = !!user && (user.is_vip || user.membership_level === 2);
+    const showMembershipLink = !!user && !user.is_admin && !isVip && user.membership_status !== 'pending';
     const roomHref = key => (isVip && ROOM_META[key]) ? `/trade-room?${ROOM_META[key]}` : null;
 
     const [data, setData] = useState(initial);
@@ -413,6 +414,7 @@ export default function Home({ prices: initial, refreshSeconds }) {
                                             <div className="tv-menu-split" />
                                             <Link href="/wallet" className="tv-nav-pill user">کیف پول</Link>
                                             <Link href="/inventory" className="tv-nav-pill user">دارایی‌های من</Link>
+                                            {showMembershipLink && <Link href="/membership" className="tv-nav-pill user">درخواست عضویت ویژه</Link>}
                                             <Link href="/cart" className="tv-nav-pill">سبد خرید{user.cart_count > 0 ? ` (${user.cart_count})` : ''}</Link>
                                             <Link href="/profile" className="tv-nav-pill">حساب من</Link>
                                             <Link href="/logout" method="post" as="button" className="tv-nav-pill">خروج از حساب</Link>

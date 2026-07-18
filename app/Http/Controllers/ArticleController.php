@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Helpers\Jalali;
 use App\Models\Article;
+use App\Models\ArticleTag;
+use App\Models\ArticleTopic;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -173,10 +175,14 @@ class ArticleController extends Controller
 
     private function listValues(string $field): array
     {
-        return collect($this->taxonomyValues(Article::published()
-            ->pluck($field)
-            ->flatMap(fn ($items) => $items ?: [])
-            ->all()))
+        $model = $field === 'topics' ? ArticleTopic::class : ArticleTag::class;
+
+        return collect($model::query()->orderBy('name')->pluck('name')->all())
+            ->merge($this->taxonomyValues(Article::published()
+                ->pluck($field)
+                ->flatMap(fn ($items) => $items ?: [])
+                ->all()))
+            ->unique(fn (string $item) => Article::taxonomySlug($item))
             ->sort()
             ->values()
             ->all();

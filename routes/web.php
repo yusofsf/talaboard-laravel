@@ -192,6 +192,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/articles', [AdminArticleController::class, 'index'])->name('articles.index');
     Route::post('/articles/embedded-image', [AdminArticleController::class, 'uploadEmbeddedImage'])->name('articles.embedded-image');
+    Route::post('/article-topics', [AdminArticleController::class, 'storeTopic'])->name('article-topics.store');
+    Route::put('/article-topics/{id}', [AdminArticleController::class, 'updateTopic'])->name('article-topics.update');
+    Route::delete('/article-topics/{id}', [AdminArticleController::class, 'destroyTopic'])->name('article-topics.destroy');
+    Route::post('/article-tags', [AdminArticleController::class, 'storeTag'])->name('article-tags.store');
+    Route::put('/article-tags/{id}', [AdminArticleController::class, 'updateTag'])->name('article-tags.update');
+    Route::delete('/article-tags/{id}', [AdminArticleController::class, 'destroyTag'])->name('article-tags.destroy');
     Route::post('/articles', [AdminArticleController::class, 'store'])->name('articles.store');
     Route::put('/articles/{id}', [AdminArticleController::class, 'update'])->name('articles.update');
     Route::delete('/articles/{id}', [AdminArticleController::class, 'destroy'])->name('articles.destroy');

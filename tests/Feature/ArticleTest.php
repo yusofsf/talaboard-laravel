@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Article;
+use App\Models\ArticleTag;
+use App\Models\ArticleTopic;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -145,6 +147,8 @@ class ArticleTest extends TestCase
     public function test_admin_article_form_receives_existing_tags_and_topics(): void
     {
         $admin = User::factory()->admin()->create();
+        $this->assertNotNull(ArticleTopic::where('name', 'نقره')->first());
+        ArticleTag::create(['name' => 'سرمایه‌گذاری', 'slug' => 'سرمایه-گذاری']);
         Article::create([
             'title' => 'مقاله موضوع‌دار',
             'slug' => 'article-with-taxonomy',
@@ -159,8 +163,45 @@ class ArticleTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Admin/Articles')
-                ->where('tagOptions.0', 'سکه')
-                ->where('topicOptions.0', 'آموزش'));
+                ->where('tagOptions', fn ($options) => collect($options)->contains('سرمایه‌گذاری') && collect($options)->contains('سکه'))
+                ->where('topicOptions', fn ($options) => collect($options)->contains('نقره') && collect($options)->contains('آموزش'))
+                ->where('topics', fn ($topics) => collect($topics)->contains(fn ($topic) => $topic['name'] === 'نقره'))
+                ->where('tags.0.name', 'سرمایه‌گذاری'));
+    }
+
+    public function test_admin_can_edit_and_delete_article_topics_and_tags(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $topic = ArticleTopic::where('name', 'سکه')->firstOrFail();
+        $tag = ArticleTag::create(['name' => 'عیار', 'slug' => 'عیار']);
+        $article = Article::create([
+            'title' => 'راهنمای سکه',
+            'slug' => 'coin-topic-edit',
+            'body' => 'متن مقاله',
+            'topics' => ['سکه'],
+            'tags' => ['عیار'],
+            'is_published' => true,
+            'published_at' => now(),
+        ]);
+
+        $this->actingAs($admin)->put("/admin/article-topics/{$topic->id}", [
+            'name' => 'بازار سکه',
+        ])->assertSessionHasNoErrors()->assertRedirect();
+
+        $this->actingAs($admin)->put("/admin/article-tags/{$tag->id}", [
+            'name' => 'عیار نقره',
+        ])->assertSessionHasNoErrors()->assertRedirect();
+
+        $article->refresh();
+        $this->assertSame(['بازار سکه'], $article->topics);
+        $this->assertSame(['عیار نقره'], $article->tags);
+
+        $this->actingAs($admin)->delete("/admin/article-topics/{$topic->id}")->assertRedirect();
+        $this->actingAs($admin)->delete("/admin/article-tags/{$tag->id}")->assertRedirect();
+
+        $article->refresh();
+        $this->assertSame([], $article->topics);
+        $this->assertSame([], $article->tags);
     }
 
     public function test_admin_can_upload_article_images_and_rich_body_is_sanitized(): void

@@ -59,11 +59,9 @@ class NotificationController extends Controller
 
     private function visibleNotificationsFor($user)
     {
-        $isAdmin = $user->is_admin || ($user->phone && $user->phone === env('ADMIN_PHONE'));
-
         return Notification::query()
-            ->when(! $isAdmin, fn ($q) => $q->where(function ($q) use ($user) {
+            ->where(function ($q) use ($user) {
                 $q->where('user_id', $user->id)->orWhereNull('user_id');
-            }));
+            });
     }
 }

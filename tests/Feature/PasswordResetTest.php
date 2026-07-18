@@ -16,7 +16,7 @@ class PasswordResetTest extends TestCase
     {
         config()->set('sms.enabled', true);
         config()->set('sms.master_otp', '000000');
-        config()->set('sms.master_otp_enabled', false);
+        config()->set('sms.otp_enabled', false);
         config()->set('sms.master_otp_help_enabled', true);
 
         $user = User::factory()->create([
@@ -39,7 +39,7 @@ class PasswordResetTest extends TestCase
 
     public function test_enabled_sms_otp_resets_a_password_without_master_otp_help(): void
     {
-        config()->set('sms.master_otp_enabled', true);
+        config()->set('sms.otp_enabled', true);
         config()->set('sms.master_otp_help_enabled', false);
 
         $user = User::factory()->create(['phone' => '09120000001']);

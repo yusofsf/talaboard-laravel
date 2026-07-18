@@ -64,8 +64,10 @@ class AuthController extends Controller
         $user  = User::where('phone', $phone)->first();
 
         if ($user && $user->must_reset_password) {
-            $otp = $this->createOtp($phone, 'reset');
-            $this->sms->sendOtpReset($phone, $otp);
+            if (config('sms.otp_enabled')) {
+                $otp = $this->createOtp($phone, 'reset');
+                $this->sms->sendOtpReset($phone, $otp);
+            }
             $request->session()->put('reset_phone', $phone);
             return redirect()->route('reset-password')
                 ->with('error', 'به‌دلیل به‌روزرسانی سامانه، لازم است رمز عبور خود را بازنشانی کنید. کد تأیید برای شما ارسال شد.');
@@ -81,7 +83,7 @@ class AuthController extends Controller
             $user->update(['is_admin' => true, 'is_vip' => true, 'membership_level' => 2]);
         }
 
-        if (config('sms.two_fa_enabled') && !empty(config('sms.kavenegar_api_key'))) {
+        if (config('sms.two_fa_enabled') && config('sms.otp_enabled') && !empty(config('sms.kavenegar_api_key'))) {
             $otp = $this->createOtp($phone, 'login');
             $smsOk = $this->sms->sendOtpLogin($phone, $otp);
             $request->session()->put('pending_2fa', [
@@ -141,8 +143,10 @@ class AuthController extends Controller
         $user  = User::where('phone', $phone)->first();
 
         if ($user) {
-            $otp = $this->createOtp($phone, 'reset');
-            $this->sms->sendOtpReset($phone, $otp);
+            if (config('sms.otp_enabled')) {
+                $otp = $this->createOtp($phone, 'reset');
+                $this->sms->sendOtpReset($phone, $otp);
+            }
         }
 
         $request->session()->put('reset_phone', $phone);
@@ -230,7 +234,7 @@ class AuthController extends Controller
             return true;
         }
 
-        if (!config('sms.master_otp_enabled')) {
+        if (!config('sms.otp_enabled')) {
             return false;
         }
 

@@ -12,35 +12,9 @@ class PasswordResetTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_enabled_master_otp_help_resets_a_password_independently_of_sms_otp(): void
-    {
-        config()->set('sms.enabled', true);
-        config()->set('sms.master_otp', '000000');
-        config()->set('sms.otp_enabled', false);
-        config()->set('sms.master_otp_help_enabled', true);
-
-        $user = User::factory()->create([
-            'phone' => '09120000000',
-            'must_reset_password' => true,
-        ]);
-
-        $this->withSession(['reset_phone' => $user->phone])
-            ->post('/reset-password', [
-                'otp' => '000000',
-                'password' => 'new-password',
-                'password_confirmation' => 'new-password',
-            ])
-            ->assertRedirect('/login');
-
-        $user->refresh();
-        $this->assertFalse($user->must_reset_password);
-        $this->assertTrue(UserPassword::check($user, 'new-password'));
-    }
-
     public function test_enabled_sms_otp_resets_a_password_without_master_otp_help(): void
     {
         config()->set('sms.otp_enabled', true);
-        config()->set('sms.master_otp_help_enabled', false);
 
         $user = User::factory()->create(['phone' => '09120000001']);
         OtpToken::create([

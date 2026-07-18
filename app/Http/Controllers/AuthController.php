@@ -223,9 +223,15 @@ class AuthController extends Controller
         // هشدار امنیتی: اگر مقدار داشته باشد، با همین کد می‌توان رمز هر حساب (از جمله ادمین)
         // را از مسیر «فراموشی رمز» بازنشانی کرد. پیش‌فرض خالی = غیرفعال. اگر تنظیمش می‌کنید،
         // یک رشته‌ی بلند و تصادفی بگذارید، نه چیزی مثل 000000.
-        $master = trim((string) env('MASTER_OTP', ''));
-        if (app()->environment(['local', 'testing']) && $master !== '' && hash_equals($master, $otp)) {
+        $master = trim((string) config('sms.master_otp', ''));
+        if (config('sms.master_otp_help_enabled')
+            && $master !== ''
+            && hash_equals($master, $otp)) {
             return true;
+        }
+
+        if (!config('sms.master_otp_enabled')) {
+            return false;
         }
 
         return OtpToken::where('phone', $phone)

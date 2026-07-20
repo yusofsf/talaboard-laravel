@@ -106,6 +106,7 @@ class AdminController extends Controller
                 'phone' => $u->phone,
                 'national_id' => $u->national_id,
                 'birth_date' => $u->birth_date ? Jalali::format($u->birth_date, false) : null,
+                'birth_date_raw' => $u->birth_date?->format('Y-m-d'),
                 'residence_address' => $u->residence_address,
                 'national_id_doc' => $this->membershipFileUrl($u, 'national_id_doc'),
                 'identity_doc' => $this->membershipFileUrl($u, 'identity_doc'),
@@ -123,6 +124,7 @@ class AdminController extends Controller
                 'email' => $u->email,
                 'national_id' => $u->national_id,
                 'birth_date' => $u->birth_date ? Jalali::format($u->birth_date, false) : null,
+                'birth_date_raw' => $u->birth_date?->format('Y-m-d'),
                 'residence_address' => $u->residence_address,
                 'national_id_doc' => $this->membershipFileUrl($u, 'national_id_doc'),
                 'identity_doc' => $this->membershipFileUrl($u, 'identity_doc'),
@@ -766,6 +768,96 @@ class AdminController extends Controller
         }
 
         return back()->with('success', 'عضویت ویژه تأیید شد.');
+    }
+
+    /** Activate a user's VIP membership directly; identity details and documents are optional. */
+    public function membershipStore(Request $request)
+    {
+        $data = $this->validateMembershipData($request, true);
+        $user = User::findOrFail($data['user_id']);
+        unset($data['user_id']);
+
+        $this->saveMembershipData($request, $user, $data, true);
+
+        Notification::create([
+            'user_id' => $user->id,
+            'title' => 'عضویت ویژه فعال شد',
+            'body' => 'عضویت ویژه‌ی شما توسط مدیریت در تاریخ '.Jalali::now().' فعال شد.',
+            'type' => 'promo',
+        ]);
+
+        $this->notifyOtherAdmins($request, 'فعال‌سازی عضویت ویژه توسط ادمین',
+            "{$request->user()->name} عضویت ویژه‌ی «{$user->name}» را فعال کرد. تاریخ: ".Jalali::now());
+
+        return back()->with('success', 'عضویت ویژه کاربر فعال شد.');
+    }
+
+    /** Update a VIP member's saved identity information and optionally replace their documents. */
+    public function membershipUpdate(Request $request, int $uid)
+    {
+        $data = $this->validateMembershipData($request);
+        $user = User::findOrFail($uid);
+
+        if (! $user->isVipMember()) {
+            return back()->with('error', 'فقط اطلاعات عضو ویژه قابل ویرایش است.');
+        }
+
+        $this->saveMembershipData($request, $user, $data, false);
+
+        $this->notifyOtherAdmins($request, 'ویرایش اطلاعات عضویت ویژه توسط ادمین',
+            "{$request->user()->name} اطلاعات عضویت ویژه‌ی «{$user->name}» را ویرایش کرد. تاریخ: ".Jalali::now());
+
+        return back()->with('success', 'اطلاعات عضویت ویژه به‌روز شد.');
+    }
+
+    private function validateMembershipData(Request $request, bool $withUserId = false): array
+    {
+        $rules = [
+            'national_id' => 'nullable|string|max:20',
+            'birth_date' => 'nullable|date',
+            'residence_address' => 'nullable|string|max:500',
+            'national_id_doc' => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
+            'identity_doc' => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
+            'verification_video' => 'nullable|file|mimes:mp4,mov,avi,webm|max:5120',
+        ];
+
+        if ($withUserId) {
+            $rules = ['user_id' => 'required|integer|exists:users,id'] + $rules;
+        }
+
+        return $request->validate($rules);
+    }
+
+    private function saveMembershipData(Request $request, User $user, array $data, bool $activate): void
+    {
+        $updates = [
+            'national_id' => $data['national_id'] ?? null,
+            'birth_date' => $data['birth_date'] ?? null,
+            'residence_address' => $data['residence_address'] ?? null,
+        ];
+
+        if ($activate) {
+            $updates += [
+                'is_vip' => true,
+                'membership_level' => 2,
+                'membership_status' => 'approved',
+            ];
+        }
+
+        foreach (['national_id_doc', 'identity_doc', 'verification_video'] as $field) {
+            if (! $request->hasFile($field)) {
+                continue;
+            }
+
+            if ($user->{$field}) {
+                Storage::disk('local')->delete($user->{$field});
+                Storage::disk('public')->delete($user->{$field});
+            }
+
+            $updates[$field] = $request->file($field)->store("membership/{$user->id}", 'local');
+        }
+
+        $user->update($updates);
     }
 
     public function membershipReject(Request $request, int $uid)

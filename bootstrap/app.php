@@ -19,11 +19,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Must wrap the web group too, so redirects and the health endpoint receive these headers.
+        $middleware->append(SecurityHeaders::class);
         $middleware->web(prepend: [
             ForceHttps::class,
         ]);
         $middleware->web(append: [
-            SecurityHeaders::class,
             HandleInertiaRequests::class,
             UpdateLastSeen::class,
             DetectSuspiciousInput::class,

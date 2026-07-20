@@ -216,6 +216,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::delete('/notify/{id}', [AdminController::class, 'deleteNotification'])->name('notify.delete');
     Route::post('/membership/approve/{uid}', [AdminController::class, 'membershipApprove'])->name('membership.approve');
     Route::post('/membership/reject/{uid}', [AdminController::class, 'membershipReject'])->name('membership.reject');
+    Route::post('/membership', [AdminController::class, 'membershipStore'])->name('membership.store');
+    Route::post('/membership/{uid}', [AdminController::class, 'membershipUpdate'])->name('membership.update');
     Route::get('/membership/files/{uid}/{type}', [AdminController::class, 'membershipFile'])->name('membership.file');
     Route::post('/delivery/{id}/update', [AdminController::class, 'deliveryUpdate'])->name('delivery.update');
     Route::post('/withdrawals/{id}/approve', [AdminController::class, 'withdrawalApprove'])->name('withdrawals.approve');

@@ -18,6 +18,10 @@ class SecurityHeaders
         $this->setHeaderIfMissing($response, 'X-Content-Type-Options', 'nosniff');
         $this->setHeaderIfMissing($response, 'Referrer-Policy', 'strict-origin-when-cross-origin');
         $this->setHeaderIfMissing($response, 'Permissions-Policy', 'camera=(self), microphone=(self), geolocation=(), payment=()');
+        $this->setHeaderIfMissing($response, 'Cross-Origin-Opener-Policy', 'same-origin');
+        $this->setHeaderIfMissing($response, 'Cross-Origin-Resource-Policy', 'same-origin');
+        $this->setHeaderIfMissing($response, 'Origin-Agent-Cluster', '?1');
+        $this->setHeaderIfMissing($response, 'X-Permitted-Cross-Domain-Policies', 'none');
         $this->setHeaderIfMissing($response, 'Content-Security-Policy', $this->contentSecurityPolicy());
 
         if (config('seo.force_https')) {

@@ -32,6 +32,86 @@ function levelOf(u) {
     return 'regular';
 }
 
+function AdminMembershipForm({ member = null, userOptions }) {
+    const [open, setOpen] = useState(!member);
+    const form = useForm({
+        user_id: '',
+        national_id: member?.national_id || '',
+        birth_date: member?.birth_date_raw || '',
+        residence_address: member?.residence_address || '',
+        national_id_doc: null,
+        identity_doc: null,
+        verification_video: null,
+    });
+    const isEdit = Boolean(member);
+
+    function submit(e) {
+        e.preventDefault();
+        const url = isEdit ? `/admin/membership/${member.id}` : '/admin/membership';
+        form.post(url, {
+            preserveScroll: true,
+            forceFormData: true,
+            onSuccess: () => {
+                if (isEdit) setOpen(false);
+                else form.reset();
+            },
+        });
+    }
+
+    if (isEdit && !open) {
+        return <button type="button" className="btn-sm" onClick={() => setOpen(true)}>ویرایش اطلاعات عضویت</button>;
+    }
+
+    return (
+        <form onSubmit={submit} style={{ display: 'grid', gap: 12 }}>
+            {!isEdit && (
+                <div className="field">
+                    <label>کاربر *</label>
+                    <SearchableSelect value={form.data.user_id} onChange={value => form.setData('user_id', value)}
+                        options={userOptions} placeholder="کاربر را جستجو و انتخاب کنید" required />
+                    {form.errors.user_id && <small style={{ color: 'var(--down)' }}>{form.errors.user_id}</small>}
+                </div>
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 12 }}>
+                <div className="field">
+                    <label>کد ملی (اختیاری)</label>
+                    <input value={form.data.national_id} onChange={e => form.setData('national_id', e.target.value)} inputMode="numeric" />
+                    {form.errors.national_id && <small style={{ color: 'var(--down)' }}>{form.errors.national_id}</small>}
+                </div>
+                <div className="field">
+                    <label>تاریخ تولد (اختیاری)</label>
+                    <input type="date" value={form.data.birth_date} onChange={e => form.setData('birth_date', e.target.value)} />
+                    {form.errors.birth_date && <small style={{ color: 'var(--down)' }}>{form.errors.birth_date}</small>}
+                </div>
+            </div>
+            <div className="field">
+                <label>آدرس محل سکونت (اختیاری)</label>
+                <textarea value={form.data.residence_address} onChange={e => form.setData('residence_address', e.target.value)} maxLength="500" rows="2" />
+                {form.errors.residence_address && <small style={{ color: 'var(--down)' }}>{form.errors.residence_address}</small>}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 12 }}>
+                {[
+                    ['national_id_doc', 'تصویر کارت ملی', 'image/jpeg,image/png'],
+                    ['identity_doc', 'تصویر جواز صنفی', 'image/jpeg,image/png'],
+                    ['verification_video', 'فیلم اعتبارسنجی', 'video/mp4,video/quicktime,video/x-msvideo,video/webm'],
+                ].map(([field, label, accept]) => (
+                    <div className="field" key={field}>
+                        <label>{label} (اختیاری{isEdit ? ' — برای جایگزینی' : ''})</label>
+                        <input type="file" accept={accept} onChange={e => form.setData(field, e.target.files?.[0] || null)} />
+                        {form.errors[field] && <small style={{ color: 'var(--down)' }}>{form.errors[field]}</small>}
+                    </div>
+                ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button type="submit" className="btn" disabled={form.processing} style={{ width: 'auto', padding: '9px 20px' }}>
+                    {form.processing ? 'در حال ذخیره...' : isEdit ? 'ذخیره اطلاعات' : 'فعال‌سازی عضویت ویژه'}
+                </button>
+                {isEdit && <button type="button" className="btn-sm" onClick={() => setOpen(false)}>انصراف</button>}
+            </div>
+        </form>
+    );
+}
+
 function UserRow({ u, isSelf }) {
     const [expand, setExpand] = useState(null); // null | 'inventory' | 'edit' | 'password'
 
@@ -928,6 +1008,13 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                 {/* درخواست‌های عضویت ویژه */}
                 {tab === 'membership' && (
                     <>
+                        <section className="fcard no-print" style={{ padding: 20, marginBottom: 18 }}>
+                            <h3 style={{ margin: '0 0 6px', fontSize: 17 }}>فعال‌سازی مستقیم عضویت ویژه</h3>
+                            <p style={{ margin: '0 0 16px', color: 'var(--muted)', fontSize: 13, lineHeight: 1.8 }}>
+                                انتخاب کاربر کافی است؛ اطلاعات هویتی و مدارک در این فرم اختیاری‌اند و در صورت ثبت، همراه عضویت ویژه ذخیره می‌شوند.
+                            </p>
+                            <AdminMembershipForm userOptions={userOptions} />
+                        </section>
                         <div className="no-print" style={{ marginBottom: 14 }}>
                             <SearchBox value={memberQ} onChange={setMemberQ} placeholder="🔍 جستجو در نام، موبایل، کد ملی..." />
                         </div>
@@ -1054,6 +1141,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
 
                                     <div style={{ marginTop: 14 }}>
                                         <Link href={`/admin/users/${m.id}/trades`} className="btn-sm gold">ریز معاملات</Link>
+                                        <AdminMembershipForm member={m} userOptions={userOptions} />
                                         {m.id !== auth.user.id && (
                                             <button
                                                 type="button"

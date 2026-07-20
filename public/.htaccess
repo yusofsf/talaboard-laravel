@@ -43,6 +43,10 @@
     Header always set Permissions-Policy "camera=(self), microphone=(self), geolocation=(), payment=()"
     Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
     Header always unset X-Powered-By
+    Header always set Cross-Origin-Opener-Policy "same-origin"
+    Header always set Cross-Origin-Resource-Policy "same-origin"
+    Header always set Origin-Agent-Cluster "?1"
+    Header always set X-Permitted-Cross-Domain-Policies "none"
 </IfModule>
 
 ServerSignature Off

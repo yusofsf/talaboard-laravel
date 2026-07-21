@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 
 const FA = s => String(s ?? '').replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]).replace(/,/g, '٬');
@@ -16,6 +16,8 @@ export default function AppLayout({ children }) {
     const { auth, flash, seo, seoDefaults = {} } = page.props;
     const user = auth?.user;
     const [open, setOpen] = useState(false);
+    const menuRef = useRef(null);
+    const menuButtonRef = useRef(null);
     const canonical = seo?.canonical || `${seoDefaults.url || ''}${String(page.url || '/').split('?')[0]}`;
     const title = seo?.title || seoDefaults.title || '';
     const description = seo?.description || seoDefaults.description || '';
@@ -28,6 +30,20 @@ export default function AppLayout({ children }) {
     }
 
     const showMembershipLink = user && !user.is_vip && user.membership_level !== 2 && user.membership_status !== 'pending';
+
+    useEffect(() => {
+        if (!open) return undefined;
+
+        const closeOnOutsidePointerDown = event => {
+            if (!menuRef.current?.contains(event.target) && !menuButtonRef.current?.contains(event.target)) {
+                setOpen(false);
+            }
+        };
+
+        document.addEventListener('pointerdown', closeOnOutsidePointerDown);
+
+        return () => document.removeEventListener('pointerdown', closeOnOutsidePointerDown);
+    }, [open]);
 
     return (
         <>
@@ -59,15 +75,14 @@ export default function AppLayout({ children }) {
             <nav className="simple-nav">
                 <div className="simple-nav-actions">
                     {user && <span className="simple-user-level">{levelLabel(user)}</span>}
-                    <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} aria-controls="main-menu" className="simple-menu-button">
+                    <button ref={menuButtonRef} type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} aria-controls="main-menu" className="simple-menu-button">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
                         <span>منوی ساده</span>
                     </button>
                     {!user && <Link href="/login" className="simple-login-link">ورود یا ثبت‌نام</Link>}
 
-                    {open && <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1001 }} />}
                     {open && (
-                        <div id="main-menu" className="simple-menu">
+                        <div ref={menuRef} id="main-menu" className="simple-menu">
                             <div className="simple-menu-title">چه کاری می‌خواهی انجام دهی؟</div>
                             <div className="simple-menu-help">روی هر گزینه بزن؛ هرکدام یک کار مشخص دارد.</div>
                             <div className="simple-menu-group">

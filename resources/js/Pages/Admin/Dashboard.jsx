@@ -752,7 +752,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
 
     return (
         <AppLayout>
-            <div className="page-wide">
+            <div className="page-wide admin-dashboard">
                 <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 20 }}>پنل مدیریت</h2>
 
                 {/* آمار */}

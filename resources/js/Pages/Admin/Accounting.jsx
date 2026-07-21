@@ -5,6 +5,8 @@ import DateRangeFilter, { filterByDateRange } from '../../Components/DateRangeFi
 import Pager, { usePager } from '../../Components/Pager';
 import SearchBox, { filterBySearch } from '../../Components/SearchBox';
 
+const ledgerTypeLabel = type => ({ deposit: 'واریز', withdraw: 'برداشت' })[type] || type;
+
 export default function Accounting({ summary, walletTransactions, userBalances }) {
     const [transactionQuery, setTransactionQuery] = useState('');
     const [userQuery, setUserQuery] = useState('');
@@ -57,7 +59,7 @@ export default function Accounting({ summary, walletTransactions, userBalances }
 }
 
 function AccountingTable({ rows }) {
-    return <div className="table-wrap"><table><thead><tr><th>تاریخ</th><th>کاربر</th><th>موبایل</th><th>نوع</th><th>مبلغ</th><th>شرح</th></tr></thead><tbody>{rows.length ? rows.map(row => <tr key={row.id}><td style={{ color: 'var(--muted)', fontSize: 12 }}>{row.created_at}</td><td>{row.user_name || '—'}</td><td dir="ltr">{row.user_phone || '—'}</td><td>{row.type}</td><td className="num" style={{ color: row.amount >= 0 ? 'var(--up)' : 'var(--down)', fontWeight: 800 }}>{row.amount >= 0 ? '+' : ''}{faNum(row.amount)}</td><td style={{ whiteSpace: 'normal', minWidth: 180 }}>{row.description || '—'}</td></tr>) : <tr><td colSpan={6}>رکوردی یافت نشد.</td></tr>}</tbody></table></div>;
+    return <div className="table-wrap"><table><thead><tr><th>تاریخ</th><th>کاربر</th><th>موبایل</th><th>نوع</th><th>مبلغ</th><th>شرح</th></tr></thead><tbody>{rows.length ? rows.map(row => <tr key={row.id}><td style={{ color: 'var(--muted)', fontSize: 12 }}>{row.created_at}</td><td>{row.user_name || '—'}</td><td dir="ltr">{row.user_phone || '—'}</td><td>{ledgerTypeLabel(row.type)}</td><td className="num" style={{ color: row.amount >= 0 ? 'var(--up)' : 'var(--down)', fontWeight: 800 }}>{row.amount >= 0 ? '+' : ''}{faNum(row.amount)}</td><td style={{ whiteSpace: 'normal', minWidth: 180 }}>{row.description || '—'}</td></tr>) : <tr><td colSpan={6}>رکوردی یافت نشد.</td></tr>}</tbody></table></div>;
 }
 
 function UserBalanceTable({ rows }) {

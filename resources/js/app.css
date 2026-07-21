@@ -248,7 +248,14 @@ tbody tr:hover td { background: rgba(246,207,99,.06); }
 
 /* Keep the management overview and its cards visually centered in RTL. */
 .admin-dashboard { text-align: center; }
-.admin-dashboard .tabs { justify-content: center; }
+.admin-dashboard .tabs {
+  /* The management panel has many tabs.  Wrapping keeps the first (users)
+     and last tabs reachable in RTL instead of hiding them in a scroll strip. */
+  flex-wrap: wrap;
+  justify-content: center;
+  overflow-x: visible;
+  row-gap: 0;
+}
 .admin-dashboard .fcard { margin-inline: auto; }
 
 @media (max-width: 600px) {

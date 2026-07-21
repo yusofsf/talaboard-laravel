@@ -163,6 +163,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/trade/{item}', [TradeController::class, 'store']);
 
     Route::get('/wallet', [WalletController::class, 'index'])->name('wallet');
+    Route::get('/accounting', [WalletController::class, 'accounting'])->name('accounting');
     Route::post('/wallet/withdraw', [WalletController::class, 'requestWithdrawal'])->name('wallet.withdraw');
     Route::post('/wallet/deposit', [WalletController::class, 'requestDeposit'])->name('wallet.deposit');
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory');
@@ -204,6 +205,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::put('/articles/{id}', [AdminArticleController::class, 'update'])->name('articles.update');
     Route::delete('/articles/{id}', [AdminArticleController::class, 'destroy'])->name('articles.destroy');
     Route::get('/online-users', [AdminController::class, 'onlineUsers'])->name('online-users');
+    Route::get('/accounting', [AdminController::class, 'accounting'])->name('accounting');
     Route::post('/settings', [AdminController::class, 'updateSettings'])->name('settings.update');
     Route::get('/tickets/{id}', [AdminController::class, 'ticketShow'])->name('tickets.show');
     Route::post('/tickets/{id}/reply', [AdminController::class, 'ticketReply'])->name('tickets.reply');

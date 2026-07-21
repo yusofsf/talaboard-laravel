@@ -78,6 +78,7 @@ export default function AppLayout({ children }) {
                             </div>
                             {user && <div className="simple-menu-group">
                                 <MenuLink href="/wallet" hint={user.wallet_balance > 0 ? `${faNum(user.wallet_balance)} تومان` : 'پول شما'} onClick={() => setOpen(false)}>کیف پول</MenuLink>
+                                <MenuLink href="/accounting" hint="گردش و مانده‌های من" onClick={() => setOpen(false)}>حسابداری من</MenuLink>
                                 <MenuLink href="/cart" hint={user.cart_count > 0 ? `${user.cart_count} مورد انتخاب شده` : 'خریدهای انتخابی'} onClick={() => setOpen(false)}>سبد خرید</MenuLink>
                                 <MenuLink href="/inventory" hint="طلا و نقره شما" onClick={() => setOpen(false)}>دارایی‌های من</MenuLink>
                                 <MenuLink href="/history" hint="کارهای قبلی" onClick={() => setOpen(false)}>سوابق من</MenuLink>
@@ -87,6 +88,7 @@ export default function AppLayout({ children }) {
                                 {showMembershipLink && <MenuLink href="/membership" hint="امکانات بیشتر" onClick={() => setOpen(false)}>عضویت ویژه</MenuLink>}
                                 {(user.is_vip || user.membership_level === 2) && <MenuLink href="/trade-room" hint="خرید و فروش با اعضا" onClick={() => setOpen(false)}>اتاق معامله</MenuLink>}
                                 {user.is_admin && <MenuLink href="/admin" hint="کارهای مدیر سایت" onClick={() => setOpen(false)}>مدیریت سایت</MenuLink>}
+                                {user.is_admin && <MenuLink href="/admin/accounting" hint="گزارش تجمیعی و حرفه‌ای" onClick={() => setOpen(false)}>حسابداری مدیریت</MenuLink>}
                                 {user.is_admin && <MenuLink href="/admin/articles" hint="نوشتن و تغییر مقاله" onClick={() => setOpen(false)}>مدیریت مقاله‌ها</MenuLink>}
                                 {user.is_admin && <MenuLink href="/admin/online-users" hint="کاربران حاضر" onClick={() => setOpen(false)}>کاربران آنلاین</MenuLink>}
                                 <button type="button" onClick={logout} className="simple-menu-link danger"><strong>خروج از حساب</strong><small>بعداً دوباره وارد می‌شوی</small></button>
@@ -191,6 +193,7 @@ function MenuIcon({ href }) {
     if (href === '/calculator') icon = <><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M8 8h8M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01M16 17h.01" /></>;
     if (href === '/articles' || href === '/admin/articles') icon = <><path d="M6 3h9l4 4v14H6z" /><path d="M15 3v5h5M9 12h6M9 16h6" /></>;
     if (href === '/wallet') icon = <><path d="M4 7h15a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h12" /><path d="M16 13h3" /></>;
+    if (href === '/accounting' || href === '/admin/accounting') icon = <><path d="M4 19V5M4 19h16" /><path d="m7 15 4-4 3 2 4-6" /><path d="M16 5h4v4" /></>;
     if (href === '/cart') icon = <><path d="M3 4h2l2 11h10l2-7H7" /><circle cx="9" cy="20" r="1" /><circle cx="17" cy="20" r="1" /></>;
     if (href === '/inventory') icon = <><path d="m4 8 8-4 8 4-8 4zM4 8v8l8 4 8-4V8M12 12v8" /></>;
     if (href === '/profile') icon = <><circle cx="12" cy="8" r="4" /><path d="M4 21c.8-4 3.4-6 8-6s7.2 2 8 6" /></>;

@@ -185,7 +185,8 @@ select option { color: #15192b; background: #fff; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 thead tr { background: rgba(255,255,255,.05); }
 thead th { position: sticky; top: 0; z-index: 1; background: #1a2348; }
-th, td { padding: 13px 14px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+/* Keep the dense RTL data views scannable by centering each value consistently. */
+th, td { padding: 13px 14px; text-align: center; border-bottom: 1px solid var(--line); white-space: nowrap; }
 thead th { color: var(--muted); font-weight: 700; font-size: 13px; }
 tbody tr { transition: background .12s; }
 tbody tr:nth-child(even) td { background: rgba(255,255,255,.018); }

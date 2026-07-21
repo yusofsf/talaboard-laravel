@@ -126,7 +126,7 @@ class ArticleTest extends TestCase
         $this->assertTrue($article->is_published);
     }
 
-    public function test_admin_can_create_an_article_from_a_non_canonical_origin(): void
+    public function test_admin_cannot_create_an_article_over_a_non_canonical_http_origin(): void
     {
         config(['seo.force_https' => true]);
         $admin = User::factory()->admin()->create();
@@ -136,11 +136,10 @@ class ArticleTest extends TestCase
             'slug' => 'article-from-admin-form',
             'body' => 'Article body',
             'is_published' => true,
-        ])->assertSessionHasNoErrors()->assertRedirect();
+        ])->assertStatus(426);
 
-        $this->assertDatabaseHas('articles', [
+        $this->assertDatabaseMissing('articles', [
             'slug' => 'article-from-admin-form',
-            'title' => 'Article from admin form',
         ]);
     }
 

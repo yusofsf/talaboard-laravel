@@ -988,7 +988,7 @@ class AdminController extends Controller
     public function userPasswordReset(Request $request, int $uid)
     {
         $request->validate([
-            'password' => ['required', 'string', 'min:6', 'confirmed'],
+            'password' => UserPassword::rules(),
         ]);
 
         $user = User::findOrFail($uid);

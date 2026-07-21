@@ -26,15 +26,15 @@ class UserSaltTest extends TestCase
         $this->post('/register', [
             'name' => 'Test User',
             'phone' => '09120000000',
-            'password' => 'password',
-            'password_confirmation' => 'password',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
         ])->assertRedirect('/');
 
         $user = User::where('phone', '09120000000')->first();
         $this->assertNotNull($user);
         $this->assertNotEmpty($user->salt);
-        $this->assertFalse(Hash::check('password', $user->password));
-        $this->assertTrue(UserPassword::check($user, 'password'));
+        $this->assertFalse(Hash::check('Password123!', $user->password));
+        $this->assertTrue(UserPassword::check($user, 'Password123!'));
     }
 
     public function test_legacy_bcrypt_password_is_upgraded_on_successful_login(): void
@@ -66,12 +66,12 @@ class UserSaltTest extends TestCase
 
         $this->actingAs($user)->post('/profile/password', [
             'old_password' => 'password',
-            'new_password' => 'new-password',
-            'new_password_confirmation' => 'new-password',
+            'new_password' => 'NewPassword123!',
+            'new_password_confirmation' => 'NewPassword123!',
         ])->assertRedirect();
 
         $this->assertNotSame($oldSalt, $user->refresh()->salt);
-        $this->assertFalse(Hash::check('new-password', $user->password));
-        $this->assertTrue(UserPassword::check($user, 'new-password'));
+        $this->assertFalse(Hash::check('NewPassword123!', $user->password));
+        $this->assertTrue(UserPassword::check($user, 'NewPassword123!'));
     }
 }

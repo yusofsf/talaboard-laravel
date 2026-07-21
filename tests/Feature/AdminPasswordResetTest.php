@@ -18,13 +18,13 @@ class AdminPasswordResetTest extends TestCase
 
         $this->actingAs($admin)
             ->post("/admin/users/{$user->id}/password", [
-                'password' => 'new-password',
-                'password_confirmation' => 'new-password',
+                'password' => 'NewPassword123!',
+                'password_confirmation' => 'NewPassword123!',
             ])
             ->assertRedirect();
 
         $user->refresh();
-        $this->assertTrue(UserPassword::check($user, 'new-password'));
+        $this->assertTrue(UserPassword::check($user, 'NewPassword123!'));
         $this->assertFalse($user->must_reset_password);
         $this->assertNull($user->legacy_password_hash);
     }

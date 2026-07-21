@@ -27,11 +27,11 @@ class PasswordResetTest extends TestCase
         $this->withSession(['reset_phone' => $user->phone])
             ->post('/reset-password', [
                 'otp' => '123456',
-                'password' => 'new-password',
-                'password_confirmation' => 'new-password',
+                'password' => 'NewPassword123!',
+                'password_confirmation' => 'NewPassword123!',
             ])
             ->assertRedirect('/login');
 
-        $this->assertTrue(UserPassword::check($user->fresh(), 'new-password'));
+        $this->assertTrue(UserPassword::check($user->fresh(), 'NewPassword123!'));
     }
 }

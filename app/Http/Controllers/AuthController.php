@@ -27,7 +27,7 @@ class AuthController extends Controller
         $request->validate([
             'name'     => ['required', 'string', 'max:100', 'not_regex:/[<>]/'],
             'phone'    => 'required|string|unique:users,phone',
-            'password' => 'required|min:6|confirmed',
+            'password' => UserPassword::rules(),
         ]);
 
         $salt = UserPassword::newSalt();
@@ -42,7 +42,8 @@ class AuthController extends Controller
         ActivityLog::record('register', 'auth', "ثبت‌نام کاربر جدید: {$user->name} ({$user->phone})", $user->id);
 
         $this->sms->sendWelcome($user->phone, $user->name);
-        Auth::login($user, true);
+        Auth::login($user);
+        $request->session()->regenerate();
         return redirect('/');
     }
 
@@ -95,6 +96,7 @@ class AuthController extends Controller
 
         ActivityLog::record('login', 'auth', "ورود موفق: {$user->name} ({$user->phone})", $user->id);
         Auth::login($user, $request->boolean('remember'));
+        $request->session()->regenerate();
         return redirect('/');
     }
 
@@ -125,7 +127,8 @@ class AuthController extends Controller
         OtpToken::where('phone', $user->phone)->where('purpose', 'login')->delete();
         $request->session()->forget('pending_2fa');
         ActivityLog::record('login', 'auth', "ورود موفق با کد دو مرحله‌ای: {$user->name} ({$user->phone})", $user->id);
-        Auth::login($user, true);
+        Auth::login($user);
+        $request->session()->regenerate();
         return redirect('/');
     }
 
@@ -166,7 +169,7 @@ class AuthController extends Controller
 
         $request->validate([
             'otp'      => 'required|string|size:6',
-            'password' => 'required|min:6|confirmed',
+            'password' => UserPassword::rules(),
         ]);
 
         if (!$this->otpValid($phone, $request->otp, 'reset')) {
@@ -231,11 +234,15 @@ class AuthController extends Controller
             return false;
         }
 
-        return OtpToken::where('phone', $phone)
-            ->where('otp', $otp)
+        $token = OtpToken::where('phone', $phone)
             ->where('purpose', $purpose)
             ->where('expires_at', '>', now())
-            ->exists();
+            ->latest('id')
+            ->first();
+
+        // Tokens issued before this change were stored as plaintext. Retain a
+        // short-lived compatibility path until they expire, but issue only hashes.
+        return $token !== null && (hash_equals($token->otp, $otp) || \Illuminate\Support\Facades\Hash::check($otp, $token->otp));
     }
 
     private function createOtp(string $phone, string $purpose): string
@@ -244,7 +251,7 @@ class AuthController extends Controller
         $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         OtpToken::create([
             'phone'      => $phone,
-            'otp'        => $otp,
+            'otp'        => \Illuminate\Support\Facades\Hash::make($otp),
             'purpose'    => $purpose,
             'expires_at' => now()->addMinutes(2),
         ]);

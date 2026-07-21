@@ -3,6 +3,8 @@ import AppLayout, { faNum } from '../Layouts/AppLayout';
 import DateRangeFilter, { filterByDateRange } from '../Components/DateRangeFilter';
 import Pager, { usePager } from '../Components/Pager';
 
+const ledgerTypeLabel = type => ({ deposit: 'واریز', withdraw: 'برداشت' })[type] || type;
+
 function LedgerTable({ title, rows, kind }) {
     const [from, setFrom] = useState('');
     const [to, setTo] = useState('');
@@ -48,7 +50,7 @@ function LedgerRow({ row, kind }) {
     return <tr>
         <td style={{ color: 'var(--muted)', fontSize: 12 }}>{row.created_at}</td>
         {kind !== 'cash' && <td>{row.asset}</td>}
-        <td>{row.type}</td>
+        <td>{ledgerTypeLabel(row.type)}</td>
         <td className="num" style={{ color: positive ? 'var(--up)' : 'var(--down)', fontWeight: 800 }}>{positive ? '+' : ''}{faNum(amount)}{kind === 'cash' ? ' تومان' : ' گرم'}</td>
         <td style={{ whiteSpace: 'normal', minWidth: 180 }}>{row.description || '—'}</td>
     </tr>;

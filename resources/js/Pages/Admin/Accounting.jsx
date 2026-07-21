@@ -5,7 +5,21 @@ import DateRangeFilter, { filterByDateRange } from '../../Components/DateRangeFi
 import Pager, { usePager } from '../../Components/Pager';
 import SearchBox, { filterBySearch } from '../../Components/SearchBox';
 
-const ledgerTypeLabel = type => ({ deposit: 'واریز', withdraw: 'برداشت' })[type] || type;
+const ledgerTypeLabel = type => ({
+    deposit: 'واریز',
+    withdraw: 'برداشت',
+    purchase: 'خرید از فروشگاه',
+    sale: 'فروش به فروشگاه',
+    p2p_buy: 'خرید از اتاق معاملاتی',
+    p2p_sell: 'فروش در اتاق معاملاتی',
+    offer_escrow: 'رزرو سفارش اتاق معاملاتی',
+    offer_refund: 'بازگشت رزرو سفارش',
+    delivery: 'درخواست تحویل فیزیکی',
+    delivery_refund: 'بازگشت درخواست تحویل',
+    inventory_increase: 'افزایش موجودی انبار',
+    admin_adjust: 'اصلاح توسط مدیریت',
+    trade_reject: 'برگشت معامله',
+})[type] || type;
 
 export default function Accounting({ summary, walletTransactions, userBalances }) {
     const [transactionQuery, setTransactionQuery] = useState('');

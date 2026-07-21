@@ -345,6 +345,45 @@ class AdminController extends Controller
         return Inertia::render('Admin/OnlineUsers', ['users' => $users]);
     }
 
+    /** Consolidated, read-only accounting report for administrators. */
+    public function accounting()
+    {
+        $summary = [
+            'cash_balance' => (int) WalletTransaction::sum('amount'),
+            'gold_balance' => (float) GoldLedger::sum('grams'),
+            'silver_999_balance' => (float) SilverLedger::where('purity', '999')->sum('grams'),
+            'silver_995_balance' => (float) SilverLedger::where('purity', '995')->sum('grams'),
+            'active_buy_total' => (int) Transaction::where('status', 'active')->where('type', 'buy')->sum('total'),
+            'active_sell_total' => (int) Transaction::where('status', 'active')->where('type', 'sell')->sum('total'),
+            'pending_deposits' => (int) DepositRequest::where('status', 'pending')->sum('amount'),
+            'pending_withdrawals' => (int) WithdrawalRequest::where('status', 'pending')->sum('amount'),
+        ];
+
+        $walletTransactions = WalletTransaction::with('user')->orderByDesc('created_at')->limit(300)->get()
+            ->map(fn ($t) => [
+                'id' => $t->id,
+                'user_name' => $t->user?->name,
+                'user_phone' => $t->user?->phone,
+                'amount' => (int) $t->amount,
+                'type' => $t->type,
+                'description' => $t->description,
+                'created_at' => Jalali::format($t->created_at),
+                'date_raw' => $t->created_at->format('Y-m-d'),
+            ]);
+
+        $userBalances = User::orderBy('name')->get()->map(fn ($user) => [
+            'id' => $user->id,
+            'name' => $user->name,
+            'phone' => $user->phone,
+            'cash' => $user->walletBalance(),
+            'gold' => $user->goldBalance(),
+            'silver_999' => $user->silverBalance('999'),
+            'silver_995' => $user->silverBalance('995'),
+        ]);
+
+        return Inertia::render('Admin/Accounting', compact('summary', 'walletTransactions', 'userBalances'));
+    }
+
     public function ticketShow(int $id)
     {
         $ticket = Ticket::with(['user', 'messages.user'])->findOrFail($id);
@@ -988,7 +1027,7 @@ class AdminController extends Controller
     public function userPasswordReset(Request $request, int $uid)
     {
         $request->validate([
-            'password' => ['required', 'string', 'min:6', 'confirmed'],
+            'password' => UserPassword::rules(),
         ]);
 
         $user = User::findOrFail($uid);

@@ -66,7 +66,7 @@ class ProfileController extends Controller
         $user = $request->user();
         $request->validate([
             'old_password' => 'required|string',
-            'new_password' => 'required|min:6|confirmed',
+            'new_password' => UserPassword::rules(),
         ]);
 
         if (!UserPassword::check($user, $request->old_password)) {

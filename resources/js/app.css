@@ -185,13 +185,21 @@ select option { color: #15192b; background: #fff; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 thead tr { background: rgba(255,255,255,.05); }
 thead th { position: sticky; top: 0; z-index: 1; background: #1a2348; }
-th, td { padding: 13px 14px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+/* Keep the dense RTL data views scannable by centering each value consistently. */
+th, td { padding: 13px 14px; text-align: center; border-bottom: 1px solid var(--line); white-space: nowrap; }
 thead th { color: var(--muted); font-weight: 700; font-size: 13px; }
 tbody tr { transition: background .12s; }
 tbody tr:nth-child(even) td { background: rgba(255,255,255,.018); }
 tbody tr:last-child td { border-bottom: none; }
 tbody tr:hover td { background: rgba(246,207,99,.06); }
 .num { font-variant-numeric: tabular-nums; }
+
+/* Accounting is a report surface: keep both member and admin data visually centered. */
+.accounting-page { text-align: center; }
+.accounting-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 20px 0; }
+.accounting-summary > div { padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(160deg,var(--card),var(--card-2)); }
+.accounting-summary small { display: block; color: var(--muted); margin-bottom: 6px; font-size: 12px; }
+.accounting-summary strong { font-size: 18px; }
 
 /* خالی */
 .empty { text-align: center; padding: 56px 0; color: var(--muted); }

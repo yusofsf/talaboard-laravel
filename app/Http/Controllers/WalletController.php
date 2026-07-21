@@ -64,6 +64,56 @@ class WalletController extends Controller
         ]);
     }
 
+    /** A read-only, member-scoped view of the three append-only ledgers. */
+    public function accounting(Request $request)
+    {
+        $user = $request->user();
+
+        $cashTransactions = $user->walletTransactions()->get()->map(fn ($t) => [
+            'id' => $t->id,
+            'amount' => (int) $t->amount,
+            'type' => $t->type,
+            'description' => $t->description,
+            'created_at' => Jalali::format($t->created_at),
+            'date_raw' => $t->created_at->format('Y-m-d'),
+        ]);
+
+        $assetTransactions = $user->goldLedger()->get()->map(fn ($t) => [
+            'id' => 'gold-'.$t->id,
+            'asset' => 'طلا',
+            'grams' => (float) $t->grams,
+            'type' => $t->type,
+            'description' => $t->description,
+            'created_at' => Jalali::format($t->created_at),
+            'date_raw' => $t->created_at->format('Y-m-d'),
+            'sort_at' => $t->created_at,
+        ])->merge($user->silverLedger()->get()->map(fn ($t) => [
+            'id' => 'silver-'.$t->id,
+            'asset' => 'نقره '.$t->purity,
+            'grams' => (float) $t->grams,
+            'type' => $t->type,
+            'description' => $t->description,
+            'created_at' => Jalali::format($t->created_at),
+            'date_raw' => $t->created_at->format('Y-m-d'),
+            'sort_at' => $t->created_at,
+        ]))->sortByDesc('sort_at')->values()->map(function (array $entry) {
+            unset($entry['sort_at']);
+
+            return $entry;
+        });
+
+        return Inertia::render('Accounting', [
+            'balances' => [
+                'cash' => $user->walletBalance(),
+                'gold' => $user->goldBalance(),
+                'silver_999' => $user->silverBalance('999'),
+                'silver_995' => $user->silverBalance('995'),
+            ],
+            'cashTransactions' => $cashTransactions,
+            'assetTransactions' => $assetTransactions,
+        ]);
+    }
+
     /** درخواست افزایش موجودی — فعلاً واریز دستی (شماره پیگیری/توضیح)، بررسی و تأیید توسط ادمین. بعداً به درگاه پرداخت متصل می‌شود. */
     public function requestDeposit(Request $request)
     {

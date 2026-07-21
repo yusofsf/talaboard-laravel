@@ -5,9 +5,23 @@ namespace App\Support;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
 
 class UserPassword
 {
+    /**
+     * Shared policy for every password-creation flow.
+     */
+    public static function rules(): array
+    {
+        return [
+            'required',
+            'string',
+            'confirmed',
+            Password::min(10)->mixedCase()->numbers()->symbols(),
+        ];
+    }
+
     public static function newSalt(): string
     {
         return Str::random(32);

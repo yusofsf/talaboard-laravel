@@ -78,7 +78,7 @@ function OfferRow({ o, accept, cancel }) {
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                         {o.is_mine
                             ? <button onClick={() => cancel(o.id)} className="btn-sm danger">لغو</button>
-                            : <button onClick={() => accept(o.id)} className="btn-sm" style={{ borderColor: 'rgba(65,225,166,.4)', color: 'var(--up)', background: 'rgba(65,225,166,.08)' }}>پذیرفتن</button>}
+                            : <button onClick={() => accept(o)} className="btn-sm" style={{ borderColor: 'rgba(65,225,166,.4)', color: 'var(--up)', background: 'rgba(65,225,166,.08)' }}>پذیرفتن</button>}
                         <button type="button" className="btn-sm" onClick={() => setOpen(v => !v)} title="جزئیات">{open ? '▲' : '▾'}</button>
                     </div>
                 </td>
@@ -110,6 +110,7 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
     const [myTo, setMyTo] = useState('');
     const [item, setItem] = useState('gold');
     const [unit, setUnit] = useState('gram'); // gram | mithqal — فقط واحد ورودی فرم
+    const [acceptance, setAcceptance] = useState(null);
     const form = useForm({ metal: 'silver', side: 'sell', purity: '999', item: '', grams: '', price_per_gram: '' });
     const isCoinForm = form.data.metal === 'coin';
 
@@ -192,9 +193,25 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
         });
     }
 
-    function accept(id) {
-        if (!confirm('این پیشنهاد پذیرفته شود؟ معامله فوراً نهایی می‌شود.')) return;
-        router.post(`/trade-room/${id}/accept`, {}, { preserveScroll: true });
+    function accept(offer) {
+        if (offer.is_coin) {
+            if (!confirm('این پیشنهاد پذیرفته شود؟ معامله فوراً نهایی می‌شود.')) return;
+            router.post(`/trade-room/${offer.id}/accept`, {}, { preserveScroll: true });
+            return;
+        }
+        setAcceptance({ offer, mode: 'full', unit: 'gram', quantity: String(offer.grams) });
+    }
+
+    function submitAcceptance(e) {
+        e.preventDefault();
+        const { offer, mode: acceptMode, unit: acceptUnit, quantity } = acceptance;
+        const grams = acceptMode === 'full'
+            ? offer.grams
+            : +(parseFloat(quantity || 0) * (acceptUnit === 'mithqal' ? M : 1)).toFixed(4);
+        router.post(`/trade-room/${offer.id}/accept`, { grams }, {
+            preserveScroll: true,
+            onSuccess: () => setAcceptance(null),
+        });
     }
 
     function cancel(id) {
@@ -209,6 +226,49 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                 <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 20 }}>
                     خرید و فروش طلا، نقره و سکه بین اعضای ویژه — مستقیماً با یکدیگر، بدون واسطه‌ی فروشگاه. هر دو طرف معامله باید عضو ویژه باشند.
                 </p>
+
+                {acceptance && (() => {
+                    const { offer, mode: acceptMode, unit: acceptUnit, quantity } = acceptance;
+                    const maxInUnit = acceptUnit === 'mithqal' ? offer.grams / M : offer.grams;
+                    const minInUnit = acceptUnit === 'mithqal' ? 100 / M : 100;
+                    const acceptedGrams = acceptMode === 'full'
+                        ? offer.grams
+                        : (parseFloat(quantity || 0) * (acceptUnit === 'mithqal' ? M : 1));
+                    const acceptedTotal = Number.isFinite(acceptedGrams) ? Math.round(acceptedGrams * offer.price_per_gram) : 0;
+                    return (
+                        <div role="dialog" aria-modal="true" aria-labelledby="accept-offer-title" style={{ position: 'fixed', zIndex: 50, inset: 0, background: 'rgba(0,0,0,.64)', display: 'grid', placeItems: 'center', padding: 16 }}>
+                            <form onSubmit={submitAcceptance} style={{ width: 'min(100%, 440px)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 18, padding: 20, boxShadow: '0 18px 48px rgba(0,0,0,.35)' }}>
+                                <h3 id="accept-offer-title" style={{ margin: '0 0 8px', fontSize: 18 }}>پذیرش سفارش {offer.item_label}</h3>
+                                <p style={{ color: 'var(--muted)', fontSize: 13, lineHeight: 1.8, margin: '0 0 16px' }}>
+                                    ماندهٔ این سفارش {faNum(offer.grams)} گرم است. کل سفارش را می‌خواهید یا بخشی از آن را؟
+                                </p>
+                                <div className="btn-row" style={{ marginBottom: 16 }}>
+                                    <button type="button" onClick={() => setAcceptance(a => ({ ...a, mode: 'full', quantity: String(a.offer.grams) }))} style={{ padding: 11, borderRadius: 12, fontFamily: 'inherit', fontWeight: 700, cursor: 'pointer', border: acceptMode === 'full' ? '2px solid var(--gold-1)' : '1px solid var(--line)', background: acceptMode === 'full' ? 'rgba(246,207,99,.15)' : 'transparent', color: acceptMode === 'full' ? 'var(--gold-1)' : 'var(--txt)' }}>کل سفارش</button>
+                                    <button type="button" onClick={() => setAcceptance(a => ({ ...a, mode: 'partial', quantity: a.quantity === String(a.offer.grams) ? '' : a.quantity }))} style={{ padding: 11, borderRadius: 12, fontFamily: 'inherit', fontWeight: 700, cursor: 'pointer', border: acceptMode === 'partial' ? '2px solid var(--gold-1)' : '1px solid var(--line)', background: acceptMode === 'partial' ? 'rgba(246,207,99,.15)' : 'transparent', color: acceptMode === 'partial' ? 'var(--gold-1)' : 'var(--txt)' }}>بخشی از سفارش</button>
+                                </div>
+                                {acceptMode === 'partial' && <>
+                                    <div className="btn-row" style={{ marginBottom: 12 }}>
+                                        {[['gram', 'گرم'], ['mithqal', 'مثقال']].map(([u, label]) => <button key={u} type="button" onClick={() => setAcceptance(a => ({ ...a, unit: u, quantity: '' }))} style={{ padding: 9, borderRadius: 10, fontFamily: 'inherit', cursor: 'pointer', border: acceptUnit === u ? '2px solid var(--gold-1)' : '1px solid var(--line)', background: acceptUnit === u ? 'rgba(246,207,99,.15)' : 'transparent', color: acceptUnit === u ? 'var(--gold-1)' : 'var(--txt)' }}>واحد: {label}</button>)}
+                                    </div>
+                                    <div className="field">
+                                        <label>مقدار پذیرش ({acceptUnit === 'mithqal' ? 'مثقال' : 'گرم'}) — حداقل معادل ۱۰۰ گرم</label>
+                                        <input type="number" autoFocus required step="any" min={minInUnit} max={maxInUnit} value={quantity} onChange={e => setAcceptance(a => ({ ...a, quantity: e.target.value }))} />
+                                    </div>
+                                </>}
+                                <div style={{ background: 'rgba(255,255,255,.04)', border: '1px solid var(--line)', borderRadius: 12, padding: '10px 12px', margin: '14px 0', fontSize: 13 }}>
+                                    <div style={{ color: 'var(--muted)' }}>مقدار این معامله: <strong style={{ color: 'var(--txt)' }}>{faNum(Number(acceptedGrams.toFixed(4)) || 0)} گرم</strong></div>
+                                    <div style={{ color: 'var(--muted)', marginTop: 5 }}>مبلغ تقریبی: <strong className="num" style={{ color: 'var(--gold-1)' }}>{faNum(acceptedTotal)} تومان</strong></div>
+                                    {acceptMode === 'partial' && <div style={{ color: 'var(--muted)', marginTop: 5 }}>مانده پس از پذیرش: {faNum(Math.max(0, offer.grams - acceptedGrams).toFixed(4))} گرم</div>}
+                                </div>
+                                <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.7, margin: '0 0 14px' }}>در پذیرش جزئی، باید پس از معامله حداقل ۱۰۰ گرم در سفارش باقی بماند؛ مگر اینکه کل سفارش را بپذیرید.</p>
+                                <div style={{ display: 'flex', gap: 10 }}>
+                                    <button type="submit" className="btn" style={{ flex: 1 }}>تأیید پذیرش</button>
+                                    <button type="button" className="btn-sm" onClick={() => setAcceptance(null)}>انصراف</button>
+                                </div>
+                            </form>
+                        </div>
+                    );
+                })()}
 
                 {/* موجودی */}
                 <div style={{ display: 'flex', gap: 14, marginBottom: 24, flexWrap: 'wrap' }}>

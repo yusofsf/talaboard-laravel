@@ -390,6 +390,9 @@ export default function Home({ prices: initial, refreshSeconds }) {
                     position:fixed; top:12px; inset-inline-start:12px; inset-inline-end:12px;
                     bottom:12px; width:auto; max-width:none; max-height:none; grid-template-columns:repeat(2,minmax(0,1fr));
                   }
+                  .tv-menu-panel .tv-nav-pill{min-height:44px;padding:8px 10px;font-size:12px}
+                  .tv-menu-heading{font-size:14px}
+                  .tv-menu-caption{font-size:11px}
                   .tv-main{gap:12px; margin-top:8px}
                   .tv-block{gap:6px}
                   .tv-grid{grid-template-columns:repeat(2,1fr); gap:10px}

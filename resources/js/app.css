@@ -311,8 +311,15 @@ tbody tr:hover td { background: rgba(246,207,99,.06); }
 @media (max-width:520px) {
   .simple-nav { padding:10px 12px; }
   .simple-nav-brand span, .simple-user-level { display:none; }
-  .simple-menu { position:fixed; top:64px; bottom:12px; max-height:none; inset-inline:12px; width:auto; }
-  .simple-menu-group { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .simple-menu { position:fixed; top:64px; bottom:12px; max-height:none; inset-inline:12px; width:auto; padding:8px; -webkit-overflow-scrolling:touch; }
+  .simple-menu-title { margin:2px 3px 4px; font-size:13px; }
+  .simple-menu-help { display:none; }
+  .simple-menu-group { grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; margin-bottom:8px; }
+  .simple-menu-group + .simple-menu-group { padding-top:8px; }
+  .simple-menu-link { min-height:44px; padding:7px; flex-direction:row; align-items:center; gap:6px; }
+  .simple-menu-link strong { font-size:12px; }
+  .simple-menu-link small { display:none; }
+  .simple-menu-link svg { width:17px; height:17px; flex:0 0 17px; }
   .simple-menu-button { padding:0 12px; }
 }
 @media (prefers-reduced-motion:reduce) {

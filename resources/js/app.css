@@ -303,10 +303,12 @@ tbody tr:hover td { background: rgba(246,207,99,.06); }
 .simple-nav-brand { display:inline-flex; align-items:center; gap:9px; color:var(--txt); text-decoration:none; font-weight:900; white-space:nowrap; }
 .simple-nav-brand img { width:38px; height:38px; border-radius:12px; object-fit:cover; }
 .simple-user-level { font-size:12px; font-weight:800; color:var(--gold-1); padding:6px 10px; border-radius:999px; border:1px solid rgba(246,207,99,.3); background:rgba(246,207,99,.08); }
+.pwa-install-wrap { position:relative; display:inline-flex; }
 .pwa-install-button, .pwa-installed { min-height:36px; padding:0 10px; border-radius:10px; font:inherit; font-size:12px; font-weight:800; white-space:nowrap; }
 .pwa-install-button { border:1px solid rgba(246,207,99,.55); color:#201900; background:linear-gradient(135deg,var(--gold-1),var(--gold-2)); cursor:pointer; }
 .pwa-install-button:focus-visible { outline:3px solid rgba(246,207,99,.55); outline-offset:2px; }
 .pwa-installed { display:inline-flex; align-items:center; color:var(--muted); border:1px solid var(--line); }
+.pwa-install-help { position:absolute; inset-inline-start:0; top:calc(100% + 8px); z-index:1003; width:min(260px,calc(100vw - 24px)); padding:10px 12px; border:1px solid rgba(246,207,99,.35); border-radius:12px; background:linear-gradient(160deg,var(--card),var(--card-2)); color:var(--txt); box-shadow:0 14px 32px rgba(0,0,0,.38); font-size:12px; line-height:1.8; white-space:normal; }
 
 @media (max-width:800px) {
   .simple-menu { width:min(555px,calc(100vw - 28px)); }
@@ -316,6 +318,7 @@ tbody tr:hover td { background: rgba(246,207,99,.06); }
   .simple-nav { padding:10px 12px; }
   .simple-nav-brand span, .simple-user-level, .pwa-installed { display:none; }
   .pwa-install-button { min-height:40px; padding:0 8px; font-size:11px; }
+  .pwa-install-help { inset-inline-start:0; width:min(260px,calc(100vw - 24px)); }
   .simple-menu { position:absolute; top:calc(100% + 8px); bottom:auto; inset-inline-start:0; inset-inline-end:auto; width:min(420px,calc(100vw - 24px)); max-height:calc(100dvh - 86px); padding:8px; -webkit-overflow-scrolling:touch; }
   .simple-menu-title { margin:2px 3px 4px; font-size:13px; }
   .simple-menu-help { display:none; }

@@ -434,8 +434,8 @@ export default function Home({ prices: initial, refreshSeconds }) {
 
                     <div className="tv-status">
                         <div className="tv-clock">
-                            <div className="t">{now.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
-                            <div className="d">{now.toLocaleDateString('fa-IR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                            <div className="t">{now.toLocaleTimeString('fa-IR', { timeZone: 'Asia/Tehran', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
+                            <div className="d">{now.toLocaleDateString('fa-IR', { timeZone: 'Asia/Tehran', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
                         </div>
                         <div className="tv-menu-wrap">
                             <button ref={menuButtonRef} type="button" className="tv-menu-btn" aria-label="منو" onClick={() => setMenuOpen(v => !v)}>☰</button>

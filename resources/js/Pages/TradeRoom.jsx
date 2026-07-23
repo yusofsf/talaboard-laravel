@@ -161,6 +161,26 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
         }
     }, [prices, form.data.metal, form.data.side, form.data.purity, form.data.item, unit]);
 
+    // دفتر سفارش بدون رفرش کامل صفحه به‌روز می‌شود؛ در پس‌زمینه درخواست نمی‌فرستیم.
+    useEffect(() => {
+        const refreshOrderBook = () => {
+            if (document.visibilityState !== 'visible') return;
+            router.reload({
+                only: ['sellOffers', 'buyOffers', 'myOffers', 'walletBalance', 'goldBalance', 'silverBalance'],
+                preserveScroll: true,
+                preserveState: true,
+            });
+        };
+
+        const interval = window.setInterval(refreshOrderBook, 5000);
+        document.addEventListener('visibilitychange', refreshOrderBook);
+
+        return () => {
+            window.clearInterval(interval);
+            document.removeEventListener('visibilitychange', refreshOrderBook);
+        };
+    }, []);
+
     const activeItem = ITEMS.find(i => i.key === item) || ITEMS[0];
     const matchesItem = o => activeItem.metal === 'coin'
         ? (o.metal === 'coin' && o.item === activeItem.coin)

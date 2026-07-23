@@ -129,6 +129,79 @@ Route::get('/robots.txt', fn () => response(file_get_contents(public_path('robot
     'Content-Type' => 'text/plain; charset=UTF-8',
 ]))->name('robots');
 
+Route::get('/pwa.webmanifest', fn () => response(json_encode([
+    'id' => '/',
+    'name' => 'آبشده صفرپور | قیمت طلا و نقره',
+    'short_name' => 'آبشده صفرپور',
+    'description' => 'تابلوی قیمت لحظه‌ای و خرید و فروش آنلاین طلا و نقره',
+    'lang' => 'fa-IR',
+    'dir' => 'rtl',
+    'start_url' => '/',
+    'scope' => '/',
+    'display' => 'standalone',
+    'background_color' => '#0b0e14',
+    'theme_color' => '#0b0e14',
+    'icons' => [
+        [
+            'src' => '/pwa-icon-192.png',
+            'sizes' => '192x192',
+            'type' => 'image/png',
+            'purpose' => 'any',
+        ],
+        [
+            'src' => '/pwa-icon-512.png',
+            'sizes' => '512x512',
+            'type' => 'image/png',
+            'purpose' => 'any',
+        ],
+        [
+            'src' => '/pwa-icon-maskable-512.png',
+            'sizes' => '512x512',
+            'type' => 'image/png',
+            'purpose' => 'maskable',
+        ],
+    ],
+], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT), 200, [
+    'Content-Type' => 'application/manifest+json; charset=UTF-8',
+]))->name('pwa.manifest');
+
+Route::get('/pwa-icon-{size}.png', function (string $size) {
+    if (! in_array($size, ['192', '512', 'maskable-512'], true)) {
+        abort(404);
+    }
+
+    $pixels = str_starts_with($size, 'maskable') ? 512 : (int) $size;
+    $logo = imagecreatefromjpeg(public_path('logo.jpg'));
+    $width = imagesx($logo);
+    $height = imagesy($logo);
+    $side = min($width, $height);
+    $sourceX = (int) (($width - $side) / 2);
+    $sourceY = (int) (($height - $side) / 2);
+    $canvas = imagecreatetruecolor($pixels, $pixels);
+
+    imagesavealpha($canvas, true);
+    imagefill($canvas, 0, 0, imagecolorallocatealpha($canvas, 0, 0, 0, 127));
+
+    if ($size === 'maskable-512') {
+        $inner = 410;
+        $offset = (int) (($pixels - $inner) / 2);
+        imagecopyresampled($canvas, $logo, $offset, $offset, $sourceX, $sourceY, $inner, $inner, $side, $side);
+    } else {
+        imagecopyresampled($canvas, $logo, 0, 0, $sourceX, $sourceY, $pixels, $pixels, $side, $side);
+    }
+
+    ob_start();
+    imagepng($canvas, null, 9);
+    $png = ob_get_clean();
+    imagedestroy($canvas);
+    imagedestroy($logo);
+
+    return response($png, 200, [
+        'Content-Type' => 'image/png',
+        'Cache-Control' => 'public, max-age=31536000, immutable',
+    ]);
+})->where('size', '192|512|maskable-512')->name('pwa.icon');
+
 // احراز هویت
 Route::middleware('guest')->group(function () {
     Route::get('/register', [AuthController::class, 'registerForm'])->name('register');

@@ -91,6 +91,55 @@ class TradeRoomCommissionTest extends TestCase
             ->where('myOffers.0.role', 'پذیرنده'));
     }
 
+    public function test_a_weight_offer_can_be_partially_accepted_and_keeps_its_remaining_escrow_open(): void
+    {
+        Setting::put('trade_room_commission_percent', 0);
+        $seller = User::factory()->vip()->create();
+        $buyer = User::factory()->vip()->create();
+        \App\Models\GoldLedger::create(['user_id' => $seller->id, 'grams' => 1000, 'type' => 'admin_adjust', 'description' => 'seed']);
+        $this->fund($buyer, 1_000_000);
+
+        $this->actingAs($seller)->post('/trade-room', [
+            'metal' => 'gold', 'side' => 'sell', 'grams' => 1000, 'price_per_gram' => 1000,
+        ])->assertRedirect();
+        $offer = TradeRoomOffer::firstOrFail();
+
+        $this->actingAs($buyer)->post("/trade-room/{$offer->id}/accept", ['grams' => 100])
+            ->assertRedirect()->assertSessionHasNoErrors();
+
+        $offer->refresh();
+        $fill = TradeRoomOffer::where('parent_offer_id', $offer->id)->firstOrFail();
+
+        $this->assertSame('open', $offer->status);
+        $this->assertSame(900.0, (float) $offer->grams);
+        $this->assertSame('completed', $fill->status);
+        $this->assertSame(100.0, (float) $fill->grams);
+        $this->assertSame($offer->id, $fill->parent_offer_id);
+        $this->assertSame(100.0, $buyer->refresh()->goldBalance());
+        $this->assertSame(1_000_000 - (100 * 1000), $buyer->walletBalance());
+    }
+
+    public function test_partial_acceptance_cannot_leave_less_than_the_minimum_order_size(): void
+    {
+        $seller = User::factory()->vip()->create();
+        $buyer = User::factory()->vip()->create();
+        \App\Models\GoldLedger::create(['user_id' => $seller->id, 'grams' => 150, 'type' => 'admin_adjust', 'description' => 'seed']);
+        $this->fund($buyer, 1_000_000);
+
+        $this->actingAs($seller)->post('/trade-room', [
+            'metal' => 'gold', 'side' => 'sell', 'grams' => 150, 'price_per_gram' => 1000,
+        ]);
+        $offer = TradeRoomOffer::firstOrFail();
+
+        $this->actingAs($buyer)->post("/trade-room/{$offer->id}/accept", ['grams' => 100])
+            ->assertSessionHasErrors('offer');
+
+        $offer->refresh();
+        $this->assertSame('open', $offer->status);
+        $this->assertSame(150.0, (float) $offer->grams);
+        $this->assertSame(0, TradeRoomOffer::whereNotNull('parent_offer_id')->count());
+    }
+
     public function test_admin_can_change_the_commission_percent(): void
     {
         $admin = User::factory()->admin()->create();

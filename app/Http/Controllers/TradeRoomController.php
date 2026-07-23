@@ -147,8 +147,12 @@ class TradeRoomController extends Controller
         $acceptor = $request->user();
         $this->ensureVip($acceptor);
 
+        $request->validate([
+            'grams' => 'nullable|numeric|min:0.0001',
+        ]);
+
         try {
-            DB::transaction(function () use ($acceptor, $id) {
+            DB::transaction(function () use ($acceptor, $id, $request) {
                 $offer = TradeRoomOffer::where('id', $id)->lockForUpdate()->firstOrFail();
 
                 if ($offer->status !== 'open') {
@@ -164,10 +168,46 @@ class TradeRoomController extends Controller
                 $metal = $offer->metal;
                 $isCoin = $metal === 'coin';
                 $purity = $offer->purity;
-                $grams = (float) $offer->grams; // برای سکه = تعداد
-                $total = $offer->total();
+                $remainingGrams = (float) $offer->grams;
+                $grams = $request->filled('grams') ? (float) $request->grams : $remainingGrams;
+
+                if ($isCoin && abs($grams - $remainingGrams) > 0.0001) {
+                    throw new \RuntimeException('پذیرش جزئی فعلاً فقط برای طلا و نقره امکان‌پذیر است.');
+                }
+                if (! $isCoin && $grams < 100) {
+                    throw new \RuntimeException('حداقل مقدار پذیرش جزئی ۱۰۰ گرم است.');
+                }
+                if ($grams > $remainingGrams + 0.0001) {
+                    throw new \RuntimeException('مقدار انتخاب‌شده از مانده‌ی سفارش بیشتر است.');
+                }
+
+                $grams = min($grams, $remainingGrams);
+                $remainingAfterAcceptance = round($remainingGrams - $grams, 4);
+                if (! $isCoin && $remainingAfterAcceptance > 0 && $remainingAfterAcceptance < 100) {
+                    throw new \RuntimeException('مقدار انتخابی باید کل سفارش باشد یا حداقل ۱۰۰ گرم برای سفارش باقی بگذارد.');
+                }
+
+                $total = (int) round($grams * $offer->price_per_gram);
                 $itemLabel = $isCoin ? self::COIN_LABEL[$offer->item] : ($metal === 'gold' ? 'طلا' : self::PURITY_LABEL[$purity]);
                 $unit = $isCoin ? 'عدد' : 'گرم';
+
+                // در پذیرش جزئی یک ردیف تکمیل‌شده‌ی جدا می‌سازیم؛ سفارش اصلی باز
+                // می‌ماند و فقط مقدار باقی‌مانده‌ی آن کم می‌شود.
+                $trade = $remainingAfterAcceptance > 0
+                    ? TradeRoomOffer::create([
+                        'parent_offer_id' => $offer->id,
+                        'user_id' => $offer->user_id,
+                        'metal' => $offer->metal,
+                        'item' => $offer->item,
+                        'side' => $offer->side,
+                        'purity' => $offer->purity,
+                        'grams' => $grams,
+                        'price_per_gram' => $offer->price_per_gram,
+                        'status' => 'completed',
+                        'counterparty_id' => $acceptor->id,
+                        'completed_at' => now(),
+                    ])
+                    : $offer;
 
                 // کارمزد اتاق معاملاتی — به‌صورت نصف‌نصف بین خریدار و فروشنده. مبلغ کارمزد از سیستم خارج می‌شود (سهم فروشگاه).
                 $rate = (float) Setting::get('trade_room_commission_percent', 0.1) / 100;
@@ -184,13 +224,13 @@ class TradeRoomController extends Controller
                     if ($isCoin && $this->coinHolding($offer->user_id, $offer->item) < $grams) {
                         throw new \RuntimeException('موجودی فروشنده دیگر کافی نیست.');
                     }
-                    WalletTransaction::create(['user_id' => $acceptor->id, 'amount' => -($total + $buyerFee), 'type' => 'withdraw', 'description' => "خرید {$itemLabel} از اتاق معاملاتی #{$offer->id}".($buyerFee > 0 ? ' (شامل کارمزد '.number_format($buyerFee).' تومان)' : '')]);
-                    WalletTransaction::create(['user_id' => $offer->user_id, 'amount' => $total - $sellerFee, 'type' => 'deposit', 'description' => "فروش {$itemLabel} در اتاق معاملاتی #{$offer->id}".($sellerFee > 0 ? ' (پس از کسر کارمزد '.number_format($sellerFee).' تومان)' : '')]);
+                    WalletTransaction::create(['user_id' => $acceptor->id, 'amount' => -($total + $buyerFee), 'type' => 'withdraw', 'description' => "خرید {$itemLabel} از اتاق معاملاتی #{$trade->id}".($buyerFee > 0 ? ' (شامل کارمزد '.number_format($buyerFee).' تومان)' : '')]);
+                    WalletTransaction::create(['user_id' => $offer->user_id, 'amount' => $total - $sellerFee, 'type' => 'deposit', 'description' => "فروش {$itemLabel} در اتاق معاملاتی #{$trade->id}".($sellerFee > 0 ? ' (پس از کسر کارمزد '.number_format($sellerFee).' تومان)' : '')]);
                     if ($isCoin) {
-                        $this->coinTransfer($acceptor->id, 'buy', $offer, $total);
-                        $this->coinTransfer($offer->user_id, 'sell', $offer, $total);
+                        $this->coinTransfer($acceptor->id, 'buy', $trade, $total);
+                        $this->coinTransfer($offer->user_id, 'sell', $trade, $total);
                     } else {
-                        $this->createLedger($acceptor->id, $metal, $purity, $grams, 'p2p_buy', $offer->id, "خرید از اتاق معاملاتی #{$offer->id}");
+                        $this->createLedger($acceptor->id, $metal, $purity, $grams, 'p2p_buy', $trade->id, "خرید از اتاق معاملاتی #{$trade->id}");
                     }
                 } else {
                     // پیشنهاددهنده خریدار است (پول قبلاً رزرو شده)؛ acceptor فروشنده است
@@ -199,19 +239,22 @@ class TradeRoomController extends Controller
                         throw new \RuntimeException('موجودی شما کافی نیست.');
                     }
                     if ($isCoin) {
-                        $this->coinTransfer($acceptor->id, 'sell', $offer, $total);
-                        $this->coinTransfer($offer->user_id, 'buy', $offer, $total);
+                        $this->coinTransfer($acceptor->id, 'sell', $trade, $total);
+                        $this->coinTransfer($offer->user_id, 'buy', $trade, $total);
                     } else {
-                        $this->createLedger($acceptor->id, $metal, $purity, -$grams, 'p2p_sell', $offer->id, "فروش به اتاق معاملاتی #{$offer->id}");
-                        $this->createLedger($offer->user_id, $metal, $purity, $grams, 'p2p_buy', $offer->id, "خرید از اتاق معاملاتی #{$offer->id}");
+                        $this->createLedger($acceptor->id, $metal, $purity, -$grams, 'p2p_sell', $trade->id, "فروش به اتاق معاملاتی #{$trade->id}");
+                        $this->createLedger($offer->user_id, $metal, $purity, $grams, 'p2p_buy', $trade->id, "خرید از اتاق معاملاتی #{$trade->id}");
                     }
-                    WalletTransaction::create(['user_id' => $acceptor->id, 'amount' => $total - $sellerFee, 'type' => 'deposit', 'description' => "فروش {$itemLabel} در اتاق معاملاتی #{$offer->id}".($sellerFee > 0 ? ' (پس از کسر کارمزد '.number_format($sellerFee).' تومان)' : '')]);
+                    WalletTransaction::create(['user_id' => $acceptor->id, 'amount' => $total - $sellerFee, 'type' => 'deposit', 'description' => "فروش {$itemLabel} در اتاق معاملاتی #{$trade->id}".($sellerFee > 0 ? ' (پس از کسر کارمزد '.number_format($sellerFee).' تومان)' : '')]);
                     if ($buyerFee > 0) {
-                        WalletTransaction::create(['user_id' => $offer->user_id, 'amount' => -$buyerFee, 'type' => 'withdraw', 'description' => "کارمزد خرید اتاق معاملاتی #{$offer->id}"]);
+                        WalletTransaction::create(['user_id' => $offer->user_id, 'amount' => -$buyerFee, 'type' => 'withdraw', 'description' => "کارمزد خرید اتاق معاملاتی #{$trade->id}"]);
                     }
                 }
 
-                $offer->update(['status' => 'completed', 'counterparty_id' => $acceptor->id, 'completed_at' => now(), 'commission' => $fee]);
+                $trade->update(['status' => 'completed', 'counterparty_id' => $acceptor->id, 'completed_at' => now(), 'commission' => $fee]);
+                if ($trade->id !== $offer->id) {
+                    $offer->update(['grams' => $remainingAfterAcceptance]);
+                }
 
                 $feeNote = $fee > 0 ? ' — کارمزد: '.number_format($fee).' تومان' : '';
                 $qtyText = ($isCoin ? (int) $grams : $grams)." {$unit}";

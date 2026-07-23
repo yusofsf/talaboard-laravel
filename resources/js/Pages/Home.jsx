@@ -159,11 +159,26 @@ export default function Home({ prices: initial, refreshSeconds }) {
     const [online, setOnline] = useState(true);
     const [now, setNow] = useState(new Date());
     const [menuOpen, setMenuOpen] = useState(false);
+    const menuRef = useRef(null);
+    const menuButtonRef = useRef(null);
 
     useEffect(() => {
         const id = setInterval(() => setNow(new Date()), 1000);
         return () => clearInterval(id);
     }, []);
+
+    useEffect(() => {
+        if (!menuOpen) return undefined;
+
+        const closeOnOutsidePointerDown = event => {
+            if (!menuRef.current?.contains(event.target) && !menuButtonRef.current?.contains(event.target)) {
+                setMenuOpen(false);
+            }
+        };
+
+        document.addEventListener('pointerdown', closeOnOutsidePointerDown);
+        return () => document.removeEventListener('pointerdown', closeOnOutsidePointerDown);
+    }, [menuOpen]);
 
     useEffect(() => {
         let left = refreshSeconds || 30;
@@ -245,6 +260,7 @@ export default function Home({ prices: initial, refreshSeconds }) {
                   display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px;border-radius:18px;
                   background:linear-gradient(160deg,var(--card),var(--card-2));
                   border:1px solid var(--line);box-shadow:0 14px 40px rgba(0,0,0,.4);
+                  max-height:calc(100dvh - 70px);overflow-y:auto;overscroll-behavior:contain;
                 }
                 .tv-menu-panel .tv-nav-pill{justify-content:flex-start;border-radius:12px;width:100%;min-height:58px;padding:10px 12px;font-weight:700}
                 .tv-menu-panel .tv-nav-pill svg{width:18px;height:18px;flex:none}
@@ -372,7 +388,7 @@ export default function Home({ prices: initial, refreshSeconds }) {
                   .tv-clock .t{font-size:18px} .tv-clock .d{font-size:10px}
                   .tv-menu-panel{
                     position:fixed; top:12px; inset-inline-start:12px; inset-inline-end:12px;
-                    width:auto; max-width:none; grid-template-columns:repeat(2,minmax(0,1fr));
+                    bottom:12px; width:auto; max-width:none; max-height:none; grid-template-columns:repeat(2,minmax(0,1fr));
                   }
                   .tv-main{gap:12px; margin-top:8px}
                   .tv-block{gap:6px}
@@ -419,9 +435,9 @@ export default function Home({ prices: initial, refreshSeconds }) {
                             <div className="d">{now.toLocaleDateString('fa-IR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
                         </div>
                         <div className="tv-menu-wrap">
-                            <button type="button" className="tv-menu-btn" aria-label="منو" onClick={() => setMenuOpen(v => !v)}>☰</button>
+                            <button ref={menuButtonRef} type="button" className="tv-menu-btn" aria-label="منو" onClick={() => setMenuOpen(v => !v)}>☰</button>
                             {menuOpen && (
-                                <div className="tv-menu-panel">
+                                <div ref={menuRef} className="tv-menu-panel">
                                     <div className="tv-menu-heading">کدام کار را می‌خواهی انجام دهی؟</div>
                                     <div className="tv-menu-caption">هر گزینه یک کار ساده و مشخص دارد.</div>
                                     <Link href="/chart" className="tv-nav-pill"><MenuIcon kind="chart" />نمودار قیمت</Link>

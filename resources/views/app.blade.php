@@ -39,6 +39,11 @@
 <meta data-inertia="twitter-description" name="twitter:description" content="{{ $description }}">
 <meta data-inertia="twitter-image" name="twitter:image" content="{{ $seo['image'] ?? $logo }}">
 <meta name="theme-color" content="#0b0e14">
+<meta name="application-name" content="آبشده صفرپور">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="آبشده صفرپور">
+<link rel="manifest" href="/manifest.webmanifest">
 
 <script type="application/ld+json" @if($cspNonce) nonce="{{ $cspNonce }}" @endif>
 {!! json_encode([

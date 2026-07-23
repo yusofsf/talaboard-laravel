@@ -1,0 +1,21 @@
+{
+  "id": "/",
+  "name": "آبشده صفرپور | قیمت طلا و نقره",
+  "short_name": "آبشده صفرپور",
+  "description": "تابلوی قیمت لحظه‌ای و خرید و فروش آنلاین طلا و نقره",
+  "lang": "fa-IR",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b0e14",
+  "theme_color": "#0b0e14",
+  "icons": [
+    {
+      "src": "/logo.jpg",
+      "sizes": "1183x1234",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
+import PwaInstallButton from '../Components/PwaInstallButton';
 
 const FA = s => String(s ?? '').replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]).replace(/,/g, '٬');
 export const faNum = n => n == null ? '—' : FA(Number(n).toLocaleString('en'));
@@ -74,6 +75,7 @@ export default function AppLayout({ children }) {
             </Head>
             <nav className="simple-nav">
                 <div className="simple-nav-actions">
+                    <PwaInstallButton />
                     {user && <span className="simple-user-level">{levelLabel(user)}</span>}
                     <button ref={menuButtonRef} type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} aria-controls="main-menu" className="simple-menu-button">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 7h16M4 12h16M4 17h16" /></svg>

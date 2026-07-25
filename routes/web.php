@@ -33,6 +33,7 @@ Route::get('/calculator', fn () => Inertia::render('Calculator', [
         'canonical' => rtrim(config('seo.url'), '/').'/calculator',
     ],
 ]))->name('calculator');
+Route::get('/price-calculator', fn () => Inertia::render('PriceCalculator'))->name('price-calculator');
 Route::get('/chart', fn () => Inertia::render('Chart'))->name('chart');
 Route::get('/speed-test', fn () => Inertia::render('SpeedTest'))->name('speed-test');
 Route::get('/about', fn () => Inertia::render('About', [

@@ -292,13 +292,13 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
 
                 {/* موجودی */}
                 <div style={{ display: 'flex', gap: 14, marginBottom: 24, flexWrap: 'wrap' }}>
-                    <div style={{ flex: '1', minWidth: 180, background: 'linear-gradient(160deg,var(--card),var(--card-2))', border: '1px solid var(--line)', borderRadius: 16, padding: '16px 18px' }}>
+                    <div style={{ flex: '1', minWidth: 180, background: 'linear-gradient(160deg,var(--card),var(--card-2))', border: '1px solid var(--line)', borderRadius: 16, padding: '16px 18px', textAlign: 'center' }}>
                         <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>موجودی کیف پول</div>
                         <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--up)' }}>
                             {faNum(walletBalance)} <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--muted)' }}>تومان</span>
                         </div>
                     </div>
-                    <div style={{ flex: '1', minWidth: 180, background: 'linear-gradient(160deg,var(--card),var(--card-2))', border: '1px solid var(--line)', borderRadius: 16, padding: '16px 18px' }}>
+                    <div style={{ flex: '1', minWidth: 180, background: 'linear-gradient(160deg,var(--card),var(--card-2))', border: '1px solid var(--line)', borderRadius: 16, padding: '16px 18px', textAlign: 'center' }}>
                         <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>موجودی طلا</div>
                         <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gold-1)' }}>
                             {faNum(goldBalance)} <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--muted)' }}>گرم</span>
@@ -306,7 +306,7 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                     </div>
                     {['999', '995'].map(p => (
                         <div key={p} style={{
-                            flex: '1', minWidth: 180, background: 'linear-gradient(160deg,var(--card),var(--card-2))',
+                            flex: '1', minWidth: 180, background: 'linear-gradient(160deg,var(--card),var(--card-2))', textAlign: 'center',
                             border: '1px solid var(--line)', borderRadius: 16, padding: '16px 18px',
                         }}>
                             <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>موجودی نقره {p}</div>

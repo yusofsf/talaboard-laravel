@@ -80,7 +80,7 @@ export default function Cart({ items, totalBuy, totalSell, walletBalance }) {
 function Summary({ label, value, tone }) {
     const color = tone === 'up' ? 'var(--up)' : tone === 'down' ? 'var(--down)' : tone === 'gold' ? 'var(--gold-1)' : 'var(--txt)';
     return (
-        <div style={{ background: 'rgba(255,255,255,.035)', border: '1px solid var(--line)', borderRadius: 12, padding: '14px 16px' }}>
+        <div style={{ background: 'rgba(255,255,255,.035)', border: '1px solid var(--line)', borderRadius: 12, padding: '14px 16px', textAlign: 'center' }}>
             <div style={{ color: 'var(--muted)', fontSize: 12, marginBottom: 6 }}>{label}</div>
             <div style={{ color, fontSize: 20, fontWeight: 900 }}>{faNum(value)} <span style={{ fontSize: 12, fontWeight: 500 }}>تومان</span></div>
         </div>

@@ -72,8 +72,6 @@ class HistoryController extends Controller
 
         return Inertia::render('History', [
             'transactions' => $transactions,
-            'summary' => $this->buildSummary($transactions->where('status', 'active')),
-            'wallet_balance' => $user->walletBalance(),
         ]);
     }
 
@@ -88,30 +86,5 @@ class HistoryController extends Controller
                 default => 'ربع سکه',
             },
         };
-    }
-
-    private function buildSummary($transactions): array
-    {
-        $groups = [];
-        foreach ($transactions as $transaction) {
-            $label = $transaction['item_label'];
-            if (! isset($groups[$label])) {
-                $groups[$label] = ['label' => $label, 'buy_qty' => 0, 'sell_qty' => 0, 'buy_total' => 0, 'sell_total' => 0];
-            }
-            if ($transaction['type'] === 'buy') {
-                $groups[$label]['buy_qty'] += (float) $transaction['quantity'];
-                $groups[$label]['buy_total'] += $transaction['total'];
-            } else {
-                $groups[$label]['sell_qty'] += (float) $transaction['quantity'];
-                $groups[$label]['sell_total'] += $transaction['total'];
-            }
-        }
-
-        return array_values(array_map(function ($group) {
-            $group['weight_balance'] = round($group['buy_qty'] - $group['sell_qty'], 4);
-            $group['money_balance'] = $group['buy_total'] - $group['sell_total'];
-
-            return $group;
-        }, $groups));
     }
 }

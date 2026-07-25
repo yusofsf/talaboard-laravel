@@ -12,7 +12,7 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     protected $fillable = [
-        'name', 'phone', 'email', 'national_id', 'password', 'salt',
+        'name', 'phone', 'telegram_chat_id', 'email', 'national_id', 'password', 'salt',
         'is_vip', 'is_admin', 'must_reset_password', 'legacy_password_hash',
         'membership_level', 'national_id_doc', 'identity_doc', 'verification_video',
         'membership_status', 'birth_date', 'residence_address',

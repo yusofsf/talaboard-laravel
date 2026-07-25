@@ -226,6 +226,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
     Route::post('/profile/info', [ProfileController::class, 'updateInfo'])->name('profile.info');
     Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+    Route::post('/profile/telegram-link', [ProfileController::class, 'createTelegramLinkCode'])->middleware('throttle:5,1')->name('profile.telegram-link');
     Route::post('/profile/bank-cards', [ProfileController::class, 'storeBankCard'])->name('profile.bank-cards.store');
     Route::delete('/profile/bank-cards/{id}', [ProfileController::class, 'destroyBankCard'])->name('profile.bank-cards.destroy');
 

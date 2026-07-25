@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { router, useForm } from '@inertiajs/react';
 import AppLayout from '../Layouts/AppLayout';
 
-export default function Profile({ user, bankCards }) {
+export default function Profile({ user, bankCards, telegramLinkCode }) {
     const info = useForm({
         name: user.name || '', phone: user.phone || '',
         email: user.email || '', national_id: user.national_id || '',
@@ -55,6 +55,20 @@ export default function Profile({ user, bankCards }) {
                             <input type="password" value={pw.data.new_password_confirmation} onChange={e => pw.setData('new_password_confirmation', e.target.value)} required /></div>
                         <button className="btn" type="submit" disabled={pw.processing}>تغییر رمز</button>
                     </form>
+                </div>
+
+                <div className="fcard" style={{ marginTop: 24 }}>
+                    <h2>🤖 اتصال حساب تلگرام</h2>
+                    <div style={{ height: 12 }} />
+                    {user.is_vip ? (
+                        <>
+                            <p style={{ color: 'var(--muted)', lineHeight: 1.9 }}>برای اتصال حساب، کد بسازید و آن را حداکثر تا ۱۰ دقیقه با قالب <span dir="ltr">/link CODE</span> برای ربات بفرستید.</p>
+                            <button className="btn" type="button" onClick={() => router.post('/profile/telegram-link')}>ساخت کد اتصال ربات</button>
+                            {telegramLinkCode && <div className="alert success" style={{ marginTop: 14 }}>کد اتصال: <strong dir="ltr">{telegramLinkCode}</strong><br />در ربات بفرستید: <strong dir="ltr">/link {telegramLinkCode}</strong></div>}
+                        </>
+                    ) : (
+                        <div className="alert err">اتصال ربات فقط پس از فعال‌شدن عضویت ویژه امکان‌پذیر است.</div>
+                    )}
                 </div>
 
                 <div className="fcard" style={{ marginTop: 24 }}>

@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Helpers\Jalali;
 use App\Models\Notification;
+use App\Models\TelegramLinkCode;
 use App\Support\UserPassword;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class ProfileController extends Controller
@@ -15,7 +17,29 @@ class ProfileController extends Controller
         return Inertia::render('Profile', [
             'user'      => $request->user(),
             'bankCards' => $request->user()->bankCards()->get(['id', 'bank_name', 'card_number', 'account_number', 'shaba']),
+            'telegramLinkCode' => $request->session()->get('telegram_link_code'),
         ]);
+    }
+
+    public function createTelegramLinkCode(Request $request)
+    {
+        $user = $request->user();
+
+        if (! $user->isVipMember()) {
+            return back()->with('error', 'اتصال ربات فقط برای اعضای ویژه فعال است.');
+        }
+
+        $code = Str::upper(Str::random(24));
+        TelegramLinkCode::query()->where('user_id', $user->id)->whereNull('used_at')->delete();
+        TelegramLinkCode::create([
+            'user_id' => $user->id,
+            'code_hash' => hash('sha256', $code),
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        return back()
+            ->with('telegram_link_code', $code)
+            ->with('success', 'کد اتصال ساخته شد. آن را حداکثر تا ۱۰ دقیقه برای ربات ارسال کنید.');
     }
 
     public function storeBankCard(Request $request)

@@ -1,6 +1,9 @@
 <?php
 
 return [
+    'telegram' => [
+        'link_api_token' => env('TELEGRAM_LINK_API_TOKEN'),
+    ],
 
     /*
     |--------------------------------------------------------------------------

@@ -651,7 +651,14 @@ class AdminController extends Controller
                 abort(422, 'این درخواست قبلاً بررسی شده است.');
             }
 
-            $itemLabel = $increase->metal === 'gold' ? 'طلا' : "نقره {$increase->purity}";
+            $coinItems = [
+                'full' => ['item' => 'bahar', 'label' => 'سکه تمام'],
+                'half' => ['item' => 'nim', 'label' => 'نیم‌سکه'],
+                'quarter' => ['item' => 'rob', 'label' => 'ربع‌سکه'],
+            ];
+            $itemLabel = $increase->metal === 'gold'
+                ? 'طلا'
+                : ($increase->metal === 'silver' ? "نقره {$increase->purity}" : $coinItems[$increase->purity]['label']);
             if ($increase->metal === 'gold') {
                 GoldLedger::create([
                     'user_id' => $increase->user_id,
@@ -661,7 +668,7 @@ class AdminController extends Controller
                     'reference_id' => $increase->id,
                     'description' => "تأیید درخواست افزایش موجودی #{$increase->id}",
                 ]);
-            } else {
+            } elseif ($increase->metal === 'silver') {
                 SilverLedger::create([
                     'user_id' => $increase->user_id,
                     'purity' => $increase->purity,
@@ -671,13 +678,27 @@ class AdminController extends Controller
                     'reference_id' => $increase->id,
                     'description' => "تأیید درخواست افزایش موجودی #{$increase->id}",
                 ]);
+            } else {
+                $coin = $coinItems[$increase->purity] ?? null;
+                abort_unless($coin, 422, 'نوع سکه نامعتبر است.');
+                Transaction::create([
+                    'user_id' => $increase->user_id,
+                    'type' => 'buy',
+                    'item' => $coin['item'],
+                    'item_label' => $coin['label'],
+                    'quantity' => $increase->grams,
+                    'price_per_unit' => 0,
+                    'total' => 0,
+                    'status' => 'active',
+                    'admin_note' => "تأیید درخواست افزایش موجودی #{$increase->id}",
+                ]);
             }
 
             $increase->update(['status' => 'approved', 'admin_note' => trim((string) $request->input('note', '')) ?: null]);
             Notification::create([
                 'user_id' => $increase->user_id,
                 'title' => 'درخواست افزایش موجودی تأیید شد',
-                'body' => "{$increase->grams} گرم {$itemLabel} به موجودی انبار شما اضافه شد. تاریخ: ".Jalali::now(),
+                'body' => "{$increase->grams} ".($increase->metal === 'coin' ? 'عدد' : 'گرم')." {$itemLabel} به موجودی انبار شما اضافه شد. تاریخ: ".Jalali::now(),
                 'type' => 'system',
             ]);
         });

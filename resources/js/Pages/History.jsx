@@ -10,6 +10,7 @@ function TxnRow({ t, i }) {
             <td className="num" style={{ color: 'var(--muted)' }}>{i + 1}</td>
             <td>
                 <span style={rejected ? { textDecoration: 'line-through' } : undefined}>{t.item_label}</span>
+                {t.source === 'room' && <span className="badge" style={{ marginInlineStart: 6 }}>اتاق معاملاتی</span>}
                 {rejected && (
                     <>
                         <span className="badge sell-b" style={{ marginInlineStart: 6 }}>رد شد</span>

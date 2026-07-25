@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\GoldLedger;
 use App\Models\Notification;
 use App\Models\Setting;
 use App\Models\TradeRoomOffer;
@@ -24,10 +25,10 @@ class TradeRoomCommissionTest extends TestCase
         Setting::put('trade_room_commission_percent', 0.1); // ۰.۱٪
 
         $seller = User::factory()->vip()->create();
-        $buyer  = User::factory()->vip()->create();
+        $buyer = User::factory()->vip()->create();
 
         // فروشنده ۱۰۰ گرم طلا دارد و پیشنهاد فروش می‌گذارد
-        \App\Models\GoldLedger::create(['user_id' => $seller->id, 'grams' => 100, 'type' => 'admin_adjust', 'description' => 'seed']);
+        GoldLedger::create(['user_id' => $seller->id, 'grams' => 100, 'type' => 'admin_adjust', 'description' => 'seed']);
         $this->actingAs($seller)->post('/trade-room', [
             'metal' => 'gold', 'side' => 'sell', 'grams' => 100, 'price_per_gram' => 1000,
         ])->assertRedirect();
@@ -58,10 +59,10 @@ class TradeRoomCommissionTest extends TestCase
     public function test_admins_are_notified_when_a_trade_room_deal_completes(): void
     {
         Setting::put('trade_room_commission_percent', 0.1);
-        $admin  = User::factory()->admin()->create();
+        $admin = User::factory()->admin()->create();
         $seller = User::factory()->vip()->create();
-        $buyer  = User::factory()->vip()->create();
-        \App\Models\GoldLedger::create(['user_id' => $seller->id, 'grams' => 100, 'type' => 'admin_adjust', 'description' => 'seed']);
+        $buyer = User::factory()->vip()->create();
+        GoldLedger::create(['user_id' => $seller->id, 'grams' => 100, 'type' => 'admin_adjust', 'description' => 'seed']);
         $this->fund($buyer, 1_000_000);
 
         $this->actingAs($seller)->post('/trade-room', ['metal' => 'gold', 'side' => 'sell', 'grams' => 100, 'price_per_gram' => 1000]);
@@ -75,8 +76,8 @@ class TradeRoomCommissionTest extends TestCase
     {
         Setting::put('trade_room_commission_percent', 0);
         $seller = User::factory()->vip()->create();
-        $buyer  = User::factory()->vip()->create();
-        \App\Models\GoldLedger::create(['user_id' => $seller->id, 'grams' => 100, 'type' => 'admin_adjust', 'description' => 'seed']);
+        $buyer = User::factory()->vip()->create();
+        GoldLedger::create(['user_id' => $seller->id, 'grams' => 100, 'type' => 'admin_adjust', 'description' => 'seed']);
         $this->fund($buyer, 1_000_000);
 
         $this->actingAs($seller)->post('/trade-room', ['metal' => 'gold', 'side' => 'sell', 'grams' => 100, 'price_per_gram' => 1000]);
@@ -96,7 +97,7 @@ class TradeRoomCommissionTest extends TestCase
         Setting::put('trade_room_commission_percent', 0);
         $seller = User::factory()->vip()->create();
         $buyer = User::factory()->vip()->create();
-        \App\Models\GoldLedger::create(['user_id' => $seller->id, 'grams' => 1000, 'type' => 'admin_adjust', 'description' => 'seed']);
+        GoldLedger::create(['user_id' => $seller->id, 'grams' => 1000, 'type' => 'admin_adjust', 'description' => 'seed']);
         $this->fund($buyer, 1_000_000);
 
         $this->actingAs($seller)->post('/trade-room', [
@@ -123,7 +124,7 @@ class TradeRoomCommissionTest extends TestCase
     {
         $seller = User::factory()->vip()->create();
         $buyer = User::factory()->vip()->create();
-        \App\Models\GoldLedger::create(['user_id' => $seller->id, 'grams' => 150, 'type' => 'admin_adjust', 'description' => 'seed']);
+        GoldLedger::create(['user_id' => $seller->id, 'grams' => 150, 'type' => 'admin_adjust', 'description' => 'seed']);
         $this->fund($buyer, 1_000_000);
 
         $this->actingAs($seller)->post('/trade-room', [
@@ -138,6 +139,40 @@ class TradeRoomCommissionTest extends TestCase
         $this->assertSame('open', $offer->status);
         $this->assertSame(150.0, (float) $offer->grams);
         $this->assertSame(0, TradeRoomOffer::whereNotNull('parent_offer_id')->count());
+    }
+
+    public function test_a_partial_trade_room_fill_appears_in_both_users_history(): void
+    {
+        Setting::put('trade_room_commission_percent', 0);
+        $admin = User::factory()->admin()->create();
+        $seller = User::factory()->vip()->create();
+        $buyer = User::factory()->vip()->create();
+        GoldLedger::create(['user_id' => $seller->id, 'grams' => 1000, 'type' => 'admin_adjust', 'description' => 'seed']);
+        $this->fund($buyer, 1_000_000);
+
+        $this->actingAs($seller)->post('/trade-room', [
+            'metal' => 'gold', 'side' => 'sell', 'grams' => 1000, 'price_per_gram' => 1000,
+        ]);
+        $offer = TradeRoomOffer::firstOrFail();
+        $this->actingAs($buyer)->post("/trade-room/{$offer->id}/accept", ['grams' => 100]);
+        $fill = TradeRoomOffer::where('parent_offer_id', $offer->id)->firstOrFail();
+
+        $this->actingAs($seller)->get('/history')->assertInertia(fn ($page) => $page
+            ->has('transactions', 1)
+            ->where('transactions.0.id', 'room-'.$fill->id)
+            ->where('transactions.0.type', 'sell')
+            ->where('transactions.0.source', 'room'));
+
+        $this->actingAs($buyer)->get('/history')->assertInertia(fn ($page) => $page
+            ->has('transactions', 1)
+            ->where('transactions.0.id', 'room-'.$fill->id)
+            ->where('transactions.0.type', 'buy')
+            ->where('transactions.0.source', 'room'));
+
+        $this->actingAs($admin)->get('/admin')->assertInertia(fn ($page) => $page
+            ->has('allTrades', 1)
+            ->where('allTrades.0.id', 'room-'.$fill->id)
+            ->where('allTrades.0.source', 'room'));
     }
 
     public function test_admin_can_change_the_commission_percent(): void

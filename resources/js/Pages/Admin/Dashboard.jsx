@@ -423,7 +423,7 @@ function DepositRow({ d, printOnly, depositNote, setDepositNote, depositReason, 
             <td><strong>{d.user_name}</strong></td>
             <td className="num" dir="ltr" style={{ fontSize: 13 }}>{d.user_phone}</td>
             <td className="num" style={{ color: 'var(--gold-1)', fontWeight: 700 }}>{faNum(d.amount)}</td>
-            <td style={{ color: 'var(--muted)', fontSize: 13 }}>{d.note || '—'}</td>
+            <td style={{ color: 'var(--muted)', fontSize: 13 }}>{d.note || '—'}{d.receipt_url && <><br /><a href={d.receipt_url} target="_blank" rel="noreferrer" style={{ color: 'var(--gold-1)' }}>مشاهده فیش</a></>}</td>
             <td style={{ fontSize: 12, color: 'var(--muted)' }}>{d.created_at}</td>
             {!printOnly && (
                 <td>

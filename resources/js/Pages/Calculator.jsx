@@ -13,6 +13,7 @@ function pretty(str) {
     return (neg ? '-' : '') + FA(grouped + (decPart !== undefined ? '.' + FA(decPart) : ''));
 }
 
+/*
 const METALS = [
     { key: 'gold',       label: 'طلا (گرم)',        priceField: ['gold', 'geram'] },
     { key: 'silver_999', label: 'نقره ۹۹۹/۹ (گرم)', priceField: ['silver', 'gram_999'] },
@@ -89,9 +90,9 @@ function Row({ label, value, big }) {
         </div>
     );
 }
+*/
 
 export default function Calculator() {
-    const [tab, setTab] = useState('calc');
     const [display, setDisplay] = useState('0');   // عملوند فعلی (رشته)
     const [acc, setAcc] = useState(null);           // انباشته
     const [op, setOp] = useState(null);             // عملگر در انتظار
@@ -193,14 +194,6 @@ export default function Calculator() {
     return (
         <AppLayout>
             <div className="page">
-                <div className="tabs no-print">
-                    <button className={`tab-btn${tab === 'calc' ? ' active' : ''}`} onClick={() => setTab('calc')}>🧮 ماشین حساب</button>
-                    <button className={`tab-btn${tab === 'price' ? ' active' : ''}`} onClick={() => setTab('price')}>💰 محاسبه قیمت طلا و نقره</button>
-                </div>
-
-                {tab === 'price' && <PriceCalculator />}
-
-                {tab === 'calc' && (
                 <div className="fcard">
                     <h2>🧮 ماشین حساب</h2>
                     <div style={{ height: 16 }} />
@@ -253,7 +246,6 @@ export default function Calculator() {
                         با صفحه‌کلید هم کار می‌کند: اعداد، + − × ÷، Enter، Backspace، Esc
                     </p>
                 </div>
-                )}
             </div>
 
             <style>{`

@@ -7,6 +7,8 @@ use App\Models\ActivityLog;
 use App\Models\BankCard;
 use App\Models\DepositRequest;
 use App\Models\Notification;
+use App\Models\TradeRoomOffer;
+use App\Models\Transaction;
 use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Models\WithdrawalRequest;
@@ -22,33 +24,33 @@ class WalletController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $txns = $user->walletTransactions()->get()->map(fn($t) => [
-            'id'          => $t->id,
-            'amount'      => $t->amount,
-            'type'        => $t->type,
+        $txns = $user->walletTransactions()->get()->map(fn ($t) => [
+            'id' => $t->id,
+            'amount' => $t->amount,
+            'type' => $t->type,
             'description' => $t->description,
-            'created_at'  => Jalali::format($t->created_at),
+            'created_at' => Jalali::format($t->created_at),
         ]);
 
         $withdrawals = WithdrawalRequest::where('user_id', $user->id)
             ->orderByDesc('created_at')->get()
             ->map(fn ($w) => [
-                'id'          => $w->id,
-                'amount'      => $w->amount,
+                'id' => $w->id,
+                'amount' => $w->amount,
                 'card_number' => $w->card_number,
-                'shaba'       => $w->shaba,
-                'status'      => $w->status,
-                'admin_note'  => $w->admin_note,
-                'created_at'  => Jalali::format($w->created_at),
+                'shaba' => $w->shaba,
+                'status' => $w->status,
+                'admin_note' => $w->admin_note,
+                'created_at' => Jalali::format($w->created_at),
             ]);
 
         $deposits = DepositRequest::where('user_id', $user->id)
             ->orderByDesc('created_at')->get()
             ->map(fn ($d) => [
-                'id'         => $d->id,
-                'amount'     => $d->amount,
-                'note'       => $d->note,
-                'status'     => $d->status,
+                'id' => $d->id,
+                'amount' => $d->amount,
+                'note' => $d->note,
+                'status' => $d->status,
                 'admin_note' => $d->admin_note,
                 'created_at' => Jalali::format($d->created_at),
             ]);
@@ -56,11 +58,11 @@ class WalletController extends Controller
         $bankCards = $user->bankCards()->get(['id', 'bank_name', 'card_number', 'shaba']);
 
         return Inertia::render('Wallet', [
-            'balance'     => $user->walletBalance(),
-            'txns'        => $txns,
+            'balance' => $user->walletBalance(),
+            'txns' => $txns,
             'withdrawals' => $withdrawals,
-            'deposits'    => $deposits,
-            'bankCards'   => $bankCards,
+            'deposits' => $deposits,
+            'bankCards' => $bankCards,
         ]);
     }
 
@@ -111,7 +113,67 @@ class WalletController extends Controller
             ],
             'cashTransactions' => $cashTransactions,
             'assetTransactions' => $assetTransactions,
+            'tradeSummary' => $this->tradeSummary($user),
         ]);
+    }
+
+    private function tradeSummary(User $user): array
+    {
+        $trades = Transaction::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'active')
+            ->get()
+            ->map(fn (Transaction $trade) => [
+                'label' => $trade->item_label,
+                'side' => $trade->type,
+                'quantity' => (float) $trade->quantity,
+                'total' => $trade->total,
+            ])
+            ->concat(TradeRoomOffer::query()
+                ->where('status', 'completed')
+                ->where(fn ($query) => $query->where('user_id', $user->id)->orWhere('counterparty_id', $user->id))
+                ->get()
+                ->map(function (TradeRoomOffer $trade) use ($user) {
+                    $side = $trade->user_id === $user->id
+                        ? $trade->side
+                        : ($trade->side === 'buy' ? 'sell' : 'buy');
+
+                    return [
+                        'label' => match ($trade->metal) {
+                            'gold' => 'طلا (گرم)',
+                            'silver' => "نقره {$trade->purity} (گرم)",
+                            default => match ($trade->item) {
+                                'bahar' => 'سکه تمام',
+                                'nim' => 'نیم سکه',
+                                default => 'ربع سکه',
+                            },
+                        },
+                        'side' => $side,
+                        'quantity' => (float) $trade->grams,
+                        'total' => $trade->total(),
+                    ];
+                }));
+
+        $groups = [];
+        foreach ($trades as $trade) {
+            $label = $trade['label'];
+            $groups[$label] ??= ['label' => $label, 'buy_qty' => 0, 'sell_qty' => 0, 'buy_total' => 0, 'sell_total' => 0];
+
+            if ($trade['side'] === 'buy') {
+                $groups[$label]['buy_qty'] += $trade['quantity'];
+                $groups[$label]['buy_total'] += $trade['total'];
+            } else {
+                $groups[$label]['sell_qty'] += $trade['quantity'];
+                $groups[$label]['sell_total'] += $trade['total'];
+            }
+        }
+
+        return array_values(array_map(function (array $group) {
+            $group['weight_balance'] = round($group['buy_qty'] - $group['sell_qty'], 4);
+            $group['money_balance'] = $group['buy_total'] - $group['sell_total'];
+
+            return $group;
+        }, $groups));
     }
 
     /** درخواست افزایش موجودی — فعلاً واریز دستی (شماره پیگیری/توضیح)، بررسی و تأیید توسط ادمین. بعداً به درگاه پرداخت متصل می‌شود. */
@@ -121,40 +183,41 @@ class WalletController extends Controller
 
         $request->validate([
             'amount' => 'required|integer|min:1000',
-            'note'   => 'nullable|string|max:200',
+            'note' => 'nullable|string|max:200',
         ]);
 
         $admins = User::where('is_admin', true)->get();
 
         $deposit = DepositRequest::create([
             'user_id' => $user->id,
-            'amount'  => $request->amount,
-            'note'    => $request->note,
-            'status'  => 'pending',
+            'amount' => $request->amount,
+            'note' => $request->note,
+            'status' => 'pending',
         ]);
 
         Notification::create([
             'user_id' => $user->id,
-            'title'   => 'درخواست افزایش موجودی ثبت شد',
-            'body'    => number_format($request->amount) . ' تومان — تاریخ: ' . Jalali::now() . ' — در حال بررسی.',
-            'type'    => 'wallet',
+            'title' => 'درخواست افزایش موجودی ثبت شد',
+            'body' => number_format($request->amount).' تومان — تاریخ: '.Jalali::now().' — در حال بررسی.',
+            'type' => 'wallet',
         ]);
 
         foreach ($admins as $admin) {
             Notification::create([
                 'user_id' => $admin->id,
-                'title'   => "درخواست افزایش موجودی — {$user->name}",
-                'body'    => number_format($request->amount) . ' تومان — تاریخ: ' . Jalali::now(),
-                'type'    => 'wallet',
+                'title' => "درخواست افزایش موجودی — {$user->name}",
+                'body' => number_format($request->amount).' تومان — تاریخ: '.Jalali::now(),
+                'type' => 'wallet',
             ]);
         }
 
         ActivityLog::record('deposit_request', 'wallet',
-            "درخواست افزایش موجودی " . number_format($request->amount) . " تومان — کاربر: {$user->name}", $user->id);
+            'درخواست افزایش موجودی '.number_format($request->amount)." تومان — کاربر: {$user->name}", $user->id);
 
         try {
-            $this->sms->send($user->phone, 'درخواست افزایش موجودی ' . number_format($request->amount) . ' تومانی شما ثبت شد و در حال بررسی است.');
-        } catch (\Exception) {}
+            $this->sms->send($user->phone, 'درخواست افزایش موجودی '.number_format($request->amount).' تومانی شما ثبت شد و در حال بررسی است.');
+        } catch (\Exception) {
+        }
 
         return back()->with('success', 'درخواست افزایش موجودی شما ثبت شد و پس از تأیید ادمین به کیف پول شما اضافه می‌شود.');
     }
@@ -164,12 +227,12 @@ class WalletController extends Controller
         $user = $request->user();
 
         $request->validate([
-            'amount'       => 'required|integer|min:1000',
+            'amount' => 'required|integer|min:1000',
             'bank_card_id' => 'required|exists:bank_cards,id',
         ]);
 
         $card = BankCard::where('user_id', $user->id)->where('id', $request->bank_card_id)->first();
-        if (!$card) {
+        if (! $card) {
             return back()->withErrors(['bank_card_id' => 'کارت بانکی انتخاب‌شده معتبر نیست.']);
         }
 
@@ -184,46 +247,47 @@ class WalletController extends Controller
 
         DB::transaction(function () use ($user, $request, $admins, $card) {
             $withdrawal = WithdrawalRequest::create([
-                'user_id'     => $user->id,
-                'amount'      => $request->amount,
+                'user_id' => $user->id,
+                'amount' => $request->amount,
                 'card_number' => $card->card_number,
-                'shaba'       => $card->shaba,
-                'status'      => 'pending',
+                'shaba' => $card->shaba,
+                'status' => 'pending',
             ]);
 
             WalletTransaction::create([
-                'user_id'     => $user->id,
-                'amount'      => -$request->amount,
-                'type'        => 'withdraw',
+                'user_id' => $user->id,
+                'amount' => -$request->amount,
+                'type' => 'withdraw',
                 'description' => "درخواست تسویه حساب #{$withdrawal->id}",
             ]);
 
             Notification::create([
                 'user_id' => $user->id,
-                'title'   => 'درخواست تسویه حساب ثبت شد',
-                'body'    => number_format($request->amount) . ' تومان — تاریخ: ' . Jalali::now() . ' — در حال بررسی.',
-                'type'    => 'wallet',
+                'title' => 'درخواست تسویه حساب ثبت شد',
+                'body' => number_format($request->amount).' تومان — تاریخ: '.Jalali::now().' — در حال بررسی.',
+                'type' => 'wallet',
             ]);
 
             foreach ($admins as $admin) {
                 Notification::create([
                     'user_id' => $admin->id,
-                    'title'   => "درخواست تسویه حساب — {$user->name}",
-                    'body'    => number_format($request->amount) . ' تومان — تاریخ: ' . Jalali::now(),
-                    'type'    => 'wallet',
+                    'title' => "درخواست تسویه حساب — {$user->name}",
+                    'body' => number_format($request->amount).' تومان — تاریخ: '.Jalali::now(),
+                    'type' => 'wallet',
                 ]);
             }
         });
 
         ActivityLog::record('withdrawal_request', 'wallet',
-            "درخواست تسویه حساب " . number_format($request->amount) . " تومان — کاربر: {$user->name}", $user->id);
+            'درخواست تسویه حساب '.number_format($request->amount)." تومان — کاربر: {$user->name}", $user->id);
 
         try {
-            $this->sms->send($user->phone, 'درخواست تسویه حساب ' . number_format($request->amount) . ' تومانی شما ثبت شد و در حال بررسی است.');
+            $this->sms->send($user->phone, 'درخواست تسویه حساب '.number_format($request->amount).' تومانی شما ثبت شد و در حال بررسی است.');
             foreach ($admins as $admin) {
-                $this->sms->send($admin->phone, "درخواست تسویه حساب جدید: {$user->name} — " . number_format($request->amount) . ' تومان.');
+                $this->sms->send($admin->phone, "درخواست تسویه حساب جدید: {$user->name} — ".number_format($request->amount).' تومان.');
             }
-        } catch (\Exception) {}
+        } catch (\Exception) {
+        }
 
         return back()->with('success', 'درخواست تسویه حساب شما ثبت شد.');
     }

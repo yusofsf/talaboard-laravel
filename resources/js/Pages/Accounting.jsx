@@ -70,7 +70,7 @@ function LedgerRow({ row, kind }) {
     </tr>;
 }
 
-export default function Accounting({ balances, cashTransactions, assetTransactions }) {
+export default function Accounting({ balances, cashTransactions, assetTransactions, tradeSummary }) {
     return <AppLayout>
         <main className="page-wide accounting-page">
             <h2 style={{ fontSize: 24, fontWeight: 800 }}>حسابداری من</h2>
@@ -81,6 +81,25 @@ export default function Accounting({ balances, cashTransactions, assetTransactio
                 <div><small>مانده نقره ۹۹۹</small><strong>{faNum(balances.silver_999)} گرم</strong></div>
                 <div><small>مانده نقره ۹۹۵</small><strong>{faNum(balances.silver_995)} گرم</strong></div>
             </div>
+            <section style={{ marginTop: 30 }}>
+                <h3 className="section-title">خلاصه معاملات من</h3>
+                {tradeSummary.length ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
+                    {tradeSummary.map(summary => <div key={summary.label} style={{ flex: '1', minWidth: 200, background: 'rgba(255,255,255,.03)', border: '1px solid var(--line)', borderRadius: 14, padding: '16px 18px' }}>
+                        <div style={{ fontWeight: 700, marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid var(--line)' }}>{summary.label}</div>
+                        {[
+                            ['وزن خرید', summary.buy_qty, 'var(--up)'],
+                            ['وزن فروش', summary.sell_qty, 'var(--down)'],
+                            ['مانده وزن', summary.weight_balance, summary.weight_balance > 0 ? 'var(--up)' : summary.weight_balance < 0 ? 'var(--down)' : 'var(--muted)'],
+                        ].map(([label, value, color]) => <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}><span style={{ color: 'var(--muted)' }}>{label}</span><span style={{ fontWeight: 700, color }}>{faNum(value)}</span></div>)}
+                        <hr style={{ border: 'none', borderTop: '1px solid var(--line)', margin: '8px 0' }} />
+                        {[
+                            ['پرداخت خرید', summary.buy_total, 'var(--up)'],
+                            ['دریافت فروش', summary.sell_total, 'var(--down)'],
+                            ['مانده پول', summary.money_balance, summary.money_balance > 0 ? 'var(--down)' : summary.money_balance < 0 ? 'var(--up)' : 'var(--muted)'],
+                        ].map(([label, value, color]) => <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}><span style={{ color: 'var(--muted)' }}>{label}</span><span style={{ fontWeight: 700, color }}>{faNum(value)} <span style={{ fontSize: 10 }}>ت</span></span></div>)}
+                    </div>)}
+                </div> : <div className="empty">هنوز داده‌ای برای محاسبه وجود ندارد.</div>}
+            </section>
             <div className="no-print"><button type="button" className="btn-sm gold" onClick={() => window.print()}>چاپ / خروجی PDF</button></div>
             <LedgerTable title="گردش کیف پول" rows={cashTransactions} kind="cash" />
             <LedgerTable title="گردش طلا و نقره" rows={assetTransactions} kind="asset" />

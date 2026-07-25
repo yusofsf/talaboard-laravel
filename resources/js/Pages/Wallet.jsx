@@ -42,7 +42,7 @@ export default function Wallet({ balance, txns, withdrawals, deposits, bankCards
                 <div style={{
                     background: 'linear-gradient(135deg,var(--gold-1),var(--gold-2))',
                     borderRadius: 22, padding: '32px 28px', marginBottom: 20,
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', flexWrap: 'wrap', gap: 16,
                 }}>
                     <div>
                         <div style={{ fontSize: 13, fontWeight: 700, color: '#5a3a00', opacity: .8 }}>موجودی فعلی</div>

@@ -90,6 +90,7 @@ export default function AppLayout({ children }) {
                             <div className="simple-menu-group">
                                 <MenuLink href="/" hint="قیمت‌ها را ببین" onClick={() => setOpen(false)}>تابلوی قیمت</MenuLink>
                                 <MenuLink href="/calculator" hint="حساب‌وکتاب سریع" onClick={() => setOpen(false)}>ماشین حساب</MenuLink>
+                                <MenuLink href="/price-calculator" hint="برآورد قیمت طلا و نقره" onClick={() => setOpen(false)}>محاسبه قیمت طلا و نقره</MenuLink>
                                 <MenuLink href="/chart" hint="تغییر قیمت‌ها" onClick={() => setOpen(false)}>نمودار قیمت</MenuLink>
                                 <MenuLink href="/articles" hint="یاد بگیر" onClick={() => setOpen(false)}>راهنما و مقاله</MenuLink>
                             </div>
@@ -208,6 +209,7 @@ function MenuIcon({ href }) {
     let icon = <><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M8 12h8M12 8v8" /></>;
     if (href === '/' || href === '/chart' || href === '/history') icon = <><path d="M4 19V5M4 19h16" /><path d="m7 15 4-4 3 2 4-6" /></>;
     if (href === '/calculator') icon = <><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M8 8h8M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01M16 17h.01" /></>;
+    if (href === '/price-calculator') icon = <><path d="M4 19V5M4 19h16" /><path d="m7 15 4-4 3 2 4-6" /><circle cx="17" cy="7" r="3" /></>;
     if (href === '/articles' || href === '/admin/articles') icon = <><path d="M6 3h9l4 4v14H6z" /><path d="M15 3v5h5M9 12h6M9 16h6" /></>;
     if (href === '/wallet') icon = <><path d="M4 7h15a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h12" /><path d="M16 13h3" /></>;
     if (href === '/accounting' || href === '/admin/accounting') icon = <><path d="M4 19V5M4 19h16" /><path d="m7 15 4-4 3 2 4-6" /><path d="M16 5h4v4" /></>;

@@ -108,6 +108,8 @@ export default function AppLayout({ children }) {
                                 {user.is_admin && <MenuLink href="/admin" hint="کارهای مدیر سایت" onClick={() => setOpen(false)}>مدیریت سایت</MenuLink>}
                                 {user.is_admin && <MenuLink href="/admin/accounting" hint="گزارش تجمیعی و حرفه‌ای" onClick={() => setOpen(false)}>حسابداری مدیریت</MenuLink>}
                                 {user.is_admin && <MenuLink href="/admin/articles" hint="نوشتن و تغییر مقاله" onClick={() => setOpen(false)}>مدیریت مقاله‌ها</MenuLink>}
+                                {user.is_admin && <MenuLink href="/admin/api-tokens" hint="دسترسی API و قابلیت‌ها" onClick={() => setOpen(false)}>مدیریت توکن API</MenuLink>}
+                                {user.is_admin && <MenuLink href="/admin/recycle-bin" hint="بازگردانی رکوردهای حذف‌شده" onClick={() => setOpen(false)}>حذف‌شده‌ها</MenuLink>}
                                 {user.is_admin && <MenuLink href="/admin/online-users" hint="کاربران حاضر" onClick={() => setOpen(false)}>کاربران آنلاین</MenuLink>}
                                 <button type="button" onClick={logout} className="simple-menu-link danger"><strong>خروج از حساب</strong><small>بعداً دوباره وارد می‌شوی</small></button>
                             </div>}

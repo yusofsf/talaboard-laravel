@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\AdminMiddleware;
+use App\Http\Middleware\ApiTokenAuth;
 use App\Http\Middleware\DetectSuspiciousInput;
 use App\Http\Middleware\ForceHttps;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -35,6 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => AdminMiddleware::class,
             'price-api.auth' => PriceApiBasicAuth::class,
+            'api.token' => ApiTokenAuth::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

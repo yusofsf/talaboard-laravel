@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Article extends Model
 {
+    use SoftDeletes;
     protected $fillable = [
         'title', 'slug', 'summary', 'thumbnail_image', 'body_image', 'body',
         'tags', 'topics', 'is_published', 'published_at',

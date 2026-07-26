@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, SoftDeletes;
 
     protected $fillable = [
         'name', 'phone', 'telegram_chat_id', 'email', 'national_id', 'password', 'salt',
@@ -79,6 +80,21 @@ class User extends Authenticatable
     public function bankCards()
     {
         return $this->hasMany(BankCard::class)->orderByDesc('created_at');
+    }
+
+    public function apiTokens()
+    {
+        return $this->hasMany(ApiToken::class)->orderByDesc('created_at');
+    }
+
+    public function apiTokens()
+    {
+        return $this->hasMany(ApiToken::class)->orderByDesc('created_at');
+    }
+
+    public function apiTokens()
+    {
+        return $this->hasMany(ApiToken::class)->orderByDesc('created_at');
     }
 
     public function walletBalance(): int

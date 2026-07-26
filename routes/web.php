@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminArticleController;
+use App\Http\Controllers\AdminApiTokenController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\AuthController;
@@ -268,6 +269,11 @@ Route::middleware('auth')->group(function () {
 // پنل ادمین
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
+    Route::get('/api-tokens', [AdminApiTokenController::class, 'index'])->name('api-tokens.index');
+    Route::post('/api-tokens', [AdminApiTokenController::class, 'store'])->name('api-tokens.store');
+    Route::delete('/api-tokens/{id}', [AdminApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
+    Route::get('/recycle-bin', [AdminApiTokenController::class, 'recycleBin'])->name('recycle-bin.index');
+    Route::post('/recycle-bin/{type}/{id}/restore', [AdminApiTokenController::class, 'restore'])->name('recycle-bin.restore');
     Route::get('/articles', [AdminArticleController::class, 'index'])->name('articles.index');
     Route::post('/articles/embedded-image', [AdminArticleController::class, 'uploadEmbeddedImage'])->name('articles.embedded-image');
     Route::post('/article-topics', [AdminArticleController::class, 'storeTopic'])->name('article-topics.store');

@@ -197,6 +197,7 @@ class AdminController extends Controller
                 'purity' => $r->purity,
                 'grams' => (float) $r->grams,
                 'note' => $r->note,
+                'receipt_url' => $r->receipt_path ? asset('storage/'.$r->receipt_path) : null,
                 'created_at' => Jalali::format($r->created_at),
                 'date_raw' => $r->created_at->format('Y-m-d'),
             ]);
@@ -211,7 +212,7 @@ class AdminController extends Controller
                 'user_phone' => $d->user?->phone,
                 'amount' => $d->amount,
                 'note' => $d->note,
-                'receipt_url' => null,
+                'receipt_url' => $d->receipt_path ? asset('storage/'.$d->receipt_path) : null,
                 'status' => $d->status,
                 'created_at' => Jalali::format($d->created_at),
                 'date_raw' => $d->created_at->format('Y-m-d'),
@@ -229,6 +230,7 @@ class AdminController extends Controller
                 'purity' => $r->purity,
                 'grams' => (float) $r->grams,
                 'note' => $r->note,
+                'receipt_url' => $r->receipt_path ? asset('storage/'.$r->receipt_path) : null,
                 'created_at' => Jalali::format($r->created_at),
                 'date_raw' => $r->created_at->format('Y-m-d'),
             ]);

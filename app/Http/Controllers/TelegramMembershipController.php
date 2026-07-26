@@ -9,6 +9,9 @@ use App\Models\DepositRequest;
 use App\Models\Transaction;
 use App\Models\WalletTransaction;
 use App\Models\GoldLedger;
+use App\Models\SilverLedger;
+use App\Models\SilverDeliveryRequest;
+use App\Models\TradeRoomOffer;
 use App\Models\ActivityLog;
 use App\Services\PriceService;
 use App\Models\User;
@@ -81,6 +84,7 @@ class TelegramMembershipController extends Controller
             'item' => ['required', 'in:gold,silver_999,silver_995,full_coin,half_coin,quarter_coin'],
             'quantity' => ['required', 'numeric', 'min:0.0001', 'max:1000000'],
             'note' => ['nullable', 'string', 'max:500'],
+            'receipt' => ['nullable', 'image', 'max:5120'],
         ]);
 
         $user = User::query()->where('telegram_chat_id', $data['telegram_chat_id'])->first();
@@ -103,6 +107,7 @@ class TelegramMembershipController extends Controller
             'purity' => $item['purity'],
             'grams' => $data['quantity'],
             'note' => $data['note'] ?? null,
+            'receipt_path' => $request->hasFile('receipt') ? $request->file('receipt')->store('receipts/telegram-inventory', 'public') : null,
             'source' => 'telegram_bot',
         ]);
 
@@ -141,6 +146,7 @@ class TelegramMembershipController extends Controller
         $data = $request->validate([
             'amount' => ['required', 'integer', 'min:1000'],
             'note' => ['nullable', 'string', 'max:200'],
+            'receipt' => ['nullable', 'image', 'max:5120'],
         ]);
 
         $deposit = DepositRequest::create([
@@ -148,6 +154,7 @@ class TelegramMembershipController extends Controller
             'amount' => $data['amount'],
             'source' => 'telegram_bot',
             'note' => $data['note'] ?? 'درخواست ثبت‌شده از ربات تلگرام',
+            'receipt_path' => $request->hasFile('receipt') ? $request->file('receipt')->store('receipts/telegram', 'public') : null,
             'status' => 'pending',
         ]);
         User::where('is_admin', true)->each(fn (User $admin) => Notification::create([
@@ -208,6 +215,139 @@ class TelegramMembershipController extends Controller
         return response()->json($transaction, 201);
     }
 
+    /** فهرست سفارش‌های باز اتاق معاملاتی، بدون اطلاعات هویتی طرفین. */
+    public function tradeRoomOffers(Request $request): JsonResponse
+    {
+        $this->authorize($request);
+        $user = $this->vipUserForChat($request);
+
+        $offers = TradeRoomOffer::query()->where('status', 'open')
+            ->orderByDesc('created_at')->limit(100)->get()
+            ->map(fn (TradeRoomOffer $offer) => [
+                'id' => $offer->id,
+                'asset' => $this->roomAsset($offer),
+                'side' => $offer->side,
+                'quantity' => (float) $offer->grams,
+                'unit_price' => (int) $offer->price_per_gram,
+                'unit' => $offer->metal === 'coin' ? 'piece' : 'gram',
+                'total' => $offer->total(),
+                'is_mine' => $offer->user_id === $user->id,
+                'created_at' => $offer->created_at?->toIso8601String(),
+            ]);
+
+        return response()->json(['offers' => $offers]);
+    }
+
+    /** ثبت پیشنهاد خرید یا فروش ربات در اتاق معاملاتی با رزرو دارایی. */
+    public function tradeRoomOffer(Request $request): JsonResponse
+    {
+        $this->authorize($request);
+        $user = $this->vipUserForChat($request);
+        $data = $request->validate([
+            'asset' => ['required', 'in:gold,silver_999,silver_995,full_coin,half_coin,quarter_coin'],
+            'side' => ['required', 'in:buy,sell'],
+            'unit' => ['required', 'in:gram,mesghal,piece'],
+            'quantity' => ['required', 'numeric', 'min:0.0001', 'max:1000000'],
+            'unit_price' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $assets = [
+            'gold' => ['metal' => 'gold', 'purity' => '', 'item' => null],
+            'silver_999' => ['metal' => 'silver', 'purity' => '999', 'item' => null],
+            'silver_995' => ['metal' => 'silver', 'purity' => '995', 'item' => null],
+            'full_coin' => ['metal' => 'coin', 'purity' => 'full', 'item' => 'bahar'],
+            'half_coin' => ['metal' => 'coin', 'purity' => 'half', 'item' => 'nim'],
+            'quarter_coin' => ['metal' => 'coin', 'purity' => 'quarter', 'item' => 'rob'],
+        ];
+        $asset = $assets[$data['asset']];
+        $isCoin = $asset['metal'] === 'coin';
+        abort_if($isCoin && $data['unit'] !== 'piece', 422, 'واحد سکه باید piece باشد.');
+        abort_if(! $isCoin && $data['unit'] === 'piece', 422, 'واحد طلا و نقره باید gram یا mesghal باشد.');
+
+        $factor = (float) env('MITHQAL_GRAMS', 4.3318);
+        $quantity = (float) $data['quantity'];
+        $amount = $data['unit'] === 'mesghal' ? round($quantity * $factor, 4) : $quantity;
+        $price = $data['unit'] === 'mesghal' ? (int) round($data['unit_price'] / $factor) : (int) $data['unit_price'];
+        abort_if($isCoin && floor($amount) !== $amount, 422, 'تعداد سکه باید صحیح باشد.');
+        abort_if(! $isCoin && $amount < 100, 422, 'حداقل سفارش اتاق معاملاتی ۱۰۰ گرم است.');
+        $total = (int) round($amount * $price);
+
+        $offer = DB::transaction(function () use ($user, $asset, $isCoin, $data, $amount, $price, $total) {
+            $lockedUser = User::query()->lockForUpdate()->findOrFail($user->id);
+            if ($data['side'] === 'buy') {
+                abort_if($lockedUser->walletBalance() < $total, 422, 'موجودی کیف پول کافی نیست.');
+            } elseif ($isCoin) {
+                $held = (float) Transaction::query()->where('user_id', $lockedUser->id)->where('item', $asset['item'])->where('status', 'active')->where('type', 'buy')->sum('quantity')
+                    - (float) Transaction::query()->where('user_id', $lockedUser->id)->where('item', $asset['item'])->where('status', 'active')->where('type', 'sell')->sum('quantity');
+                abort_if($held < $amount, 422, 'موجودی سکه کافی نیست.');
+            } else {
+                $balance = $asset['metal'] === 'gold' ? $lockedUser->goldBalance() : $lockedUser->silverBalance($asset['purity']);
+                abort_if($balance < $amount, 422, 'موجودی انبار کافی نیست.');
+            }
+
+            $offer = TradeRoomOffer::create([
+                'user_id' => $lockedUser->id, 'metal' => $asset['metal'], 'item' => $asset['item'],
+                'side' => $data['side'], 'purity' => $asset['purity'], 'grams' => $amount,
+                'price_per_gram' => $price, 'status' => 'open',
+            ]);
+            if ($data['side'] === 'buy') {
+                WalletTransaction::create(['user_id' => $lockedUser->id, 'amount' => -$total, 'type' => 'withdraw', 'description' => "رزرو پیشنهاد خرید ربات #{$offer->id}"]);
+            } elseif (! $isCoin) {
+                $ledger = $asset['metal'] === 'gold' ? GoldLedger::class : SilverLedger::class;
+                $values = ['user_id' => $lockedUser->id, 'grams' => -$amount, 'type' => 'offer_escrow', 'reference_type' => TradeRoomOffer::class, 'reference_id' => $offer->id, 'description' => "رزرو پیشنهاد فروش ربات #{$offer->id}"];
+                if ($ledger === SilverLedger::class) $values['purity'] = $asset['purity'];
+                $ledger::create($values);
+            }
+            return $offer;
+        });
+
+        ActivityLog::record('telegram_room_offer', 'trade', "ثبت پیشنهاد {$data['side']} در اتاق معاملاتی #{$offer->id}", $user->id);
+        return response()->json(['id' => $offer->id, 'status' => $offer->status, 'total' => $offer->total()], 201);
+    }
+
+    public function delivery(Request $request): JsonResponse
+    {
+        $this->authorize($request);
+        $user = $this->vipUserForChat($request);
+        $data = $request->validate([
+            'asset' => ['required', 'in:gold,silver_999,silver_995'],
+            'quantity' => ['required', 'numeric', 'min:1'],
+            'recipient_name' => ['required', 'string', 'max:100'],
+            'phone' => ['required', 'string', 'max:20'],
+            'delivery_method' => ['required', 'in:address,pickup'],
+            'address' => ['required_if:delivery_method,address', 'nullable', 'string', 'max:500'],
+            'postal_code' => ['required_if:delivery_method,address', 'nullable', 'string', 'max:20'],
+        ]);
+        $metal = $data['asset'] === 'gold' ? 'gold' : 'silver';
+        $purity = $metal === 'gold' ? '' : str_replace('silver_', '', $data['asset']);
+        $grams = (float) $data['quantity'];
+        $balance = $metal === 'gold' ? $user->goldBalance() : $user->silverBalance($purity);
+        abort_if($balance < $grams, 422, 'موجودی انبار کافی نیست.');
+
+        $delivery = DB::transaction(function () use ($user, $data, $metal, $purity, $grams) {
+            $delivery = SilverDeliveryRequest::create([
+                'user_id' => $user->id, 'metal' => $metal, 'purity' => $purity, 'grams' => $grams,
+                'recipient_name' => $data['recipient_name'], 'phone' => $data['phone'],
+                'delivery_method' => $data['delivery_method'], 'address' => $data['delivery_method'] === 'pickup' ? 'تحویل حضوری از فروشگاه' : $data['address'],
+                'postal_code' => $data['delivery_method'] === 'pickup' ? null : $data['postal_code'], 'source' => 'telegram_bot', 'status' => 'pending',
+            ]);
+            $ledger = $metal === 'gold' ? GoldLedger::class : SilverLedger::class;
+            $values = ['user_id' => $user->id, 'grams' => -$grams, 'type' => 'delivery', 'reference_type' => SilverDeliveryRequest::class, 'reference_id' => $delivery->id, 'description' => "درخواست تحویل ربات #{$delivery->id}"];
+            if ($ledger === SilverLedger::class) $values['purity'] = $purity;
+            $ledger::create($values);
+            return $delivery;
+        });
+        return response()->json(['id' => $delivery->id, 'status' => $delivery->status], 201);
+    }
+
+    public function deliveryStatus(Request $request, int $id): JsonResponse
+    {
+        $this->authorize($request);
+        $user = $this->vipUserForChat($request);
+        $delivery = SilverDeliveryRequest::query()->where('user_id', $user->id)->findOrFail($id);
+        return response()->json(['id' => $delivery->id, 'status' => $delivery->status, 'admin_note' => $delivery->admin_note, 'updated_at' => $delivery->updated_at?->toIso8601String()]);
+    }
+
     public function receipt(Request $request): JsonResponse
     {
         $this->authorize($request);
@@ -231,6 +371,14 @@ class TelegramMembershipController extends Controller
         return $user;
     }
 
+    private function roomAsset(TradeRoomOffer $offer): string
+    {
+        if ($offer->metal === 'gold') return 'gold';
+        if ($offer->metal === 'silver') return 'silver_'.$offer->purity;
+
+        return ['bahar' => 'full_coin', 'nim' => 'half_coin', 'rob' => 'quarter_coin'][$offer->item] ?? 'coin';
+    }
+
     private function membershipPayload(User $user): array
     {
         return [
@@ -238,6 +386,8 @@ class TelegramMembershipController extends Controller
             'vip' => true,
             'user_id' => $user->id,
             'name' => $user->name,
+            'phone' => $user->phone,
+            'membership_level' => $user->membership_level,
         ];
     }
 }

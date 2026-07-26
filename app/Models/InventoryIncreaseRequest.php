@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class InventoryIncreaseRequest extends Model
 {
-    protected $fillable = ['user_id', 'metal', 'purity', 'grams', 'note', 'source', 'status', 'admin_note'];
+    protected $fillable = ['user_id', 'metal', 'purity', 'grams', 'note', 'receipt_path', 'source', 'status', 'admin_note'];
 
     protected $casts = ['grams' => 'decimal:4'];
 

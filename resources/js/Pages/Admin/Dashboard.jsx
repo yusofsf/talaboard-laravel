@@ -457,7 +457,7 @@ function InventoryIncreaseRow({ r, inventoryIncreaseNote, setInventoryIncreaseNo
             <td className="num" dir="ltr" style={{ fontSize: 13 }}>{r.user_phone}</td>
             <td>{itemLabel}</td>
             <td className="num">{r.grams} {unit}</td>
-            <td>{r.note || '—'}</td>
+            <td>{r.note || '—'}{r.receipt_url && <><br /><a href={r.receipt_url} target="_blank" rel="noreferrer" style={{ color: 'var(--gold-1)' }}>مشاهده فیش</a></>}</td>
             <td style={{ fontSize: 12, color: 'var(--muted)' }}>{r.created_at}</td>
             <td style={{ minWidth: 220 }}>
                 <input value={inventoryIncreaseNote[r.id] || ''} onChange={e => setInventoryIncreaseNote(s => ({ ...s, [r.id]: e.target.value }))} placeholder="یادداشت / دلیل رد"

@@ -11,4 +11,8 @@ Route::prefix('telegram')->middleware('throttle:20,1')->group(function () {
     Route::post('/deposits', [TelegramMembershipController::class, 'deposit']);
     Route::post('/trades', [TelegramMembershipController::class, 'trade']);
     Route::post('/receipts', [TelegramMembershipController::class, 'receipt']);
+    Route::post('/trade-room/offers', [TelegramMembershipController::class, 'tradeRoomOffers']);
+    Route::post('/trade-room/offers/create', [TelegramMembershipController::class, 'tradeRoomOffer']);
+    Route::post('/deliveries', [TelegramMembershipController::class, 'delivery']);
+    Route::post('/deliveries/{id}', [TelegramMembershipController::class, 'deliveryStatus']);
 });

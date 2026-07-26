@@ -7,7 +7,6 @@ use App\Models\Notification;
 use App\Models\TelegramLinkCode;
 use App\Support\UserPassword;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class ProfileController extends Controller
@@ -18,6 +17,7 @@ class ProfileController extends Controller
             'user'      => $request->user(),
             'bankCards' => $request->user()->bankCards()->get(['id', 'bank_name', 'card_number', 'account_number', 'shaba']),
             'telegramLinkCode' => $request->session()->get('telegram_link_code'),
+            'telegramConnection' => $request->user()->telegramConnection,
         ]);
     }
 
@@ -25,11 +25,10 @@ class ProfileController extends Controller
     {
         $user = $request->user();
 
-        if (! $user->isVipMember()) {
-            return back()->with('error', 'اتصال ربات فقط برای اعضای ویژه فعال است.');
-        }
-
-        $code = Str::upper(Str::random(24));
+        do {
+            $code = (string) random_int(100000, 999999);
+            $exists = TelegramLinkCode::query()->where('code_hash', hash('sha256', $code))->exists();
+        } while ($exists);
         TelegramLinkCode::query()->where('user_id', $user->id)->whereNull('used_at')->delete();
         TelegramLinkCode::create([
             'user_id' => $user->id,

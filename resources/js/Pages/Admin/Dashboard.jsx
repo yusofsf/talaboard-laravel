@@ -423,7 +423,14 @@ function DepositRow({ d, printOnly, depositNote, setDepositNote, depositReason, 
             <td><strong>{d.user_name}</strong></td>
             <td className="num" dir="ltr" style={{ fontSize: 13 }}>{d.user_phone}</td>
             <td className="num" style={{ color: 'var(--gold-1)', fontWeight: 700 }}>{faNum(d.amount)}</td>
-            <td style={{ color: 'var(--muted)', fontSize: 13 }}>{d.note || '—'}{d.receipt_url && <><br /><a href={d.receipt_url} target="_blank" rel="noreferrer" style={{ color: 'var(--gold-1)' }}>مشاهده فیش</a></>}</td>
+            <td style={{ color: 'var(--muted)', fontSize: 13 }}>
+                {d.note || '—'}
+                {d.receipt_url && (
+                    <a href={d.receipt_url} target="_blank" rel="noreferrer" title="مشاهده نسخه کامل فیش" style={{ display: 'inline-block', marginTop: 8 }}>
+                        <img src={d.receipt_url} alt="فیش ارسالی کاربر" loading="lazy" style={{ display: 'block', width: 96, height: 72, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--line)' }} />
+                    </a>
+                )}
+            </td>
             <td style={{ fontSize: 12, color: 'var(--muted)' }}>{d.created_at}</td>
             {!printOnly && (
                 <td>
@@ -457,7 +464,14 @@ function InventoryIncreaseRow({ r, inventoryIncreaseNote, setInventoryIncreaseNo
             <td className="num" dir="ltr" style={{ fontSize: 13 }}>{r.user_phone}</td>
             <td>{itemLabel}</td>
             <td className="num">{r.grams} {unit}</td>
-            <td>{r.note || '—'}{r.receipt_url && <><br /><a href={r.receipt_url} target="_blank" rel="noreferrer" style={{ color: 'var(--gold-1)' }}>مشاهده فیش</a></>}</td>
+            <td>
+                {r.note || '—'}
+                {r.receipt_url && (
+                    <a href={r.receipt_url} target="_blank" rel="noreferrer" title="مشاهده نسخه کامل فیش" style={{ display: 'inline-block', marginTop: 8 }}>
+                        <img src={r.receipt_url} alt="فیش ارسالی کاربر" loading="lazy" style={{ display: 'block', width: 96, height: 72, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--line)' }} />
+                    </a>
+                )}
+            </td>
             <td style={{ fontSize: 12, color: 'var(--muted)' }}>{r.created_at}</td>
             <td style={{ minWidth: 220 }}>
                 <input value={inventoryIncreaseNote[r.id] || ''} onChange={e => setInventoryIncreaseNote(s => ({ ...s, [r.id]: e.target.value }))} placeholder="یادداشت / دلیل رد"

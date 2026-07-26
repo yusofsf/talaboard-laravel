@@ -447,6 +447,30 @@ function DepositRow({ d, printOnly, depositNote, setDepositNote, depositReason, 
     );
 }
 
+function InventoryIncreaseRow({ r, inventoryIncreaseNote, setInventoryIncreaseNote, approveInventoryIncrease, rejectInventoryIncrease }) {
+    const itemLabel = r.metal === 'gold' ? 'طلا' : r.metal === 'silver' ? `نقره ${r.purity}` : ({ full: 'سکه تمام', half: 'نیم‌سکه', quarter: 'ربع‌سکه' }[r.purity] || 'سکه');
+    const unit = r.metal === 'coin' ? 'عدد' : 'گرم';
+
+    return (
+        <tr>
+            <td><strong>{r.user_name}</strong></td>
+            <td className="num" dir="ltr" style={{ fontSize: 13 }}>{r.user_phone}</td>
+            <td>{itemLabel}</td>
+            <td className="num">{r.grams} {unit}</td>
+            <td>{r.note || '—'}</td>
+            <td style={{ fontSize: 12, color: 'var(--muted)' }}>{r.created_at}</td>
+            <td style={{ minWidth: 220 }}>
+                <input value={inventoryIncreaseNote[r.id] || ''} onChange={e => setInventoryIncreaseNote(s => ({ ...s, [r.id]: e.target.value }))} placeholder="یادداشت / دلیل رد"
+                    style={{ width: '100%', marginBottom: 6, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '5px 8px', fontFamily: 'inherit', fontSize: 12 }} />
+                <div style={{ display: 'flex', gap: 6 }}>
+                    <button onClick={() => approveInventoryIncrease(r.id)} className="btn-sm" style={{ borderColor: 'rgba(65,225,166,.4)', color: 'var(--up)', background: 'rgba(65,225,166,.08)' }}>تأیید</button>
+                    <button onClick={() => rejectInventoryIncrease(r.id)} className="btn-sm danger">رد</button>
+                </div>
+            </td>
+        </tr>
+    );
+}
+
 function AllTradeRow({ t, printOnly, rejectingId, setRejectingId, rejectReason, setRejectReason, submitTradeReject }) {
     const rejected = t.status === 'rejected';
     return (
@@ -523,7 +547,7 @@ function SecurityEventRow({ e }) {
     );
 }
 
-export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApplications, vipMembers, deliveryRequests, withdrawalRequests, depositRequests, inventoryIncreaseRequests, allTrades, activityLogs, securityEvents, tickets, settings }) {
+export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApplications, vipMembers, deliveryRequests, withdrawalRequests, depositRequests, inventoryIncreaseRequests, botDepositRequests = [], botInventoryIncreaseRequests = [], allTrades, activityLogs, securityEvents, tickets, settings }) {
     const { auth } = usePage().props;
     const [tab, setTab] = useState('users');
 
@@ -636,6 +660,8 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     const deliveryPager = usePager(filteredDeliveryRequests, `${deliveryFrom}|${deliveryTo}|${deliveryQ}`);
     const withdrawalsPager = usePager(filteredWithdrawalRequests, `${withdrawalsFrom}|${withdrawalsTo}|${withdrawalsQ}`);
     const depositsPager = usePager(filteredDepositRequests, `${depositsFrom}|${depositsTo}|${depositsQ}`);
+    const botDepositsPager = usePager(botDepositRequests, botDepositRequests.map(d => d.id).join('|'));
+    const botInventoryPager = usePager(botInventoryIncreaseRequests, botInventoryIncreaseRequests.map(r => r.id).join('|'));
     const logsPager = usePager(filteredLogs, `${logCat}|${logFrom}|${logTo}|${logsQ}`);
     const securityPager = usePager(filteredSecurityEvents, `${securityFrom}|${securityTo}|${securityQ}`);
     const ticketsPager = usePager(filteredTickets, ticketsQ);
@@ -744,6 +770,8 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
         ['withdrawals', `تسویه حساب${withdrawalRequests?.length ? ` (${withdrawalRequests.length})` : ''}`],
         ['deposits', `افزایش موجودی${depositRequests?.length ? ` (${depositRequests.length})` : ''}`],
         ['inventory_increases', `افزایش موجودی انبار${inventoryIncreaseRequests?.length ? ` (${inventoryIncreaseRequests.length})` : ''}`],
+        ['bot_deposits', `افزایش موجودی ربات${botDepositRequests.length ? ` (${botDepositRequests.length})` : ''}`],
+        ['bot_inventory_increases', `افزایش موجودی انبار ربات${botInventoryIncreaseRequests.length ? ` (${botInventoryIncreaseRequests.length})` : ''}`],
         ['tickets', `تیکت‌ها${tickets?.filter(t => t.status === 'open').length ? ` (${tickets.filter(t => t.status === 'open').length})` : ''}`],
         ['security', `امنیت${securityEvents?.length ? ` (${securityEvents.length})` : ''}`],
         ['logs', 'گزارش فعالیت'],
@@ -1284,27 +1312,38 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                             <div className="table-wrap">
                                 <table>
                                     <thead><tr><th>کاربر</th><th>موبایل</th><th>مورد</th><th>مقدار</th><th>توضیحات کاربر</th><th>تاریخ</th><th>اقدام</th></tr></thead>
-                                    <tbody>{inventoryIncreaseRequests.map(r => (
-                                        <tr key={r.id}>
-                                            <td><strong>{r.user_name}</strong></td>
-                                            <td className="num" dir="ltr" style={{ fontSize: 13 }}>{r.user_phone}</td>
-                                            <td>{r.metal === 'gold' ? 'طلا' : `نقره ${r.purity}`}</td>
-                                            <td className="num">{r.grams} گرم</td>
-                                            <td>{r.note || '—'}</td>
-                                            <td style={{ fontSize: 12, color: 'var(--muted)' }}>{r.created_at}</td>
-                                            <td style={{ minWidth: 220 }}>
-                                                <input value={inventoryIncreaseNote[r.id] || ''} onChange={e => setInventoryIncreaseNote(s => ({ ...s, [r.id]: e.target.value }))} placeholder="یادداشت / دلیل رد"
-                                                    style={{ width: '100%', marginBottom: 6, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '5px 8px', fontFamily: 'inherit', fontSize: 12 }} />
-                                                <div style={{ display: 'flex', gap: 6 }}>
-                                                    <button onClick={() => approveInventoryIncrease(r.id)} className="btn-sm" style={{ borderColor: 'rgba(65,225,166,.4)', color: 'var(--up)', background: 'rgba(65,225,166,.08)' }}>تأیید</button>
-                                                    <button onClick={() => rejectInventoryIncrease(r.id)} className="btn-sm danger">رد</button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}</tbody>
+                                    <tbody>{inventoryIncreaseRequests.map(r => <InventoryIncreaseRow key={r.id} r={r} inventoryIncreaseNote={inventoryIncreaseNote} setInventoryIncreaseNote={setInventoryIncreaseNote} approveInventoryIncrease={approveInventoryIncrease} rejectInventoryIncrease={rejectInventoryIncrease} />)}</tbody>
                                 </table>
                             </div>
                         ) : <div className="empty"><div className="ico">+</div>درخواست افزایش موجودی انبار در انتظار بررسی نیست.</div>}
+                    </>
+                )}
+
+                {tab === 'bot_deposits' && (
+                    <>
+                        {botDepositRequests.length ? (
+                            <div className="table-wrap">
+                                <table>
+                                    <thead><tr><th>کاربر</th><th>موبایل</th><th>مبلغ</th><th>توضیح ربات</th><th>تاریخ</th><th>اقدام</th></tr></thead>
+                                    <tbody>{botDepositsPager.pageItems.map(d => <DepositRow key={d.id} d={d} depositNote={depositNote} setDepositNote={setDepositNote} depositReason={depositReason} setDepositReason={setDepositReason} approveDeposit={approveDeposit} rejectDeposit={rejectDeposit} />)}</tbody>
+                                </table>
+                            </div>
+                        ) : <div className="empty"><div className="ico">+</div>درخواست افزایش موجودی از ربات در انتظار بررسی نیست.</div>}
+                        <Pager page={botDepositsPager.page} totalPages={botDepositsPager.totalPages} onChange={botDepositsPager.setPage} />
+                    </>
+                )}
+
+                {tab === 'bot_inventory_increases' && (
+                    <>
+                        {botInventoryIncreaseRequests.length ? (
+                            <div className="table-wrap">
+                                <table>
+                                    <thead><tr><th>کاربر</th><th>موبایل</th><th>مورد</th><th>مقدار</th><th>توضیحات ربات</th><th>تاریخ</th><th>اقدام</th></tr></thead>
+                                    <tbody>{botInventoryPager.pageItems.map(r => <InventoryIncreaseRow key={r.id} r={r} inventoryIncreaseNote={inventoryIncreaseNote} setInventoryIncreaseNote={setInventoryIncreaseNote} approveInventoryIncrease={approveInventoryIncrease} rejectInventoryIncrease={rejectInventoryIncrease} />)}</tbody>
+                                </table>
+                            </div>
+                        ) : <div className="empty"><div className="ico">+</div>درخواست افزایش موجودی انبار از ربات در انتظار بررسی نیست.</div>}
+                        <Pager page={botInventoryPager.page} totalPages={botInventoryPager.totalPages} onChange={botInventoryPager.setPage} />
                     </>
                 )}
 

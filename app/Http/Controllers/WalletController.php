@@ -192,6 +192,7 @@ class WalletController extends Controller
             'user_id' => $user->id,
             'amount' => $request->amount,
             'note' => $request->note,
+            'source' => 'website',
             'status' => 'pending',
         ]);
 

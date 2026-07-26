@@ -103,6 +103,7 @@ class TelegramMembershipController extends Controller
             'purity' => $item['purity'],
             'grams' => $data['quantity'],
             'note' => $data['note'] ?? null,
+            'source' => 'telegram_bot',
         ]);
 
         User::where('is_admin', true)->each(fn (User $admin) => Notification::create([
@@ -145,6 +146,7 @@ class TelegramMembershipController extends Controller
         $deposit = DepositRequest::create([
             'user_id' => $user->id,
             'amount' => $data['amount'],
+            'source' => 'telegram_bot',
             'note' => $data['note'] ?? 'درخواست ثبت‌شده از ربات تلگرام',
             'status' => 'pending',
         ]);

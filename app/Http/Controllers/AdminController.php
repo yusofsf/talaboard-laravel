@@ -171,6 +171,7 @@ class AdminController extends Controller
 
         $depositRequests = DepositRequest::with('user')
             ->where('status', 'pending')
+            ->where('source', '!=', 'telegram_bot')
             ->orderByDesc('created_at')->get()
             ->map(fn ($d) => [
                 'id' => $d->id,
@@ -186,6 +187,39 @@ class AdminController extends Controller
 
         $inventoryIncreaseRequests = InventoryIncreaseRequest::with('user')
             ->where('status', 'pending')
+            ->where('source', '!=', 'telegram_bot')
+            ->orderByDesc('created_at')->get()
+            ->map(fn ($r) => [
+                'id' => $r->id,
+                'user_name' => $r->user?->name,
+                'user_phone' => $r->user?->phone,
+                'metal' => $r->metal,
+                'purity' => $r->purity,
+                'grams' => (float) $r->grams,
+                'note' => $r->note,
+                'created_at' => Jalali::format($r->created_at),
+                'date_raw' => $r->created_at->format('Y-m-d'),
+            ]);
+
+        $botDepositRequests = DepositRequest::with('user')
+            ->where('status', 'pending')
+            ->where('source', 'telegram_bot')
+            ->orderByDesc('created_at')->get()
+            ->map(fn ($d) => [
+                'id' => $d->id,
+                'user_name' => $d->user?->name,
+                'user_phone' => $d->user?->phone,
+                'amount' => $d->amount,
+                'note' => $d->note,
+                'receipt_url' => null,
+                'status' => $d->status,
+                'created_at' => Jalali::format($d->created_at),
+                'date_raw' => $d->created_at->format('Y-m-d'),
+            ]);
+
+        $botInventoryIncreaseRequests = InventoryIncreaseRequest::with('user')
+            ->where('status', 'pending')
+            ->where('source', 'telegram_bot')
             ->orderByDesc('created_at')->get()
             ->map(fn ($r) => [
                 'id' => $r->id,
@@ -252,7 +286,7 @@ class AdminController extends Controller
             'contact_intro' => Setting::get('contact_intro', config('page_content.contact.intro')),
         ];
 
-        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'stats', 'memberApplications', 'vipMembers', 'deliveryRequests', 'withdrawalRequests', 'depositRequests', 'inventoryIncreaseRequests', 'allTrades', 'activityLogs', 'securityEvents', 'tickets', 'settings'));
+        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'stats', 'memberApplications', 'vipMembers', 'deliveryRequests', 'withdrawalRequests', 'depositRequests', 'inventoryIncreaseRequests', 'botDepositRequests', 'botInventoryIncreaseRequests', 'allTrades', 'activityLogs', 'securityEvents', 'tickets', 'settings'));
     }
 
     /** ریز معاملات یک کاربر خاص (فروشگاه + اتاق معاملاتی) برای مشاهده و خروجی PDF ادمین. */

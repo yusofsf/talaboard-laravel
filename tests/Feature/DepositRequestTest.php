@@ -26,9 +26,31 @@ class DepositRequestTest extends TestCase
         $deposit = DepositRequest::first();
         $this->assertSame(500000, $deposit->amount);
         $this->assertSame('pending', $deposit->status);
+        $this->assertSame('website', $deposit->source);
         $this->assertSame(0, $user->refresh()->walletBalance());
 
         $this->assertTrue(Notification::where('user_id', $admin->id)->exists());
+    }
+
+    public function test_telegram_bot_deposit_is_marked_with_its_source(): void
+    {
+        config()->set('services.telegram.link_api_token', 'test-bot-token');
+        $user = User::factory()->create([
+            'telegram_chat_id' => '112233',
+            'is_vip' => true,
+            'membership_level' => 2,
+        ]);
+
+        $this->withToken('test-bot-token')->postJson('/api/telegram/deposits', [
+            'telegram_chat_id' => '112233',
+            'amount' => 500000,
+        ])->assertCreated();
+
+        $this->assertDatabaseHas('deposit_requests', [
+            'user_id' => $user->id,
+            'source' => 'telegram_bot',
+            'status' => 'pending',
+        ]);
     }
 
     public function test_deposit_notification_does_not_include_raw_html_from_legacy_user_name(): void

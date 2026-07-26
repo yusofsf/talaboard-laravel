@@ -20,6 +20,7 @@ Route::prefix('v1')->middleware(ForceHttps::class)->group(function () {
     Route::get('/wallet', [TokenApiController::class, 'wallet'])->middleware(['api.token:wallet:read', 'throttle:30,1']);
     Route::get('/alerts', [TokenApiController::class, 'alerts'])->middleware(['api.token:alerts:manage', 'throttle:30,1']);
     Route::post('/alerts/{id}/read', [TokenApiController::class, 'markAlertRead'])->middleware(['api.token:alerts:manage', 'throttle:30,1']);
+    Route::post('/telegram/connect', [TelegramMembershipController::class, 'connect'])->middleware('throttle:10,1');
 });
 
 Route::prefix('telegram')->middleware('throttle:20,1')->group(function () {

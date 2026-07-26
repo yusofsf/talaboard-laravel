@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { router, useForm } from '@inertiajs/react';
 import AppLayout from '../Layouts/AppLayout';
 
-export default function Profile({ user, bankCards, telegramLinkCode }) {
+export default function Profile({ user, bankCards, telegramLinkCode, telegramConnection }) {
     const info = useForm({
         name: user.name || '', phone: user.phone || '',
         email: user.email || '', national_id: user.national_id || '',
@@ -58,17 +58,16 @@ export default function Profile({ user, bankCards, telegramLinkCode }) {
                 </div>
 
                 <div className="fcard" style={{ marginTop: 24 }}>
-                    <h2>🤖 اتصال حساب تلگرام</h2>
+                    <h2>اتصال حساب تلگرام</h2>
                     <div style={{ height: 12 }} />
-                    {user.is_vip ? (
-                        <>
-                            <p style={{ color: 'var(--muted)', lineHeight: 1.9 }}>برای اتصال حساب، کد بسازید و آن را حداکثر تا ۱۰ دقیقه با قالب <span dir="ltr">/link CODE</span> برای ربات بفرستید.</p>
-                            <button className="btn" type="button" onClick={() => router.post('/profile/telegram-link')}>ساخت کد اتصال ربات</button>
-                            {telegramLinkCode && <div className="alert success" style={{ marginTop: 14 }}>کد اتصال: <strong dir="ltr">{telegramLinkCode}</strong><br />در ربات بفرستید: <strong dir="ltr">/link {telegramLinkCode}</strong></div>}
-                        </>
-                    ) : (
-                        <div className="alert err">اتصال ربات فقط پس از فعال‌شدن عضویت ویژه امکان‌پذیر است.</div>
+                    <p style={{ color: 'var(--muted)', lineHeight: 1.9 }}>برای اتصال حساب، کد بسازید و آن را حداکثر تا ۱۰ دقیقه با قالب <span dir="ltr">/connect CODE</span> برای ربات بفرستید.</p>
+                    {telegramConnection && (
+                        <div className="alert success" style={{ marginBottom: 14 }}>
+                            حساب تلگرام شما متصل است{telegramConnection.telegram_username ? <>: <strong dir="ltr">@{telegramConnection.telegram_username}</strong></> : null}.
+                        </div>
                     )}
+                    <button className="btn" type="button" onClick={() => router.post('/profile/telegram-link')}>ساخت کد اتصال ربات</button>
+                    {telegramLinkCode && <div className="alert success" style={{ marginTop: 14 }}>کد اتصال: <strong dir="ltr">{telegramLinkCode}</strong><br />در ربات بفرستید: <strong dir="ltr">/connect {telegramLinkCode}</strong></div>}
                 </div>
 
                 <div className="fcard" style={{ marginTop: 24 }}>

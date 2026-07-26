@@ -23,7 +23,9 @@ use App\Services\SmsService;
 use App\Support\UserPassword;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class AdminController extends Controller
@@ -286,6 +288,8 @@ class AdminController extends Controller
             'about_body' => Setting::get('about_body', config('page_content.about.body')),
             'contact_title' => Setting::get('contact_title', config('page_content.contact.title')),
             'contact_intro' => Setting::get('contact_intro', config('page_content.contact.intro')),
+            'price_api_username' => Setting::get('price_api_username'),
+            'price_api_configured' => Setting::get('price_api_secret_hash') !== null,
         ];
 
         return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'stats', 'memberApplications', 'vipMembers', 'deliveryRequests', 'withdrawalRequests', 'depositRequests', 'inventoryIncreaseRequests', 'botDepositRequests', 'botInventoryIncreaseRequests', 'allTrades', 'activityLogs', 'securityEvents', 'tickets', 'settings'));
@@ -574,6 +578,28 @@ class AdminController extends Controller
             "{$request->user()->name} تنظیمات سایت را ذخیره کرد. کارمزد اتاق معاملاتی از {$old}٪ به {$request->trade_room_commission_percent}٪ تغییر کرد. تاریخ: ".Jalali::now());
 
         return back()->with('success', 'تنظیمات ذخیره شد.');
+    }
+
+    /** نام کاربری API قیمت را ثبت و سکرت جدید را فقط یک‌بار نمایش می‌دهد. */
+    public function createPriceApiCredentials(Request $request)
+    {
+        $data = $request->validate([
+            'username' => ['required', 'string', 'min:3', 'max:64', 'regex:/^[A-Za-z0-9._-]+$/'],
+        ]);
+
+        $secret = Str::random(48);
+        Setting::put('price_api_username', $data['username']);
+        Setting::put('price_api_secret_hash', Hash::make($secret));
+
+        $this->notifyOtherAdmins(
+            $request,
+            'ساخت یا تغییر اعتبار API قیمت',
+            "{$request->user()->name} اعتبار API قیمت را برای نام کاربری {$data['username']} ایجاد یا بازنشانی کرد. تاریخ: ".Jalali::now()
+        );
+
+        return back()
+            ->with('success', 'نام کاربری و سکرت API ثبت شد. سکرت را اکنون ذخیره کنید؛ دوباره نمایش داده نمی‌شود.')
+            ->with('price_api_secret', $secret);
     }
 
     public function setLevel(Request $request, int $uid)

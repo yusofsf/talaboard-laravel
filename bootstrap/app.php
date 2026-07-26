@@ -5,6 +5,7 @@ use App\Http\Middleware\DetectSuspiciousInput;
 use App\Http\Middleware\ForceHttps;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\LogRequest;
+use App\Http\Middleware\PriceApiBasicAuth;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\UpdateLastSeen;
 use Illuminate\Foundation\Application;
@@ -33,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->alias([
             'admin' => AdminMiddleware::class,
+            'price-api.auth' => PriceApiBasicAuth::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

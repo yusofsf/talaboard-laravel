@@ -90,7 +90,3 @@ Accept: application/json
 ```
 
 برای `delivery_method: "address"`، `address` و `postal_code` اجباری‌اند. وضعیت با `POST /deliveries/{id}` و بدنهٔ `{ "telegram_chat_id": "123456" }` خوانده می‌شود. وضعیت‌ها: `pending`، `approved`، `shipped`، `delivered` و `rejected`.
-
-## معامله با فروشگاه
-
-API قدیمی `POST /trades` برای معامله مستقیم با فروشگاه است، نه اتاق معاملاتی. قیمت توسط سایت تعیین می‌شود و در نتیجه، ربات نمی‌تواند قیمت جعلی ارسال کند.

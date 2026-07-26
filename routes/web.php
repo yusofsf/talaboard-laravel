@@ -282,6 +282,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/online-users', [AdminController::class, 'onlineUsers'])->name('online-users');
     Route::get('/accounting', [AdminController::class, 'accounting'])->name('accounting');
     Route::post('/settings', [AdminController::class, 'updateSettings'])->name('settings.update');
+    Route::post('/price-api-credentials', [AdminController::class, 'createPriceApiCredentials'])->name('price-api-credentials.create');
     Route::get('/tickets/{id}', [AdminController::class, 'ticketShow'])->name('tickets.show');
     Route::post('/tickets/{id}/reply', [AdminController::class, 'ticketReply'])->name('tickets.reply');
     Route::post('/tickets/{id}/close', [AdminController::class, 'ticketClose'])->name('tickets.close');

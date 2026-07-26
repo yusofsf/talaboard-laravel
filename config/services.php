@@ -5,6 +5,11 @@ return [
         'link_api_token' => env('TELEGRAM_LINK_API_TOKEN'),
     ],
 
+    'price_api' => [
+        'username' => env('PRICE_API_USERNAME'),
+        'secret' => env('PRICE_API_SECRET'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services

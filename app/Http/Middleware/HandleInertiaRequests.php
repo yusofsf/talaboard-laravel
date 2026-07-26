@@ -57,6 +57,7 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
+                'price_api_secret' => $request->session()->get('price_api_secret'),
             ],
             'seoDefaults' => [
                 ...config('seo.default'),

@@ -548,7 +548,7 @@ function SecurityEventRow({ e }) {
 }
 
 export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApplications, vipMembers, deliveryRequests, withdrawalRequests, depositRequests, inventoryIncreaseRequests, botDepositRequests = [], botInventoryIncreaseRequests = [], allTrades, activityLogs, securityEvents, tickets, settings }) {
-    const { auth } = usePage().props;
+    const { auth, flash } = usePage().props;
     const [tab, setTab] = useState('users');
 
     const wallet = useForm({ user_id: '', amount: '', description: '' });
@@ -588,6 +588,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
         contact_title: settings?.contact_title ?? '',
         contact_intro: settings?.contact_intro ?? '',
     });
+    const priceApiForm = useForm({ username: settings?.price_api_username ?? '' });
     const userOptions = useMemo(() => users.map(u => ({
         value: String(u.id),
         label: u.name,
@@ -1482,6 +1483,35 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                                             onChange={e => settingsForm.setData('trade_room_commission_percent', e.target.value)} required />
                                         {settingsForm.errors.trade_room_commission_percent && <div className="alert err" style={{ marginTop: 8 }}>{settingsForm.errors.trade_room_commission_percent}</div>}
                                     </div>
+                                </section>
+
+                                <section>
+                                    <h3 style={{ fontSize: 15, marginBottom: 12, color: 'var(--gold-1)' }}>API قیمت لحظه‌ای</h3>
+                                    <p style={{ margin: '0 0 14px', color: 'var(--muted)', fontSize: 13, lineHeight: 1.8 }}>
+                                        مسیر دریافت قیمت: <span dir="ltr">/api/v1/prices</span> — احراز هویت با نام کاربری و سکرت انجام می‌شود.
+                                    </p>
+                                    <div className="field">
+                                        <label htmlFor="price-api-username">نام کاربری API</label>
+                                        <input id="price-api-username" dir="ltr" value={priceApiForm.data.username} maxLength="64" autoComplete="off"
+                                            onChange={e => priceApiForm.setData('username', e.target.value)} />
+                                        {priceApiForm.errors.username && <div className="alert err" style={{ marginTop: 8 }}>{priceApiForm.errors.username}</div>}
+                                    </div>
+                                    {settings?.price_api_configured && !flash?.price_api_secret && (
+                                        <div className="alert" style={{ marginBottom: 12 }}>اعتبار API فعال است. ساخت سکرت جدید، سکرت قبلی را باطل می‌کند.</div>
+                                    )}
+                                    {flash?.price_api_secret && (
+                                        <div className="alert" style={{ marginBottom: 12 }}>
+                                            <strong>سکرت جدید — همین حالا در جای امن ذخیره کنید:</strong>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: 10 }}>
+                                                <input readOnly dir="ltr" value={flash.price_api_secret} aria-label="سکرت API جدید" style={{ flex: '1 1 260px', minWidth: 0, fontFamily: 'monospace' }} />
+                                                <button type="button" className="btn secondary" onClick={() => navigator.clipboard?.writeText(flash.price_api_secret)}>کپی</button>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <button className="btn secondary" type="button" disabled={priceApiForm.processing || !priceApiForm.data.username}
+                                        onClick={() => priceApiForm.post('/admin/price-api-credentials', { preserveScroll: true })}>
+                                        {priceApiForm.processing ? '...' : settings?.price_api_configured ? 'ساخت سکرت جدید' : 'ثبت نام کاربری و ساخت سکرت'}
+                                    </button>
                                 </section>
 
                                 <section>

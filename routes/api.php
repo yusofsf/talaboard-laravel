@@ -1,7 +1,13 @@
 <?php
 
+use App\Http\Controllers\PriceApiController;
 use App\Http\Controllers\TelegramMembershipController;
+use App\Http\Middleware\ForceHttps;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/v1/prices', [PriceApiController::class, 'index'])
+    ->middleware([ForceHttps::class, 'price-api.auth', 'throttle:60,1'])
+    ->name('api.v1.prices');
 
 Route::prefix('telegram')->middleware('throttle:20,1')->group(function () {
     Route::post('/link', [TelegramMembershipController::class, 'link']);

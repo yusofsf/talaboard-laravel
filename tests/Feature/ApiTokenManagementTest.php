@@ -19,7 +19,7 @@ class ApiTokenManagementTest extends TestCase
             'owner_type' => 'guest',
             'client_name' => 'سرویس حسابداری',
             'name' => 'قیمت‌خوان',
-            'abilities' => ['prices.read', 'trade-room.read'],
+            'abilities' => ['prices:read', 'trades:read'],
         ])->assertRedirect()
             ->assertSessionHas('issued_token');
 
@@ -38,7 +38,7 @@ class ApiTokenManagementTest extends TestCase
             'owner_type' => 'guest',
             'client_name' => 'سرویس مهمان',
             'name' => 'توکن نامعتبر',
-            'abilities' => ['shop-order.create'],
+            'abilities' => ['trades:create'],
         ])->assertSessionHasErrors('abilities');
 
         $this->assertDatabaseCount('api_tokens', 0);
@@ -50,12 +50,22 @@ class ApiTokenManagementTest extends TestCase
             null,
             'سرویس قیمت',
             'توکن خواندن',
-            ['trade-room.read'],
+            ['trades:read'],
         );
 
         $this->withToken($plainToken)
             ->getJson('/api/v1/trade-room/offers')
             ->assertOk()
             ->assertJsonStructure(['data']);
+    }
+
+    public function test_token_scope_only_allows_its_matching_endpoint(): void
+    {
+        $user = User::factory()->create();
+        [, $plainToken] = ApiToken::issue($user, '', 'کیف پول', ['wallet:read']);
+
+        $this->withToken($plainToken)->getJson('/api/v1/wallet')->assertOk()
+            ->assertJsonStructure(['data' => ['balance', 'transactions']]);
+        $this->withToken($plainToken)->getJson('/api/v1/profile')->assertForbidden();
     }
 }

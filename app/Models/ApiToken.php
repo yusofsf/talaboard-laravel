@@ -10,18 +10,25 @@ class ApiToken extends Model
 {
     use SoftDeletes;
 
+    /** Scopes that require a token to be linked to a site user. */
     public const USER_ABILITIES = [
-        'trade-room.create',
-        'shop-order.create',
-        'users.read',
+        'trades:create',
+        'wallet:read',
+        'profile:read',
+        'alerts:manage',
     ];
 
+    /**
+     * Publicly issuable API scopes. Keep endpoint middleware in sync with this
+     * map so an issued scope always grants a clear, limited capability.
+     */
     public const ABILITIES = [
-        'prices.read' => 'دریافت قیمت لحظه‌ای',
-        'trade-room.read' => 'مشاهده سفارش‌های اتاق معاملاتی',
-        'trade-room.create' => 'ثبت سفارش در اتاق معاملاتی',
-        'shop-order.create' => 'ثبت سفارش فروشگاه',
-        'users.read' => 'دسترسی به نام و شماره موبایلِ کاربرِ توکن',
+        'prices:read' => 'دریافت قیمت‌های لحظه‌ای',
+        'trades:read' => 'مشاهده سفارش‌های اتاق معاملاتی',
+        'trades:create' => 'ثبت سفارش اتاق معاملاتی و فروشگاه',
+        'wallet:read' => 'مشاهده موجودی و گردش کیف پول',
+        'profile:read' => 'مشاهده اطلاعات پروفایلِ صاحب توکن',
+        'alerts:manage' => 'مشاهده و خواندن اعلان‌های صاحب توکن',
     ];
 
     protected $fillable = ['user_id', 'client_name', 'name', 'token_hash', 'abilities', 'last_used_at', 'expires_at'];

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\CartItem;
+use App\Models\Notification;
+use App\Models\NotificationRead;
 use App\Models\TradeRoomOffer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -46,5 +48,55 @@ class TokenApiController extends Controller
         abort_unless($request->user(), 403, 'این توکن به حساب کاربری متصل نیست.');
 
         return response()->json(['data' => $request->user()->only(['id', 'name', 'phone'])]);
+    }
+
+    public function wallet(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user, 403, 'این قابلیت فقط برای توکن متصل به حساب کاربری فعال است.');
+
+        return response()->json(['data' => [
+            'balance' => $user->walletBalance(),
+            'transactions' => $user->walletTransactions()->latest()->limit(50)->get()
+                ->map(fn ($transaction) => [
+                    'id' => $transaction->id,
+                    'amount' => (int) $transaction->amount,
+                    'type' => $transaction->type,
+                    'description' => $transaction->description,
+                    'created_at' => $transaction->created_at,
+                ]),
+        ]]);
+    }
+
+    public function alerts(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user, 403, 'این قابلیت فقط برای توکن متصل به حساب کاربری فعال است.');
+        $readIds = NotificationRead::where('user_id', $user->id)->pluck('notification_id');
+
+        return response()->json(['data' => Notification::query()
+            ->where(fn ($query) => $query->where('user_id', $user->id)->orWhereNull('user_id'))
+            ->whereNotIn('id', $readIds)
+            ->latest()
+            ->limit(100)
+            ->get()
+            ->map(fn ($notification) => $notification->only(['id', 'title', 'body', 'type', 'created_at']))]);
+    }
+
+    public function markAlertRead(Request $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user, 403, 'این قابلیت فقط برای توکن متصل به حساب کاربری فعال است.');
+        Notification::query()
+            ->whereKey($id)
+            ->where(fn ($query) => $query->where('user_id', $user->id)->orWhereNull('user_id'))
+            ->firstOrFail();
+
+        NotificationRead::firstOrCreate([
+            'notification_id' => $id,
+            'user_id' => $user->id,
+        ], ['read_at' => now()]);
+
+        return response()->json(['data' => ['id' => $id, 'read' => true]]);
     }
 }

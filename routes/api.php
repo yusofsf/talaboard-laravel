@@ -11,11 +11,15 @@ Route::get('/v1/prices', [PriceApiController::class, 'index'])
     ->name('api.v1.prices');
 
 Route::prefix('v1')->middleware(ForceHttps::class)->group(function () {
-    Route::get('/prices/live', [PriceApiController::class, 'index'])->middleware(['api.token:prices.read', 'throttle:60,1']);
-    Route::get('/trade-room/offers', [TokenApiController::class, 'offers'])->middleware(['api.token:trade-room.read', 'throttle:60,1']);
-    Route::post('/trade-room/offers', [TokenApiController::class, 'storeOffer'])->middleware(['api.token:trade-room.create', 'throttle:20,1']);
-    Route::post('/shop/orders', [TokenApiController::class, 'storeShopOrder'])->middleware(['api.token:shop-order.create', 'throttle:20,1']);
-    Route::get('/user', [TokenApiController::class, 'me'])->middleware(['api.token:users.read', 'throttle:30,1']);
+    Route::get('/prices/live', [PriceApiController::class, 'index'])->middleware(['api.token:prices:read', 'throttle:60,1']);
+    Route::get('/trade-room/offers', [TokenApiController::class, 'offers'])->middleware(['api.token:trades:read', 'throttle:60,1']);
+    Route::post('/trade-room/offers', [TokenApiController::class, 'storeOffer'])->middleware(['api.token:trades:create', 'throttle:20,1']);
+    Route::post('/shop/orders', [TokenApiController::class, 'storeShopOrder'])->middleware(['api.token:trades:create', 'throttle:20,1']);
+    Route::get('/profile', [TokenApiController::class, 'me'])->middleware(['api.token:profile:read', 'throttle:30,1']);
+    Route::get('/user', [TokenApiController::class, 'me'])->middleware(['api.token:profile:read', 'throttle:30,1']);
+    Route::get('/wallet', [TokenApiController::class, 'wallet'])->middleware(['api.token:wallet:read', 'throttle:30,1']);
+    Route::get('/alerts', [TokenApiController::class, 'alerts'])->middleware(['api.token:alerts:manage', 'throttle:30,1']);
+    Route::post('/alerts/{id}/read', [TokenApiController::class, 'markAlertRead'])->middleware(['api.token:alerts:manage', 'throttle:30,1']);
 });
 
 Route::prefix('telegram')->middleware('throttle:20,1')->group(function () {

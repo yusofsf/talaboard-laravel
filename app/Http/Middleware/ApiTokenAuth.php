@@ -12,7 +12,7 @@ class ApiTokenAuth
     {
         $plain = $request->bearerToken();
         $token = $plain ? ApiToken::with('user')->where('token_hash', hash('sha256', $plain))->first() : null;
-        if (! $token || ! $token->user || ! $token->allows($ability)) {
+        if (! $token || ! $token->allows($ability)) {
             return response()->json(['message' => 'توکن معتبر نیست یا مجوز این عملیات را ندارد.'], 403);
         }
         $token->forceFill(['last_used_at' => now()])->saveQuietly();

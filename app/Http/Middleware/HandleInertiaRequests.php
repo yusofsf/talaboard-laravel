@@ -58,6 +58,7 @@ class HandleInertiaRequests extends Middleware
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
                 'price_api_secret' => $request->session()->get('price_api_secret'),
+                'issued_token' => $request->session()->get('issued_token'),
             ],
             'seoDefaults' => [
                 ...config('seo.default'),

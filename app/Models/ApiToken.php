@@ -10,6 +10,12 @@ class ApiToken extends Model
 {
     use SoftDeletes;
 
+    public const USER_ABILITIES = [
+        'trade-room.create',
+        'shop-order.create',
+        'users.read',
+    ];
+
     public const ABILITIES = [
         'prices.read' => 'دریافت قیمت لحظه‌ای',
         'trade-room.read' => 'مشاهده سفارش‌های اتاق معاملاتی',
@@ -18,7 +24,7 @@ class ApiToken extends Model
         'users.read' => 'دسترسی به نام و شماره موبایلِ کاربرِ توکن',
     ];
 
-    protected $fillable = ['user_id', 'name', 'token_hash', 'abilities', 'last_used_at', 'expires_at'];
+    protected $fillable = ['user_id', 'client_name', 'name', 'token_hash', 'abilities', 'last_used_at', 'expires_at'];
 
     protected $hidden = ['token_hash'];
 
@@ -34,11 +40,14 @@ class ApiToken extends Model
         return in_array($ability, $this->abilities ?? [], true) && (! $this->expires_at || $this->expires_at->isFuture());
     }
 
-    public static function issue(User $user, string $name, array $abilities, ?string $expiresAt = null): array
+    public static function issue(?User $user, string $clientName, string $name, array $abilities, ?string $expiresAt = null): array
     {
         $plain = 'tlb_'.Str::random(48);
         $token = static::create([
-            'user_id' => $user->id, 'name' => $name, 'token_hash' => hash('sha256', $plain),
+            'user_id' => $user?->id,
+            'client_name' => $user?->name ?? $clientName,
+            'name' => $name,
+            'token_hash' => hash('sha256', $plain),
             'abilities' => array_values(array_intersect($abilities, array_keys(self::ABILITIES))),
             'expires_at' => $expiresAt,
         ]);

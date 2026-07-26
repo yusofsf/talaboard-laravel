@@ -19,6 +19,7 @@ class TokenApiController extends Controller
     {
         $request->validate(['metal' => 'required|in:gold,silver,coin', 'side' => 'required|in:buy,sell', 'item' => 'nullable|in:bahar,nim,rob', 'purity' => 'nullable|in:999,995', 'grams' => 'required|numeric|min:1', 'price_per_gram' => 'required|integer|min:1']);
         $user = $request->user();
+        abort_unless($user, 403, 'این قابلیت فقط برای توکن متصل به حساب کاربری فعال است.');
         abort_unless($user->isVipMember(), 403, 'فقط کاربران ویژه می‌توانند سفارش اتاق معاملاتی ثبت کنند.');
         if ($request->metal !== 'coin' && (float) $request->grams < 100) {
             abort(422, 'حداقل سفارش اتاق معاملاتی ۱۰۰ گرم است.');
@@ -30,6 +31,7 @@ class TokenApiController extends Controller
 
     public function storeShopOrder(Request $request): JsonResponse
     {
+        abort_unless($request->user(), 403, 'این قابلیت فقط برای توکن متصل به حساب کاربری فعال است.');
         $request->validate(['trade_type' => 'required|in:buy,sell', 'item' => 'required|in:mithqal,geram,bahar,nim,rob,mithqal_999,gram_999,mithqal_995,gram_995', 'quantity' => 'required|numeric|min:0.001', 'price_per_unit' => 'required|integer|min:1']);
         $item = $request->item;
         $silver = str_contains($item, '_99');
@@ -41,6 +43,8 @@ class TokenApiController extends Controller
 
     public function me(Request $request): JsonResponse
     {
+        abort_unless($request->user(), 403, 'این توکن به حساب کاربری متصل نیست.');
+
         return response()->json(['data' => $request->user()->only(['id', 'name', 'phone'])]);
     }
 }

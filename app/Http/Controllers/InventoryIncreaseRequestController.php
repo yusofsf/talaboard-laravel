@@ -27,6 +27,7 @@ class InventoryIncreaseRequestController extends Controller
             'purity' => $purity,
             'grams' => $request->grams,
             'note' => $request->note,
+            'source' => 'website',
         ]);
 
         $itemLabel = $metal === 'gold' ? 'طلا' : "نقره {$purity}";

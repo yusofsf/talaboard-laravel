@@ -26,9 +26,33 @@ class InventoryIncreaseRequestTest extends TestCase
             'user_id' => $user->id,
             'metal' => 'gold',
             'purity' => '',
+            'source' => 'website',
             'status' => 'pending',
         ]);
         $this->assertSame(0, GoldLedger::count());
+    }
+
+    public function test_telegram_bot_inventory_increase_is_marked_with_its_source(): void
+    {
+        config()->set('services.telegram.link_api_token', 'test-bot-token');
+        $user = User::factory()->create([
+            'telegram_chat_id' => '445566',
+            'is_vip' => true,
+            'membership_level' => 2,
+        ]);
+
+        $this->withToken('test-bot-token')->postJson('/api/telegram/inventory-increase', [
+            'telegram_chat_id' => '445566',
+            'item' => 'gold',
+            'quantity' => 12.5,
+        ])->assertOk();
+
+        $this->assertDatabaseHas('inventory_increase_requests', [
+            'user_id' => $user->id,
+            'metal' => 'gold',
+            'source' => 'telegram_bot',
+            'status' => 'pending',
+        ]);
     }
 
     public function test_admin_approval_credits_the_requested_gold_once(): void

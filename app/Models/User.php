@@ -87,16 +87,6 @@ class User extends Authenticatable
         return $this->hasMany(ApiToken::class)->orderByDesc('created_at');
     }
 
-    public function apiTokens()
-    {
-        return $this->hasMany(ApiToken::class)->orderByDesc('created_at');
-    }
-
-    public function apiTokens()
-    {
-        return $this->hasMany(ApiToken::class)->orderByDesc('created_at');
-    }
-
     public function walletBalance(): int
     {
         return (int) $this->walletTransactions()->sum('amount');

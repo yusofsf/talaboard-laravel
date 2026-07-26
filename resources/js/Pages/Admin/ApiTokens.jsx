@@ -167,7 +167,7 @@ export default function ApiTokens({ tokens, users, abilities, userAbilities }) {
                                             <input type="checkbox" checked={form.data.abilities.includes(ability)}
                                                 disabled={disabled} onChange={() => toggleAbility(ability)} />
                                             <span className="ability-check" aria-hidden="true">✓</span>
-                                            <span><strong>{label}</strong>{requiresUser && <small>نیازمند حساب کاربری</small>}</span>
+                                            <span><strong>{label}</strong><code dir="ltr">{ability}</code>{requiresUser && <small>نیازمند حساب کاربری</small>}</span>
                                         </label>
                                     );
                                 })}
@@ -215,7 +215,7 @@ export default function ApiTokens({ tokens, users, abilities, userAbilities }) {
                                         </span>
                                     </div>
                                     <div className="token-abilities">
-                                        {token.abilities.map(ability => <span key={ability}>{abilities[ability] || ability}</span>)}
+                                        {token.abilities.map(ability => <span key={ability}>{abilities[ability] || ability} <code dir="ltr">{ability}</code></span>)}
                                     </div>
                                     <div className="token-record-footer">
                                         <div>

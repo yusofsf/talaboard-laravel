@@ -14,6 +14,7 @@ use App\Models\SilverLedger;
 use App\Models\SilverDeliveryRequest;
 use App\Models\TradeRoomOffer;
 use App\Models\ActivityLog;
+use App\Models\Setting;
 use App\Services\PriceService;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -94,8 +95,8 @@ class TelegramMembershipController extends Controller
         $data = $request->validate(['telegram_chat_id' => ['required', 'string', 'max:32']]);
         $user = User::query()->where('telegram_chat_id', $data['telegram_chat_id'])->first();
 
-        if (! $user || ! $user->isVipMember()) {
-            return response()->json(['linked' => false, 'vip' => false], 403);
+        if (! $user) {
+            return response()->json(['linked' => false, 'vip' => false, 'membership_level' => 0, 'membership_status' => 'none']);
         }
 
         return response()->json($this->membershipPayload($user));
@@ -330,6 +331,18 @@ class TelegramMembershipController extends Controller
         return response()->json(['id' => $offer->id, 'status' => $offer->status, 'total' => $offer->total()], 201);
     }
 
+    /** Accept a room offer for the Telegram bot, using the same atomic wallet
+     * and commission path as the website trade-room action. */
+    public function tradeRoomAccept(Request $request, int $id)
+    {
+        $this->authorize($request);
+        $user = $this->vipUserForChat($request);
+        $request->merge(['grams' => $request->input('quantity')]);
+        $request->setUserResolver(fn () => $user);
+
+        return app(TradeRoomController::class)->accept($request, $id);
+    }
+
     public function delivery(Request $request): JsonResponse
     {
         $this->authorize($request);
@@ -413,6 +426,8 @@ class TelegramMembershipController extends Controller
             'name' => $user->name,
             'phone' => $user->phone,
             'membership_level' => $user->membership_level,
+            'membership_status' => $user->membership_status,
+            'trade_room_commission_percent' => (float) Setting::get('trade_room_commission_percent', 0.1),
         ];
     }
 }

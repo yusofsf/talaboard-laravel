@@ -3,6 +3,7 @@
 return [
     'telegram' => [
         'link_api_token' => env('TELEGRAM_LINK_API_TOKEN'),
+        'membership_url' => env('TELEGRAM_MEMBERSHIP_URL', env('APP_URL').'/membership'),
     ],
 
     'price_api' => [

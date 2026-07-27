@@ -278,11 +278,18 @@ class TradeRoomController extends Controller
                 }
             });
         } catch (\RuntimeException $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['accepted' => false, 'message' => $e->getMessage()], 422);
+            }
             return back()->withErrors(['offer' => $e->getMessage()]);
         }
 
         ActivityLog::record('room_accept', 'trade',
             "پذیرش پیشنهاد اتاق معاملاتی #{$id} توسط {$acceptor->name}", $acceptor->id);
+
+        if ($request->expectsJson()) {
+            return response()->json(['accepted' => true, 'offer_id' => $id]);
+        }
 
         return back()->with('success', 'معامله با موفقیت انجام شد.');
     }

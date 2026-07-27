@@ -15,6 +15,7 @@ class TelegramBotApiTest extends TestCase
     private function botUser(): User
     {
         config()->set('services.telegram.link_api_token', 'test-bot-token');
+        config()->set('logging.default', 'null');
 
         return User::factory()->create([
             'telegram_chat_id' => '778899',
@@ -33,11 +34,11 @@ class TelegramBotApiTest extends TestCase
 
         $this->withToken('test-bot-token')->postJson('/api/telegram/trade-room/offers/create', [
             'telegram_chat_id' => '778899', 'asset' => 'gold', 'side' => 'buy',
-            'unit' => 'gram', 'quantity' => 100, 'unit_price' => 1000,
+            'unit' => 'gram', 'quantity' => 1, 'unit_price' => 1000,
         ])->assertCreated()->assertJsonPath('status', 'open');
 
         $this->assertDatabaseHas('trade_room_offers', ['user_id' => $user->id, 'metal' => 'gold', 'side' => 'buy', 'status' => 'open']);
-        $this->assertSame(999900000, $user->fresh()->walletBalance());
+        $this->assertSame(999999000, $user->fresh()->walletBalance());
     }
 
     public function test_bot_can_create_delivery_request_and_read_its_status(): void

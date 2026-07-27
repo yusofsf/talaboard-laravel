@@ -295,7 +295,7 @@ class TelegramMembershipController extends Controller
         $amount = $data['unit'] === 'mesghal' ? round($quantity * $factor, 4) : $quantity;
         $price = $data['unit'] === 'mesghal' ? (int) round($data['unit_price'] / $factor) : (int) $data['unit_price'];
         abort_if($isCoin && floor($amount) !== $amount, 422, 'تعداد سکه باید صحیح باشد.');
-        abort_if(! $isCoin && $amount < 100, 422, 'حداقل سفارش اتاق معاملاتی ۱۰۰ گرم است.');
+        abort_if($asset['metal'] === 'silver' && $amount < 100, 422, 'حداقل سفارش اتاق معاملاتی ۱۰۰ گرم است.');
         $total = (int) round($amount * $price);
 
         $offer = DB::transaction(function () use ($user, $asset, $isCoin, $data, $amount, $price, $total) {

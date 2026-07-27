@@ -24,8 +24,8 @@ class TradeRoomCommissionTest extends TestCase
     {
         Setting::put('trade_room_commission_percent', 0.1); // ۰.۱٪
 
-        $seller = User::factory()->vip()->create();
-        $buyer = User::factory()->vip()->create();
+        $seller = User::factory()->vip()->admin()->create();
+        $buyer = User::factory()->vip()->admin()->create();
 
         // فروشنده ۱۰۰ گرم طلا دارد و پیشنهاد فروش می‌گذارد
         GoldLedger::create(['user_id' => $seller->id, 'grams' => 100, 'type' => 'admin_adjust', 'description' => 'seed']);
@@ -60,8 +60,8 @@ class TradeRoomCommissionTest extends TestCase
     {
         Setting::put('trade_room_commission_percent', 0.1);
         $admin = User::factory()->admin()->create();
-        $seller = User::factory()->vip()->create();
-        $buyer = User::factory()->vip()->create();
+        $seller = User::factory()->vip()->admin()->create();
+        $buyer = User::factory()->vip()->admin()->create();
         GoldLedger::create(['user_id' => $seller->id, 'grams' => 100, 'type' => 'admin_adjust', 'description' => 'seed']);
         $this->fund($buyer, 1_000_000);
 
@@ -75,8 +75,8 @@ class TradeRoomCommissionTest extends TestCase
     public function test_accepted_offer_appears_in_the_acceptors_trade_room_history_with_flipped_side(): void
     {
         Setting::put('trade_room_commission_percent', 0);
-        $seller = User::factory()->vip()->create();
-        $buyer = User::factory()->vip()->create();
+        $seller = User::factory()->vip()->admin()->create();
+        $buyer = User::factory()->vip()->admin()->create();
         GoldLedger::create(['user_id' => $seller->id, 'grams' => 100, 'type' => 'admin_adjust', 'description' => 'seed']);
         $this->fund($buyer, 1_000_000);
 
@@ -95,8 +95,8 @@ class TradeRoomCommissionTest extends TestCase
     public function test_a_weight_offer_can_be_partially_accepted_and_keeps_its_remaining_escrow_open(): void
     {
         Setting::put('trade_room_commission_percent', 0);
-        $seller = User::factory()->vip()->create();
-        $buyer = User::factory()->vip()->create();
+        $seller = User::factory()->vip()->admin()->create();
+        $buyer = User::factory()->vip()->admin()->create();
         GoldLedger::create(['user_id' => $seller->id, 'grams' => 1000, 'type' => 'admin_adjust', 'description' => 'seed']);
         $this->fund($buyer, 1_000_000);
 
@@ -122,8 +122,8 @@ class TradeRoomCommissionTest extends TestCase
 
     public function test_partial_acceptance_cannot_leave_less_than_the_minimum_order_size(): void
     {
-        $seller = User::factory()->vip()->create();
-        $buyer = User::factory()->vip()->create();
+        $seller = User::factory()->vip()->admin()->create();
+        $buyer = User::factory()->vip()->admin()->create();
         GoldLedger::create(['user_id' => $seller->id, 'grams' => 150, 'type' => 'admin_adjust', 'description' => 'seed']);
         $this->fund($buyer, 1_000_000);
 
@@ -145,8 +145,8 @@ class TradeRoomCommissionTest extends TestCase
     {
         Setting::put('trade_room_commission_percent', 0);
         $admin = User::factory()->admin()->create();
-        $seller = User::factory()->vip()->create();
-        $buyer = User::factory()->vip()->create();
+        $seller = User::factory()->vip()->admin()->create();
+        $buyer = User::factory()->vip()->admin()->create();
         GoldLedger::create(['user_id' => $seller->id, 'grams' => 1000, 'type' => 'admin_adjust', 'description' => 'seed']);
         $this->fund($buyer, 1_000_000);
 

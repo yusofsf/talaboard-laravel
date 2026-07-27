@@ -153,7 +153,7 @@ export default function Home({ prices: initial, refreshSeconds }) {
     const user = auth?.user;
     const isVip = !!user && (user.is_vip || user.membership_level === 2);
     const showMembershipLink = !!user && !user.is_admin && !isVip && user.membership_status !== 'pending';
-    const roomHref = key => (isVip && ROOM_META[key]) ? `/trade-room?${ROOM_META[key]}` : null;
+    const roomHref = key => (user?.is_admin && ROOM_META[key]) ? `/trade-room?${ROOM_META[key]}` : null;
 
     const [data, setData] = useState(initial);
     const [online, setOnline] = useState(true);

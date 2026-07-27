@@ -34,7 +34,7 @@ class TradeRoomExpiryTest extends TestCase
     {
         Carbon::setTestNow(Carbon::parse('2026-07-13 12:00:00')); // Monday
 
-        $buyer = User::factory()->vip()->create();
+        $buyer = User::factory()->vip()->admin()->create();
         $this->fund($buyer, 1_000_000);
 
         $this->actingAs($buyer)->post('/trade-room', [
@@ -59,7 +59,7 @@ class TradeRoomExpiryTest extends TestCase
     {
         Carbon::setTestNow(Carbon::parse('2026-07-16 12:00:00')); // Thursday
 
-        $buyer = User::factory()->vip()->create();
+        $buyer = User::factory()->vip()->admin()->create();
         $this->fund($buyer, 1_000_000);
 
         $response = $this->actingAs($buyer)->post('/trade-room', [

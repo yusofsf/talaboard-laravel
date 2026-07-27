@@ -17,6 +17,10 @@
 
 Inertia.js پل بین Laravel و React است — نیازی به REST API جداگانه نیست.
 
+## API قیمت لحظه‌ای
+
+مستندات دریافت قیمت لحظه‌ای با نام کاربری و سکرت در [docs/price-api.md](docs/price-api.md) قرار دارد.
+
 ---
 
 ## نصب محلی

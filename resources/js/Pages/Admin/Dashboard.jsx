@@ -485,6 +485,23 @@ function InventoryIncreaseRow({ r, inventoryIncreaseNote, setInventoryIncreaseNo
     );
 }
 
+function AssetCollateralRow({ r, collateralForm, setCollateralForm, approve, reject }) {
+    const label = { gold: 'طلا', silver_995: 'نقره ۹۹۵', silver_999: 'نقره ۹۹۹/۹', full_coin: 'سکه تمام', half_coin: 'نیم‌سکه', quarter_coin: 'ربع‌سکه' }[r.asset] || r.asset;
+    return <tr>
+        <td><strong>{r.user_name}</strong></td><td className="num" dir="ltr">{r.user_phone}</td>
+        <td>{label}</td><td className="num">{r.quantity}</td><td>{r.note || '—'}</td><td>{r.created_at}</td>
+        <td style={{ minWidth: 260 }}>
+            <input type="number" min="0" value={collateralForm[r.id]?.limit ?? ''}
+                onChange={e => setCollateralForm(s => ({ ...s, [r.id]: { ...(s[r.id] || {}), limit: e.target.value } }))}
+                placeholder="سقف معامله (ریال)" style={{ width: '100%', marginBottom: 6 }} />
+            <input value={collateralForm[r.id]?.note || ''}
+                onChange={e => setCollateralForm(s => ({ ...s, [r.id]: { ...(s[r.id] || {}), note: e.target.value } }))}
+                placeholder="یادداشت / دلیل رد" style={{ width: '100%', marginBottom: 6 }} />
+            <div style={{ display: 'flex', gap: 6 }}><button className="btn-sm" onClick={() => approve(r.id)} style={{ color: 'var(--up)' }}>تأیید و ثبت سقف</button><button className="btn-sm danger" onClick={() => reject(r.id)}>رد</button></div>
+        </td>
+    </tr>;
+}
+
 function AllTradeRow({ t, printOnly, rejectingId, setRejectingId, rejectReason, setRejectReason, submitTradeReject }) {
     const rejected = t.status === 'rejected';
     return (
@@ -561,7 +578,7 @@ function SecurityEventRow({ e }) {
     );
 }
 
-export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApplications, vipMembers, deliveryRequests, withdrawalRequests, depositRequests, inventoryIncreaseRequests, botDepositRequests = [], botInventoryIncreaseRequests = [], allTrades, activityLogs, securityEvents, tickets, settings }) {
+export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApplications, vipMembers, deliveryRequests, withdrawalRequests, depositRequests, inventoryIncreaseRequests, botDepositRequests = [], botInventoryIncreaseRequests = [], assetCollateralRequests = [], allTrades, activityLogs, securityEvents, tickets, settings }) {
     const { auth, flash } = usePage().props;
     const [tab, setTab] = useState('users');
 
@@ -574,6 +591,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
     const [depositNote, setDepositNote] = useState({});
     const [deliveryNote, setDeliveryNote] = useState({});
     const [inventoryIncreaseNote, setInventoryIncreaseNote] = useState({});
+    const [collateralForm, setCollateralForm] = useState({});
     const [tradeFrom, setTradeFrom] = useState('');
     const [tradeTo, setTradeTo] = useState('');
     const [txnsFrom, setTxnsFrom] = useState('');
@@ -773,6 +791,17 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
         router.post(`/admin/inventory-increase-requests/${id}/reject`, { reason }, { preserveScroll: true });
     }
 
+    function approveCollateral(id) {
+        const form = collateralForm[id] || {};
+        if (form.limit === undefined || form.limit === '') { alert('سقف معامله را وارد کنید.'); return; }
+        router.post(`/admin/asset-collaterals/${id}/approve`, { trade_limit_amount: form.limit, note: form.note || '' }, { preserveScroll: true });
+    }
+    function rejectCollateral(id) {
+        const reason = (collateralForm[id]?.note || '').trim();
+        if (!reason) { alert('دلیل رد را وارد کنید.'); return; }
+        router.post(`/admin/asset-collaterals/${id}/reject`, { reason }, { preserveScroll: true });
+    }
+
     const TABS = [
         ['users', 'کاربران'],
         ['txns', 'معاملات'],
@@ -787,6 +816,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
         ['inventory_increases', `افزایش موجودی انبار${inventoryIncreaseRequests?.length ? ` (${inventoryIncreaseRequests.length})` : ''}`],
         ['bot_deposits', `افزایش موجودی ربات${botDepositRequests.length ? ` (${botDepositRequests.length})` : ''}`],
         ['bot_inventory_increases', `افزایش موجودی انبار ربات${botInventoryIncreaseRequests.length ? ` (${botInventoryIncreaseRequests.length})` : ''}`],
+        ['asset_collaterals', `بیعانه دارایی${assetCollateralRequests.length ? ` (${assetCollateralRequests.length})` : ''}`],
         ['tickets', `تیکت‌ها${tickets?.filter(t => t.status === 'open').length ? ` (${tickets.filter(t => t.status === 'open').length})` : ''}`],
         ['security', `امنیت${securityEvents?.length ? ` (${securityEvents.length})` : ''}`],
         ['logs', 'گزارش فعالیت'],
@@ -1359,6 +1389,14 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                             </div>
                         ) : <div className="empty"><div className="ico">+</div>درخواست افزایش موجودی انبار از ربات در انتظار بررسی نیست.</div>}
                         <Pager page={botInventoryPager.page} totalPages={botInventoryPager.totalPages} onChange={botInventoryPager.setPage} />
+                    </>
+                )}
+
+                {tab === 'asset_collaterals' && (
+                    <>
+                        {assetCollateralRequests.length ? <div className="table-wrap"><table><thead><tr><th>کاربر</th><th>موبایل</th><th>دارایی</th><th>مقدار</th><th>توضیحات</th><th>تاریخ</th><th>تأیید / سقف معامله</th></tr></thead><tbody>
+                            {assetCollateralRequests.map(r => <AssetCollateralRow key={r.id} r={r} collateralForm={collateralForm} setCollateralForm={setCollateralForm} approve={approveCollateral} reject={rejectCollateral} />)}
+                        </tbody></table></div> : <div className="empty"><div className="ico">🧾</div>درخواست بیعانه دارایی در انتظار بررسی نیست.</div>}
                     </>
                 )}
 

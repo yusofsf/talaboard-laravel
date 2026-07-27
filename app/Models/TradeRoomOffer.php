@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class TradeRoomOffer extends Model
 {
     use SoftDeletes;
-    protected $fillable = ['parent_offer_id', 'user_id', 'metal', 'item', 'side', 'purity', 'grams', 'price_per_gram', 'status', 'counterparty_id', 'completed_at', 'admin_note', 'commission'];
+    protected $fillable = ['parent_offer_id', 'user_id', 'metal', 'item', 'side', 'purity', 'grams', 'price_per_gram', 'wallet_reserved_amount', 'collateral_reserved_amount', 'status', 'counterparty_id', 'completed_at', 'admin_note', 'commission'];
 
     protected $casts = ['grams' => 'decimal:4', 'completed_at' => 'datetime'];
 

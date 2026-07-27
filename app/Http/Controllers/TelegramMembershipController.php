@@ -14,6 +14,7 @@ use App\Models\SilverLedger;
 use App\Models\SilverDeliveryRequest;
 use App\Models\TradeRoomOffer;
 use App\Models\ActivityLog;
+use App\Models\AssetCollateralRequest;
 use App\Models\Setting;
 use App\Services\PriceService;
 use App\Models\User;
@@ -162,6 +163,7 @@ class TelegramMembershipController extends Controller
             'prices' => $prices->all(),
             'trades' => Transaction::query()->where('user_id', $user->id)->latest()->take(20)->get(['id', 'type', 'item_label', 'quantity', 'total', 'status', 'created_at']),
             'deposits' => DepositRequest::query()->where('user_id', $user->id)->latest()->take(20)->get(['id', 'amount', 'note', 'status', 'admin_note', 'created_at']),
+            'asset_collateral_available' => $this->availableCollateralAmount($user),
         ]);
     }
 
@@ -247,8 +249,33 @@ class TelegramMembershipController extends Controller
         $this->authorize($request);
         $user = $this->vipUserForChat($request);
 
-        $offers = TradeRoomOffer::query()->where('status', 'open')
-            ->orderByDesc('created_at')->limit(100)->get()
+        $data = $request->validate([
+            'mine' => ['nullable'],
+            'status' => ['nullable'],
+        ]);
+        $mine = filter_var($data['mine'] ?? false, FILTER_VALIDATE_BOOL);
+        $statuses = collect((array) ($data['status'] ?? []))
+            ->flatMap(fn ($status) => is_string($status) ? explode(',', $status) : [$status])
+            ->map(fn ($status) => match (strtolower(trim((string) $status))) {
+                'active', 'available', 'published' => 'open',
+                'accepted' => 'completed',
+                default => strtolower(trim((string) $status)),
+            })
+            ->filter()
+            ->values()
+            ->all();
+
+        $query = TradeRoomOffer::query()->orderByDesc('created_at');
+        if ($mine) {
+            $query->where(fn ($query) => $query->where('user_id', $user->id)->orWhere('counterparty_id', $user->id));
+        } else {
+            $query->where('status', 'open');
+        }
+        if ($statuses) {
+            $query->whereIn('status', $statuses);
+        }
+
+        $offers = $query->limit(100)->get()
             ->map(fn (TradeRoomOffer $offer) => [
                 'id' => $offer->id,
                 'asset' => $this->roomAsset($offer),
@@ -257,8 +284,11 @@ class TelegramMembershipController extends Controller
                 'unit_price' => (int) $offer->price_per_gram,
                 'unit' => $offer->metal === 'coin' ? 'piece' : 'gram',
                 'total' => $offer->total(),
+                'status' => $offer->status,
                 'is_mine' => $offer->user_id === $user->id,
+                'is_counterparty' => $offer->counterparty_id === $user->id,
                 'created_at' => $offer->created_at?->toIso8601String(),
+                'completed_at' => $offer->completed_at?->toIso8601String(),
             ]);
 
         return response()->json(['offers' => $offers]);
@@ -301,7 +331,9 @@ class TelegramMembershipController extends Controller
         $offer = DB::transaction(function () use ($user, $asset, $isCoin, $data, $amount, $price, $total) {
             $lockedUser = User::query()->lockForUpdate()->findOrFail($user->id);
             if ($data['side'] === 'buy') {
-                abort_if($lockedUser->walletBalance() < $total, 422, 'موجودی کیف پول کافی نیست.');
+                $wallet = $lockedUser->walletBalance();
+                $missing = max(0, $total - $wallet);
+                abort_if($missing > 0 && $this->availableCollateralAmount($lockedUser) < $missing, 422, 'موجودی کیف پول یا اعتبار بیعانه دارایی کافی نیست.');
             } elseif ($isCoin) {
                 $held = (float) Transaction::query()->where('user_id', $lockedUser->id)->where('item', $asset['item'])->where('status', 'active')->where('type', 'buy')->sum('quantity')
                     - (float) Transaction::query()->where('user_id', $lockedUser->id)->where('item', $asset['item'])->where('status', 'active')->where('type', 'sell')->sum('quantity');
@@ -311,13 +343,19 @@ class TelegramMembershipController extends Controller
                 abort_if($balance < $amount, 422, 'موجودی انبار کافی نیست.');
             }
 
+            $walletReserve = $data['side'] === 'buy' ? min($lockedUser->walletBalance(), $total) : 0;
+            $collateralReserve = $data['side'] === 'buy' ? $total - $walletReserve : 0;
             $offer = TradeRoomOffer::create([
                 'user_id' => $lockedUser->id, 'metal' => $asset['metal'], 'item' => $asset['item'],
                 'side' => $data['side'], 'purity' => $asset['purity'], 'grams' => $amount,
-                'price_per_gram' => $price, 'status' => 'open',
+                'price_per_gram' => $price, 'wallet_reserved_amount' => $walletReserve,
+                'collateral_reserved_amount' => $collateralReserve, 'status' => 'open',
             ]);
             if ($data['side'] === 'buy') {
-                WalletTransaction::create(['user_id' => $lockedUser->id, 'amount' => -$total, 'type' => 'withdraw', 'description' => "رزرو پیشنهاد خرید ربات #{$offer->id}"]);
+                if ($walletReserve > 0) {
+                    WalletTransaction::create(['user_id' => $lockedUser->id, 'amount' => -$walletReserve, 'type' => 'withdraw', 'description' => "رزرو پیشنهاد خرید ربات #{$offer->id}"]);
+                }
+                $this->reserveCollateral($lockedUser, $collateralReserve);
             } elseif (! $isCoin) {
                 $ledger = $asset['metal'] === 'gold' ? GoldLedger::class : SilverLedger::class;
                 $values = ['user_id' => $lockedUser->id, 'grams' => -$amount, 'type' => 'offer_escrow', 'reference_type' => TradeRoomOffer::class, 'reference_id' => $offer->id, 'description' => "رزرو پیشنهاد فروش ربات #{$offer->id}"];
@@ -341,6 +379,39 @@ class TelegramMembershipController extends Controller
         $request->setUserResolver(fn () => $user);
 
         return app(TradeRoomController::class)->accept($request, $id);
+    }
+
+    public function assetCollateral(Request $request): JsonResponse
+    {
+        $this->authorize($request);
+        $user = $this->vipUserForChat($request);
+        $data = $request->validate([
+            'asset' => ['required', 'in:gold,silver_999,silver_995,full_coin,half_coin,quarter_coin'],
+            'quantity' => ['required', 'numeric', 'min:0.0001', 'max:1000000'],
+            'note' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $collateral = AssetCollateralRequest::create([
+            'user_id' => $user->id,
+            'asset' => $data['asset'],
+            'quantity' => $data['quantity'],
+            'status' => 'pending',
+            'note' => $data['note'] ?? null,
+            'source' => 'telegram_bot',
+        ]);
+
+        User::where('is_admin', true)->each(fn (User $admin) => Notification::create([
+            'user_id' => $admin->id,
+            'title' => "درخواست بیعانه دارایی ربات — {$user->name}",
+            'body' => $data['quantity'].' '.$data['asset'].' — در انتظار تعیین سقف معامله',
+            'type' => 'system',
+        ]));
+
+        return response()->json([
+            'id' => $collateral->id,
+            'status' => $collateral->status,
+            'message' => 'درخواست بیعانه دارایی ثبت شد و در سایت بررسی می‌شود.',
+        ], 201);
     }
 
     public function delivery(Request $request): JsonResponse
@@ -428,6 +499,43 @@ class TelegramMembershipController extends Controller
             'membership_level' => $user->membership_level,
             'membership_status' => $user->membership_status,
             'trade_room_commission_percent' => (float) Setting::get('trade_room_commission_percent', 0.1),
+            'asset_collateral_available' => $this->availableCollateralAmount($user),
         ];
+    }
+
+    private function availableCollateralAmount(User $user): int
+    {
+        return (int) AssetCollateralRequest::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->get()
+            ->sum(fn (AssetCollateralRequest $collateral) => $collateral->availableAmount());
+    }
+
+    private function reserveCollateral(User $user, int $amount): void
+    {
+        if ($amount <= 0) {
+            return;
+        }
+
+        $remaining = $amount;
+        AssetCollateralRequest::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->whereColumn('used_amount', '<', 'trade_limit_amount')
+            ->lockForUpdate()
+            ->orderBy('id')
+            ->get()
+            ->each(function (AssetCollateralRequest $collateral) use (&$remaining) {
+                if ($remaining <= 0) {
+                    return;
+                }
+
+                $use = min($remaining, $collateral->availableAmount());
+                $collateral->increment('used_amount', $use);
+                $remaining -= $use;
+            });
+
+        abort_if($remaining > 0, 422, 'اعتبار بیعانه دارایی کافی نیست.');
     }
 }

@@ -28,7 +28,7 @@ class TradeRoomController extends Controller
 
     public function index(Request $request)
     {
-        $this->ensureVip($request->user());
+        $this->ensureAdmin($request->user());
         $this->expiry->expireOpenOffers();
 
         // سفارش‌های فروش: ارزان‌ترین اول (برای خریدار بهترین قیمت بالاست)
@@ -73,7 +73,7 @@ class TradeRoomController extends Controller
     public function store(Request $request)
     {
         $user = $request->user();
-        $this->ensureVip($user);
+        $this->ensureAdmin($user);
 
         $request->validate([
             'metal' => 'required|in:gold,silver,coin',
@@ -147,7 +147,7 @@ class TradeRoomController extends Controller
     public function accept(Request $request, int $id)
     {
         $acceptor = $request->user();
-        $this->ensureVip($acceptor);
+        $this->ensureAdmin($acceptor);
 
         $request->validate([
             'grams' => 'nullable|numeric|min:0.0001',
@@ -437,10 +437,10 @@ class TradeRoomController extends Controller
         ];
     }
 
-    private function ensureVip(User $user): void
+    private function ensureAdmin(User $user): void
     {
-        if (! $user->isVipMember()) {
-            abort(403, 'اتاق معاملاتی فقط برای اعضای ویژه است.');
+        if (! $user->is_admin && $user->phone !== env('ADMIN_PHONE')) {
+            abort(403, 'اتاق معاملاتی فعلاً فقط برای ادمین قابل دسترسی است.');
         }
     }
 }

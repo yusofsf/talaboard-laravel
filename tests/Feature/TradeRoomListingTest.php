@@ -13,9 +13,9 @@ class TradeRoomListingTest extends TestCase
 
     public function test_sell_offers_are_sorted_cheapest_first_and_buy_offers_priciest_first(): void
     {
-        $viewer = User::factory()->vip()->create();
-        $seller = User::factory()->vip()->create();
-        $buyer  = User::factory()->vip()->create();
+        $viewer = User::factory()->vip()->admin()->create();
+        $seller = User::factory()->vip()->admin()->create();
+        $buyer  = User::factory()->vip()->admin()->create();
 
         foreach ([300000, 100000, 200000] as $price) {
             TradeRoomOffer::create([

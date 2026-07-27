@@ -8,7 +8,6 @@ use App\Models\GoldLedger;
 use App\Models\Notification;
 use App\Models\SilverDeliveryRequest;
 use App\Models\Ticket;
-use App\Models\TradeRoomOffer;
 use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Models\WithdrawalRequest;
@@ -104,21 +103,11 @@ class UserSubmissionFlowTest extends TestCase
             'message' => 'لطفا بررسی کنید.',
         ])->assertRedirect()->assertSessionHasNoErrors();
 
-        $this->actingAs($user)->post('/trade-room', [
-            'metal' => 'gold',
-            'item' => '',
-            'side' => 'sell',
-            'purity' => '',
-            'grams' => 100,
-            'price_per_gram' => 1_000,
-        ])->assertRedirect()->assertSessionHasNoErrors();
-
         $this->assertSame(1, DepositRequest::count());
         $this->assertSame(1, WithdrawalRequest::count());
         $this->assertSame(1, SilverDeliveryRequest::count());
         $this->assertSame('9177945678', SilverDeliveryRequest::first()->postal_code);
         $this->assertSame(1, Ticket::count());
-        $this->assertSame(1, TradeRoomOffer::count());
         $this->assertTrue(Notification::where('user_id', $admin->id)->exists());
     }
 

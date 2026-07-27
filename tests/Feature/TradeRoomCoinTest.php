@@ -28,11 +28,11 @@ class TradeRoomCoinTest extends TestCase
         ]);
     }
 
-    public function test_vip_can_post_and_complete_a_coin_sell_offer_with_commission(): void
+    public function test_admin_can_post_and_complete_a_coin_sell_offer_with_commission(): void
     {
         Setting::put('trade_room_commission_percent', 0.1);
-        $seller = User::factory()->vip()->create();
-        $buyer  = User::factory()->vip()->create();
+        $seller = User::factory()->vip()->admin()->create();
+        $buyer  = User::factory()->vip()->admin()->create();
         $this->giveCoins($seller, 'bahar', 3);
         $this->fund($buyer, 1_000_000_000);
 
@@ -67,7 +67,7 @@ class TradeRoomCoinTest extends TestCase
 
     public function test_cannot_sell_more_coins_than_held(): void
     {
-        $seller = User::factory()->vip()->create();
+        $seller = User::factory()->vip()->admin()->create();
         $this->giveCoins($seller, 'nim', 1);
 
         $this->actingAs($seller)->post('/trade-room', [

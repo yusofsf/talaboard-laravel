@@ -104,7 +104,7 @@ export default function AppLayout({ children }) {
                                 <MenuLink href="/profile" hint="نام و اطلاعات شما" onClick={() => setOpen(false)}>حساب من</MenuLink>
                                 {!user.is_admin && <MenuLink href="/tickets" hint="سؤال یا مشکل خود را بنویس" onClick={() => setOpen(false)}>تیکت پشتیبانی</MenuLink>}
                                 {showMembershipLink && <MenuLink href="/membership" hint="امکانات بیشتر" onClick={() => setOpen(false)}>عضویت ویژه</MenuLink>}
-                                {(user.is_vip || user.membership_level === 2) && <MenuLink href="/trade-room" hint="خرید و فروش با اعضا" onClick={() => setOpen(false)}>اتاق معامله</MenuLink>}
+                                {user.is_admin && <MenuLink href="/trade-room" hint="خرید و فروش با اعضا" onClick={() => setOpen(false)}>اتاق معامله</MenuLink>}
                                 {user.is_admin && <MenuLink href="/admin" hint="کارهای مدیر سایت" onClick={() => setOpen(false)}>مدیریت سایت</MenuLink>}
                                 {user.is_admin && <MenuLink href="/admin/accounting" hint="گزارش تجمیعی و حرفه‌ای" onClick={() => setOpen(false)}>حسابداری مدیریت</MenuLink>}
                                 {user.is_admin && <MenuLink href="/admin/articles" hint="نوشتن و تغییر مقاله" onClick={() => setOpen(false)}>مدیریت مقاله‌ها</MenuLink>}

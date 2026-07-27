@@ -251,10 +251,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/membership', [MembershipController::class, 'show'])->name('membership');
     Route::post('/membership/apply', [MembershipController::class, 'apply'])->name('membership.apply');
 
-    Route::get('/trade-room', [TradeRoomController::class, 'index'])->name('trade-room');
-    Route::post('/trade-room', [TradeRoomController::class, 'store'])->name('trade-room.store');
-    Route::post('/trade-room/{id}/accept', [TradeRoomController::class, 'accept'])->name('trade-room.accept');
-    Route::post('/trade-room/{id}/cancel', [TradeRoomController::class, 'cancel'])->name('trade-room.cancel');
+    Route::middleware('admin')->group(function () {
+        Route::get('/trade-room', [TradeRoomController::class, 'index'])->name('trade-room');
+        Route::post('/trade-room', [TradeRoomController::class, 'store'])->name('trade-room.store');
+        Route::post('/trade-room/{id}/accept', [TradeRoomController::class, 'accept'])->name('trade-room.accept');
+        Route::post('/trade-room/{id}/cancel', [TradeRoomController::class, 'cancel'])->name('trade-room.cancel');
+    });
 
     Route::post('/silver-delivery', [SilverDeliveryController::class, 'store'])->name('silver-delivery.store');
     Route::post('/inventory-increase-requests', [InventoryIncreaseRequestController::class, 'store'])->name('inventory-increase-requests.store');

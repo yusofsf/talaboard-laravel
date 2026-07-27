@@ -310,6 +310,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/deposits/{id}/reject', [AdminController::class, 'depositReject'])->name('deposits.reject');
     Route::post('/inventory-increase-requests/{id}/approve', [AdminController::class, 'inventoryIncreaseApprove'])->name('inventory-increase-requests.approve');
     Route::post('/inventory-increase-requests/{id}/reject', [AdminController::class, 'inventoryIncreaseReject'])->name('inventory-increase-requests.reject');
+    Route::post('/asset-collaterals/{id}/approve', [AdminController::class, 'assetCollateralApprove'])->name('asset-collaterals.approve');
+    Route::post('/asset-collaterals/{id}/reject', [AdminController::class, 'assetCollateralReject'])->name('asset-collaterals.reject');
 
     Route::put('/users/{uid}', [AdminController::class, 'userUpdate'])->name('users.update');
     Route::post('/users/{uid}/password', [AdminController::class, 'userPasswordReset'])->name('users.password.reset');

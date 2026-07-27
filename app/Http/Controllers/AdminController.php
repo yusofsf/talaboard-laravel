@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Helpers\Jalali;
 use App\Models\ActivityLog;
+use App\Models\AssetCollateralRequest;
 use App\Models\DepositRequest;
 use App\Models\GoldLedger;
 use App\Models\InventoryIncreaseRequest;
@@ -239,6 +240,20 @@ class AdminController extends Controller
 
         $allTrades = $this->allTradesHistory();
 
+        $assetCollateralRequests = AssetCollateralRequest::with('user')
+            ->where('status', 'pending')
+            ->orderByDesc('created_at')->get()
+            ->map(fn (AssetCollateralRequest $r) => [
+                'id' => $r->id,
+                'user_name' => $r->user?->name,
+                'user_phone' => $r->user?->phone,
+                'asset' => $r->asset,
+                'quantity' => (float) $r->quantity,
+                'trade_limit_amount' => (int) $r->trade_limit_amount,
+                'note' => $r->note,
+                'created_at' => Jalali::format($r->created_at),
+            ]);
+
         $activityLogs = ActivityLog::with('user')->orderByDesc('id')->limit(400)->get()
             ->map(fn ($l) => [
                 'id' => $l->id,
@@ -292,7 +307,44 @@ class AdminController extends Controller
             'price_api_configured' => Setting::get('price_api_secret_hash') !== null,
         ];
 
-        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'stats', 'memberApplications', 'vipMembers', 'deliveryRequests', 'withdrawalRequests', 'depositRequests', 'inventoryIncreaseRequests', 'botDepositRequests', 'botInventoryIncreaseRequests', 'allTrades', 'activityLogs', 'securityEvents', 'tickets', 'settings'));
+        return Inertia::render('Admin/Dashboard', compact('users', 'txns', 'wTxns', 'notifs', 'stats', 'memberApplications', 'vipMembers', 'deliveryRequests', 'withdrawalRequests', 'depositRequests', 'inventoryIncreaseRequests', 'botDepositRequests', 'botInventoryIncreaseRequests', 'assetCollateralRequests', 'allTrades', 'activityLogs', 'securityEvents', 'tickets', 'settings'));
+    }
+
+    public function assetCollateralApprove(Request $request, int $id)
+    {
+        $data = $request->validate([
+            'trade_limit_amount' => ['required', 'integer', 'min:0'],
+            'note' => ['nullable', 'string', 'max:500'],
+        ]);
+        $collateral = AssetCollateralRequest::with('user')->findOrFail($id);
+        abort_if($collateral->status !== 'pending', 422, 'این درخواست قبلاً بررسی شده است.');
+        $collateral->update([
+            'status' => 'approved',
+            'trade_limit_amount' => $data['trade_limit_amount'],
+            'admin_note' => $data['note'] ?? null,
+        ]);
+        Notification::create([
+            'user_id' => $collateral->user_id,
+            'title' => 'بیعانه دارایی تأیید شد',
+            'body' => 'سقف معامله قابل استفاده: '.number_format($data['trade_limit_amount']).' ریال',
+            'type' => 'system',
+        ]);
+        return back()->with('success', 'بیعانه دارایی تأیید و سقف معامله ثبت شد.');
+    }
+
+    public function assetCollateralReject(Request $request, int $id)
+    {
+        $data = $request->validate(['reason' => ['required', 'string', 'max:500']]);
+        $collateral = AssetCollateralRequest::with('user')->findOrFail($id);
+        abort_if($collateral->status !== 'pending', 422, 'این درخواست قبلاً بررسی شده است.');
+        $collateral->update(['status' => 'rejected', 'admin_note' => trim($data['reason'])]);
+        Notification::create([
+            'user_id' => $collateral->user_id,
+            'title' => 'درخواست بیعانه دارایی رد شد',
+            'body' => 'دلیل: '.trim($data['reason']),
+            'type' => 'system',
+        ]);
+        return back()->with('success', 'درخواست بیعانه دارایی رد شد.');
     }
 
     /** ریز معاملات یک کاربر خاص (فروشگاه + اتاق معاملاتی) برای مشاهده و خروجی PDF ادمین. */

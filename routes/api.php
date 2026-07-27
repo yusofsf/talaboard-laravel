@@ -33,6 +33,7 @@ Route::prefix('telegram')->middleware('throttle:20,1')->group(function () {
     Route::post('/trade-room/offers', [TelegramMembershipController::class, 'tradeRoomOffers']);
     Route::post('/trade-room/offers/create', [TelegramMembershipController::class, 'tradeRoomOffer']);
     Route::post('/trade-room/offers/{id}/accept', [TelegramMembershipController::class, 'tradeRoomAccept']);
+    Route::post('/asset-collaterals', [TelegramMembershipController::class, 'assetCollateral']);
     Route::post('/deliveries', [TelegramMembershipController::class, 'delivery']);
     Route::post('/deliveries/{id}', [TelegramMembershipController::class, 'deliveryStatus']);
 });

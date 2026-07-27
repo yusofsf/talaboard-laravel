@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Helpers\Jalali;
 use App\Models\ActivityLog;
+use App\Models\AssetCollateralRequest;
 use App\Models\GoldLedger;
 use App\Models\Notification;
 use App\Models\Setting;
@@ -116,6 +117,7 @@ class TradeRoomController extends Controller
                 'purity' => $purity,
                 'grams' => $grams,
                 'price_per_gram' => $request->price_per_gram,
+                'wallet_reserved_amount' => $request->side === 'buy' ? $total : 0,
                 'status' => 'open',
             ]);
 
@@ -311,7 +313,11 @@ class TradeRoomController extends Controller
                         $this->createLedger($user->id, $offer->metal, $offer->purity, (float) $offer->grams, 'offer_refund', $offer->id, "بازگشت رزرو پیشنهاد لغوشده #{$offer->id}");
                     }
                 } else {
-                    WalletTransaction::create(['user_id' => $user->id, 'amount' => $offer->total(), 'type' => 'deposit', 'description' => "بازگشت رزرو پیشنهاد لغوشده #{$offer->id}"]);
+                    $walletRefund = (int) ($offer->wallet_reserved_amount ?: $offer->total());
+                    if ($walletRefund > 0) {
+                        WalletTransaction::create(['user_id' => $user->id, 'amount' => $walletRefund, 'type' => 'deposit', 'description' => "بازگشت رزرو پیشنهاد لغوشده #{$offer->id}"]);
+                    }
+                    $this->releaseCollateral($user, (int) $offer->collateral_reserved_amount);
                 }
 
                 $offer->update(['status' => 'cancelled']);
@@ -368,6 +374,31 @@ class TradeRoomController extends Controller
                 'reference_type' => TradeRoomOffer::class, 'reference_id' => $offerId, 'description' => $description,
             ]);
         }
+    }
+
+    private function releaseCollateral(User $user, int $amount): void
+    {
+        if ($amount <= 0) {
+            return;
+        }
+
+        $remaining = $amount;
+        AssetCollateralRequest::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->where('used_amount', '>', 0)
+            ->lockForUpdate()
+            ->orderByDesc('id')
+            ->get()
+            ->each(function (AssetCollateralRequest $collateral) use (&$remaining) {
+                if ($remaining <= 0) {
+                    return;
+                }
+
+                $release = min($remaining, (int) $collateral->used_amount);
+                $collateral->decrement('used_amount', $release);
+                $remaining -= $release;
+            });
     }
 
     /** هویت طرف‌های معامله در اتاق معاملاتی نمایش داده نمی‌شود — نه در UI و نه در پاسخ سرور (برای ادمین جدا و کامل در allTradesHistory موجود است). */

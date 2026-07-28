@@ -17,6 +17,9 @@ class ProfileController extends Controller
             'user'      => $request->user(),
             'bankCards' => $request->user()->bankCards()->get(['id', 'bank_name', 'card_number', 'account_number', 'shaba']),
             'telegramLinkCode' => $request->session()->get('telegram_link_code'),
+            'hasGeneratedTelegramLinkCode' => TelegramLinkCode::query()
+                ->where('user_id', $request->user()->id)
+                ->exists(),
             'telegramConnection' => $request->user()->telegramConnection,
         ]);
     }

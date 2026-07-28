@@ -82,6 +82,7 @@ class TradeRoomController extends Controller
             'purity' => 'required_if:metal,silver|nullable|in:999,995',
             'grams' => 'required|numeric|min:1',
             'price_per_gram' => 'required|integer|min:1',
+            'allow_partial_fill' => 'sometimes|boolean',
         ]);
 
         $metal = $request->metal;
@@ -94,7 +95,7 @@ class TradeRoomController extends Controller
         if ($isCoin && fmod($grams, 1) !== 0.0) {
             return back()->withErrors(['grams' => 'تعداد سکه باید عدد صحیح باشد.']);
         }
-        if ($metal === 'silver' && $grams < 100) {
+        if (! $isCoin && $grams < 100) {
             return back()->withErrors(['grams' => 'حداقل مقدار پیشنهاد در اتاق معاملاتی ۱۰۰ گرم است.']);
         }
 
@@ -117,6 +118,7 @@ class TradeRoomController extends Controller
                 'purity' => $purity,
                 'grams' => $grams,
                 'price_per_gram' => $request->price_per_gram,
+                'allow_partial_fill' => ! $isCoin && $request->boolean('allow_partial_fill', true),
                 'wallet_reserved_amount' => $request->side === 'buy' ? $total : 0,
                 'status' => 'open',
             ]);
@@ -173,10 +175,13 @@ class TradeRoomController extends Controller
                 $remainingGrams = (float) $offer->grams;
                 $grams = $request->filled('grams') ? (float) $request->grams : $remainingGrams;
 
+                if (! $offer->allow_partial_fill && abs($grams - $remainingGrams) > 0.0001) {
+                    throw new \RuntimeException('ثبت‌کننده این سفارش فقط پذیرش کامل را مجاز کرده است.');
+                }
                 if ($isCoin && abs($grams - $remainingGrams) > 0.0001) {
                     throw new \RuntimeException('پذیرش جزئی فعلاً فقط برای طلا و نقره امکان‌پذیر است.');
                 }
-                if ($metal === 'silver' && $grams < 100) {
+                if (! $isCoin && $grams < 100) {
                     throw new \RuntimeException('حداقل مقدار پذیرش جزئی ۱۰۰ گرم است.');
                 }
                 if ($grams > $remainingGrams + 0.0001) {
@@ -185,7 +190,7 @@ class TradeRoomController extends Controller
 
                 $grams = min($grams, $remainingGrams);
                 $remainingAfterAcceptance = round($remainingGrams - $grams, 4);
-                if ($metal === 'silver' && $remainingAfterAcceptance > 0 && $remainingAfterAcceptance < 100) {
+                if (! $isCoin && $remainingAfterAcceptance > 0 && $remainingAfterAcceptance < 100) {
                     throw new \RuntimeException('مقدار انتخابی باید کل سفارش باشد یا حداقل ۱۰۰ گرم برای سفارش باقی بگذارد.');
                 }
 
@@ -205,6 +210,7 @@ class TradeRoomController extends Controller
                         'purity' => $offer->purity,
                         'grams' => $grams,
                         'price_per_gram' => $offer->price_per_gram,
+                        'allow_partial_fill' => $offer->allow_partial_fill,
                         'status' => 'completed',
                         'counterparty_id' => $acceptor->id,
                         'completed_at' => now(),
@@ -283,6 +289,7 @@ class TradeRoomController extends Controller
             if ($request->expectsJson()) {
                 return response()->json(['accepted' => false, 'message' => $e->getMessage()], 422);
             }
+
             return back()->withErrors(['offer' => $e->getMessage()]);
         }
 
@@ -426,6 +433,7 @@ class TradeRoomController extends Controller
             'item_label' => $itemLabel,
             'grams' => $isCoin ? (int) $o->grams : (float) $o->grams,
             'price_per_gram' => $o->price_per_gram,
+            'allow_partial_fill' => (bool) $o->allow_partial_fill,
             'total' => $o->total(),
             'status' => $o->status,
             'is_mine' => $o->user_id === $viewer->id,

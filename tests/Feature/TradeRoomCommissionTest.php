@@ -120,6 +120,59 @@ class TradeRoomCommissionTest extends TestCase
         $this->assertSame(1_000_000 - (100 * 1000), $buyer->walletBalance());
     }
 
+    public function test_offerer_can_require_the_entire_order_to_be_accepted(): void
+    {
+        Setting::put('trade_room_commission_percent', 0);
+        $seller = User::factory()->vip()->admin()->create();
+        $buyer = User::factory()->vip()->admin()->create();
+        GoldLedger::create(['user_id' => $seller->id, 'grams' => 1000, 'type' => 'admin_adjust', 'description' => 'seed']);
+        $this->fund($buyer, 2_000_000);
+
+        $this->actingAs($seller)->post('/trade-room', [
+            'metal' => 'gold',
+            'side' => 'sell',
+            'grams' => 1000,
+            'price_per_gram' => 1000,
+            'allow_partial_fill' => false,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $offer = TradeRoomOffer::firstOrFail();
+        $this->assertFalse($offer->allow_partial_fill);
+
+        $this->actingAs($buyer)->post("/trade-room/{$offer->id}/accept", ['grams' => 100])
+            ->assertSessionHasErrors('offer');
+
+        $offer->refresh();
+        $this->assertSame('open', $offer->status);
+        $this->assertSame(1000.0, (float) $offer->grams);
+        $this->assertSame(0, TradeRoomOffer::whereNotNull('parent_offer_id')->count());
+        $this->assertSame(2_000_000, $buyer->refresh()->walletBalance());
+
+        $this->actingAs($buyer)->post("/trade-room/{$offer->id}/accept")
+            ->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertSame('completed', $offer->refresh()->status);
+        $this->assertSame(1000.0, $buyer->refresh()->goldBalance());
+    }
+
+    public function test_open_offer_payload_exposes_its_partial_acceptance_setting(): void
+    {
+        $seller = User::factory()->vip()->admin()->create();
+        $viewer = User::factory()->vip()->admin()->create();
+        GoldLedger::create(['user_id' => $seller->id, 'grams' => 100, 'type' => 'admin_adjust', 'description' => 'seed']);
+
+        $this->actingAs($seller)->post('/trade-room', [
+            'metal' => 'gold',
+            'side' => 'sell',
+            'grams' => 100,
+            'price_per_gram' => 1000,
+            'allow_partial_fill' => false,
+        ]);
+
+        $this->actingAs($viewer)->get('/trade-room')->assertInertia(fn ($page) => $page
+            ->where('sellOffers.0.allow_partial_fill', false));
+    }
+
     public function test_partial_acceptance_cannot_leave_less_than_the_minimum_order_size(): void
     {
         $seller = User::factory()->vip()->admin()->create();

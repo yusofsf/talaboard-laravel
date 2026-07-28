@@ -47,6 +47,29 @@ class ArticleTest extends TestCase
                 ->where('article.tags.0', 'نقره'));
     }
 
+    public function test_article_pages_include_indexable_content_in_the_initial_html_response(): void
+    {
+        $article = Article::create([
+            'title' => 'راهنمای قابل ایندکس طلا',
+            'slug' => 'indexable-gold-guide',
+            'summary' => 'خلاصه‌ای که در پاسخ اولیه دیده می‌شود.',
+            'body' => '<h2>بخش مهم مقاله</h2><p>متن کامل و قابل مشاهده برای خزنده.</p>',
+            'is_published' => true,
+            'published_at' => now(),
+        ]);
+
+        $this->get('/articles')
+            ->assertOk()
+            ->assertSee('data-server-rendered-article-page', false)
+            ->assertSee('<a href="/articles/indexable-gold-guide">راهنمای قابل ایندکس طلا</a>', false);
+
+        $this->get('/articles/'.$article->slug)
+            ->assertOk()
+            ->assertSee('data-server-rendered-article-page', false)
+            ->assertSee('<h1>راهنمای قابل ایندکس طلا</h1>', false)
+            ->assertSee('<h2>بخش مهم مقاله</h2><p>متن کامل و قابل مشاهده برای خزنده.</p>', false);
+    }
+
     public function test_unpublished_articles_are_not_public(): void
     {
         Article::create([

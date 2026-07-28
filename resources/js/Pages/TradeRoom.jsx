@@ -70,7 +70,14 @@ function OfferRow({ o, accept, cancel }) {
     return (
         <>
             <tr>
-                <td>{o.item_label}{o.is_mine && <span className="badge gold" style={{ marginInlineStart: 6 }}>شما</span>}</td>
+                <td>
+                    {o.item_label}{o.is_mine && <span className="badge gold" style={{ marginInlineStart: 6 }}>شما</span>}
+                    <div style={{ marginTop: 6 }}>
+                        <span className={`badge ${o.allow_partial_fill ? 'buy-b' : 'silver'}`}>
+                            {o.allow_partial_fill ? 'پذیرش جزئی مجاز' : 'فقط پذیرش کامل'}
+                        </span>
+                    </div>
+                </td>
                 <td className="num">{o.grams}</td>
                 <td className="num">{faNum(o.price_per_gram)}</td>
                 <td className="num" style={{ color: 'var(--gold-1)', fontWeight: 700 }}>{faNum(o.total)}</td>
@@ -86,7 +93,10 @@ function OfferRow({ o, accept, cancel }) {
             {open && (
                 <tr>
                     <td colSpan={5} style={{ background: 'rgba(0,0,0,.12)' }}>
-                        <span style={{ fontSize: 13, color: 'var(--muted)' }}>تاریخ ثبت: <strong style={{ color: 'var(--txt)' }}>{o.created_at}</strong></span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, fontSize: 13, color: 'var(--muted)' }}>
+                            <span>تاریخ ثبت: <strong style={{ color: 'var(--txt)' }}>{o.created_at}</strong></span>
+                            <span>نحوه پذیرش: <strong style={{ color: 'var(--txt)' }}>{o.allow_partial_fill ? 'کامل یا جزئی' : 'فقط کامل'}</strong></span>
+                        </div>
                     </td>
                 </tr>
             )}
@@ -111,7 +121,7 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
     const [item, setItem] = useState('gold');
     const [unit, setUnit] = useState('gram'); // gram | mithqal — فقط واحد ورودی فرم
     const [acceptance, setAcceptance] = useState(null);
-    const form = useForm({ metal: 'silver', side: 'sell', purity: '999', item: '', grams: '', price_per_gram: '' });
+    const form = useForm({ metal: 'silver', side: 'sell', purity: '999', item: '', grams: '', price_per_gram: '', allow_partial_fill: true });
     const isCoinForm = form.data.metal === 'coin';
 
     // اگر از تابلوی قیمت با پارامتر آمده باشد، فلز/عیار/واحد/سکه و آیتم را پیش‌انتخاب کن
@@ -205,7 +215,8 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
         const perUnit = parseInt(form.data.price_per_gram, 10) || 0;
         const payload = (!isCoinForm && unit === 'mithqal')
             ? { ...form.data, grams: +(qty * M).toFixed(4), price_per_gram: Math.round(perUnit / M) }
-            : form.data;
+            : { ...form.data };
+        payload.allow_partial_fill = isCoinForm ? false : form.data.allow_partial_fill;
         form.transform(() => payload);
         form.post('/trade-room', {
             onSuccess: () => { form.reset('grams', 'price_per_gram'); },
@@ -260,12 +271,16 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                             <form onSubmit={submitAcceptance} style={{ width: 'min(100%, 440px)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 18, padding: 20, boxShadow: '0 18px 48px rgba(0,0,0,.35)' }}>
                                 <h3 id="accept-offer-title" style={{ margin: '0 0 8px', fontSize: 18 }}>پذیرش سفارش {offer.item_label}</h3>
                                 <p style={{ color: 'var(--muted)', fontSize: 13, lineHeight: 1.8, margin: '0 0 16px' }}>
-                                    ماندهٔ این سفارش {faNum(offer.grams)} گرم است. کل سفارش را می‌خواهید یا بخشی از آن را؟
+                                    ماندهٔ این سفارش {faNum(offer.grams)} گرم است. {offer.allow_partial_fill
+                                        ? 'ثبت‌کننده پذیرش کامل یا جزئی را مجاز کرده است.'
+                                        : 'طبق انتخاب ثبت‌کننده، این سفارش فقط به‌صورت کامل پذیرفته می‌شود.'}
                                 </p>
-                                <div className="btn-row" style={{ marginBottom: 16 }}>
-                                    <button type="button" onClick={() => setAcceptance(a => ({ ...a, mode: 'full', quantity: String(a.offer.grams) }))} style={{ padding: 11, borderRadius: 12, fontFamily: 'inherit', fontWeight: 700, cursor: 'pointer', border: acceptMode === 'full' ? '2px solid var(--gold-1)' : '1px solid var(--line)', background: acceptMode === 'full' ? 'rgba(246,207,99,.15)' : 'transparent', color: acceptMode === 'full' ? 'var(--gold-1)' : 'var(--txt)' }}>کل سفارش</button>
-                                    <button type="button" onClick={() => setAcceptance(a => ({ ...a, mode: 'partial', quantity: a.quantity === String(a.offer.grams) ? '' : a.quantity }))} style={{ padding: 11, borderRadius: 12, fontFamily: 'inherit', fontWeight: 700, cursor: 'pointer', border: acceptMode === 'partial' ? '2px solid var(--gold-1)' : '1px solid var(--line)', background: acceptMode === 'partial' ? 'rgba(246,207,99,.15)' : 'transparent', color: acceptMode === 'partial' ? 'var(--gold-1)' : 'var(--txt)' }}>بخشی از سفارش</button>
-                                </div>
+                                {offer.allow_partial_fill && (
+                                    <div className="btn-row" style={{ marginBottom: 16 }}>
+                                        <button type="button" onClick={() => setAcceptance(a => ({ ...a, mode: 'full', quantity: String(a.offer.grams) }))} style={{ minHeight: 44, padding: 11, borderRadius: 12, fontFamily: 'inherit', fontWeight: 700, cursor: 'pointer', border: acceptMode === 'full' ? '2px solid var(--gold-1)' : '1px solid var(--line)', background: acceptMode === 'full' ? 'rgba(246,207,99,.15)' : 'transparent', color: acceptMode === 'full' ? 'var(--gold-1)' : 'var(--txt)' }}>کل سفارش</button>
+                                        <button type="button" onClick={() => setAcceptance(a => ({ ...a, mode: 'partial', quantity: a.quantity === String(a.offer.grams) ? '' : a.quantity }))} style={{ minHeight: 44, padding: 11, borderRadius: 12, fontFamily: 'inherit', fontWeight: 700, cursor: 'pointer', border: acceptMode === 'partial' ? '2px solid var(--gold-1)' : '1px solid var(--line)', background: acceptMode === 'partial' ? 'rgba(246,207,99,.15)' : 'transparent', color: acceptMode === 'partial' ? 'var(--gold-1)' : 'var(--txt)' }}>بخشی از سفارش</button>
+                                    </div>
+                                )}
                                 {acceptMode === 'partial' && <>
                                     <div className="btn-row" style={{ marginBottom: 12 }}>
                                         {[['gram', 'گرم'], ['mithqal', 'مثقال']].map(([u, label]) => <button key={u} type="button" onClick={() => setAcceptance(a => ({ ...a, unit: u, quantity: '' }))} style={{ padding: 9, borderRadius: 10, fontFamily: 'inherit', cursor: 'pointer', border: acceptUnit === u ? '2px solid var(--gold-1)' : '1px solid var(--line)', background: acceptUnit === u ? 'rgba(246,207,99,.15)' : 'transparent', color: acceptUnit === u ? 'var(--gold-1)' : 'var(--txt)' }}>واحد: {label}</button>)}
@@ -280,7 +295,7 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                                     <div style={{ color: 'var(--muted)', marginTop: 5 }}>مبلغ تقریبی: <strong className="num" style={{ color: 'var(--gold-1)' }}>{faNum(acceptedTotal)} تومان</strong></div>
                                     {acceptMode === 'partial' && <div style={{ color: 'var(--muted)', marginTop: 5 }}>مانده پس از پذیرش: {faNum(Math.max(0, offer.grams - acceptedGrams).toFixed(4))} گرم</div>}
                                 </div>
-                                <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.7, margin: '0 0 14px' }}>در پذیرش جزئی، باید پس از معامله حداقل ۱۰۰ گرم در سفارش باقی بماند؛ مگر اینکه کل سفارش را بپذیرید.</p>
+                                {offer.allow_partial_fill && <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.7, margin: '0 0 14px' }}>در پذیرش جزئی، باید پس از معامله حداقل ۱۰۰ گرم در سفارش باقی بماند؛ مگر اینکه کل سفارش را بپذیرید.</p>}
                                 <div style={{ display: 'flex', gap: 10 }}>
                                     <button type="submit" className="btn" style={{ flex: 1 }}>تأیید پذیرش</button>
                                     <button type="button" className="btn-sm" onClick={() => setAcceptance(null)}>انصراف</button>
@@ -443,6 +458,25 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                             <input type="number" min="1" value={form.data.price_per_gram}
                                 onChange={e => form.setData('price_per_gram', e.target.value)} required />
                         </div>
+                        {!isCoinForm && (
+                            <fieldset style={{ border: '1px solid var(--line)', borderRadius: 14, padding: 12, margin: '0 0 16px' }}>
+                                <legend style={{ padding: '0 8px', fontSize: 13, fontWeight: 700 }}>نحوه پذیرش سفارش</legend>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 10 }}>
+                                    {[
+                                        [true, 'کامل یا جزئی', 'طرف مقابل می‌تواند تمام یا بخشی از مقدار را معامله کند.'],
+                                        [false, 'فقط کامل', 'سفارش فقط با پذیرش کل مقدار نهایی می‌شود.'],
+                                    ].map(([value, title, description]) => (
+                                        <label key={String(value)} style={{ minHeight: 62, display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, cursor: 'pointer', border: form.data.allow_partial_fill === value ? '2px solid var(--gold-1)' : '1px solid var(--line)', background: form.data.allow_partial_fill === value ? 'rgba(246,207,99,.12)' : 'rgba(255,255,255,.03)' }}>
+                                            <input type="radio" name="allow_partial_fill" checked={form.data.allow_partial_fill === value} onChange={() => form.setData('allow_partial_fill', value)} />
+                                            <span>
+                                                <strong style={{ display: 'block', color: 'var(--txt)', fontSize: 14 }}>{title}</strong>
+                                                <span style={{ display: 'block', color: 'var(--muted)', fontSize: 11, lineHeight: 1.7, marginTop: 3 }}>{description}</span>
+                                            </span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </fieldset>
+                        )}
                         {total != null && (
                             <div style={{ background: 'rgba(255,255,255,.04)', border: '1px solid var(--line)', borderRadius: 12, padding: '12px 16px', marginBottom: 16 }}>
                                 <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>مبلغ کل</div>

@@ -1,5 +1,6 @@
 import { useForm } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
+import PasswordInput from '../../Components/PasswordInput';
 
 export default function Login() {
     const { data, setData, post, processing, errors } = useForm({ phone: '', password: '', remember: false });
@@ -25,7 +26,7 @@ export default function Login() {
                         </div>
                         <div className="field">
                             <label>رمز عبور</label>
-                            <input type="password" value={data.password}
+                            <PasswordInput value={data.password} autoComplete="current-password"
                                 onChange={e => setData('password', e.target.value)} required />
                         </div>
                         <button className="btn" type="submit" disabled={processing}>

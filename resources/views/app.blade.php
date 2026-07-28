@@ -80,8 +80,24 @@
 @inertiaHead
 </head>
 <body>
-@inertia
+@php
+    // Inertia's client-side fallback is normally an empty #app element. Public
+    // article pages also include meaningful HTML in the first response so
+    // crawlers and link preview services do not depend on JavaScript rendering.
+    $__inertiaSsrResponse = app(\Inertia\Ssr\SsrState::class)->setPage($page)->dispatch();
+@endphp
+@if ($__inertiaSsrResponse)
+    {!! $__inertiaSsrResponse->body !!}
+@else
+    <script data-page="app" type="application/json">{!! json_encode($page) !!}</script>
+    <div id="app">
+        @if (in_array($page['component'] ?? null, ['Articles/Index', 'Articles/Show'], true))
+            @include('seo.article-fallback', ['component' => $page['component'], 'props' => $props])
+        @endif
+    </div>
+@endif
 
+@if (! in_array($page['component'] ?? null, ['Articles/Index', 'Articles/Show'], true))
 <noscript>
     <main>
         <h1>قیمت لحظه‌ای طلا، نقره و سکه | آبشده صفرپور</h1>
@@ -94,5 +110,6 @@
         </p>
     </main>
 </noscript>
+@endif
 </body>
 </html>

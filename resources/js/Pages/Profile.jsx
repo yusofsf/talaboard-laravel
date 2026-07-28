@@ -11,7 +11,28 @@ export default function Profile({ user, bankCards, telegramLinkCode, hasGenerate
     const pw = useForm({ old_password: '', new_password: '', new_password_confirmation: '' });
 
     const [showCardForm, setShowCardForm] = useState(false);
+    const [telegramCommandCopied, setTelegramCommandCopied] = useState(false);
     const cardForm = useForm({ bank_name: '', card_number: '', account_number: '', shaba: '' });
+
+    async function copyTelegramCommand() {
+        const command = `/connect ${telegramLinkCode}`;
+
+        try {
+            await navigator.clipboard.writeText(command);
+        } catch {
+            const textarea = document.createElement('textarea');
+            textarea.value = command;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            textarea.remove();
+        }
+
+        setTelegramCommandCopied(true);
+        window.setTimeout(() => setTelegramCommandCopied(false), 2000);
+    }
 
     function submitCard(e) {
         e.preventDefault();
@@ -70,7 +91,34 @@ export default function Profile({ user, bankCards, telegramLinkCode, hasGenerate
                     <button className="btn" type="button" onClick={() => router.post('/profile/telegram-link')}>
                         {hasGeneratedTelegramLinkCode ? 'تولید کد جدید' : 'تولید کد اتصال ربات'}
                     </button>
-                    {telegramLinkCode && <div className="alert success" style={{ marginTop: 14 }}>کد اتصال: <strong dir="ltr">{telegramLinkCode}</strong><br />در ربات بفرستید: <strong dir="ltr">/connect {telegramLinkCode}</strong></div>}
+                    {telegramLinkCode && (
+                        <div className="alert success" style={{ marginTop: 14 }}>
+                            کد اتصال: <strong dir="ltr">{telegramLinkCode}</strong>
+                            <br />
+                            <span>در ربات بفرستید: </span>
+                            <button
+                                type="button"
+                                dir="ltr"
+                                onClick={copyTelegramCommand}
+                                aria-label="کپی دستور اتصال ربات"
+                                title="برای کپی کلیک کنید"
+                                style={{
+                                    minHeight: 44,
+                                    marginTop: 8,
+                                    padding: '8px 12px',
+                                    border: '1px solid rgba(65,225,166,.45)',
+                                    borderRadius: 9,
+                                    background: 'rgba(65,225,166,.1)',
+                                    color: 'inherit',
+                                    fontFamily: 'monospace',
+                                    fontWeight: 800,
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                {telegramCommandCopied ? 'کپی شد ✓' : `/connect ${telegramLinkCode}`}
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <div className="fcard" style={{ marginTop: 24 }}>

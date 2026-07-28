@@ -9,6 +9,7 @@ use App\Services\SmsService;
 use App\Support\UserPassword;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 
 class AuthController extends Controller
@@ -24,18 +25,24 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
+        $request->merge([
+            'phone' => $this->normPhone((string) $request->input('phone')),
+        ]);
+
         $request->validate([
-            'name'     => ['required', 'string', 'max:100', 'not_regex:/[<>]/'],
-            'phone'    => 'required|string|unique:users,phone',
+            'name' => ['required', 'string', 'max:100', 'not_regex:/[<>]/'],
+            'phone' => 'required|string|unique:users,phone',
             'password' => UserPassword::rules(),
+        ], [
+            'phone.unique' => 'کاربر قبلاً ثبت‌نام کرده است.',
         ]);
 
         $salt = UserPassword::newSalt();
 
         $user = User::create([
-            'name'     => $request->name,
-            'phone'    => $this->normPhone($request->phone),
-            'salt'     => $salt,
+            'name' => $request->name,
+            'phone' => $this->normPhone($request->phone),
+            'salt' => $salt,
             'password' => UserPassword::hash($request->password, $salt),
         ]);
 
@@ -44,6 +51,7 @@ class AuthController extends Controller
         $this->sms->sendWelcome($user->phone, $user->name);
         Auth::login($user);
         $request->session()->regenerate();
+
         return redirect('/');
     }
 
@@ -57,12 +65,12 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'phone'    => 'required|string',
+            'phone' => 'required|string',
             'password' => 'required|string',
         ]);
 
         $phone = $this->normPhone($request->phone);
-        $user  = User::where('phone', $phone)->first();
+        $user = User::where('phone', $phone)->first();
 
         if ($user && $user->must_reset_password) {
             if (config('sms.otp_enabled')) {
@@ -70,33 +78,37 @@ class AuthController extends Controller
                 $this->sms->sendOtpReset($phone, $otp);
             }
             $request->session()->put('reset_phone', $phone);
+
             return redirect()->route('reset-password')
                 ->with('error', 'به‌دلیل به‌روزرسانی سامانه، لازم است رمز عبور خود را بازنشانی کنید. کد تأیید برای شما ارسال شد.');
         }
 
-        if (!$user || !UserPassword::checkAndUpgrade($user, $request->password)) {
+        if (! $user || ! UserPassword::checkAndUpgrade($user, $request->password)) {
             ActivityLog::record('login_failed', 'auth', "تلاش ناموفق ورود با شماره: {$phone}", $user?->id);
+
             return back()->withErrors(['phone' => 'شماره موبایل یا رمز عبور اشتباه است.']);
         }
 
         // ادمین خودکار بر اساس ADMIN_PHONE
-        if (env('ADMIN_PHONE') && $user->phone === env('ADMIN_PHONE') && !$user->is_admin) {
+        if (env('ADMIN_PHONE') && $user->phone === env('ADMIN_PHONE') && ! $user->is_admin) {
             $user->update(['is_admin' => true, 'is_vip' => true, 'membership_level' => 2]);
         }
 
-        if (config('sms.two_fa_enabled') && config('sms.otp_enabled') && !empty(config('sms.kavenegar_api_key'))) {
+        if (config('sms.two_fa_enabled') && config('sms.otp_enabled') && ! empty(config('sms.kavenegar_api_key'))) {
             $otp = $this->createOtp($phone, 'login');
             $smsOk = $this->sms->sendOtpLogin($phone, $otp);
             $request->session()->put('pending_2fa', [
-                'user_id'  => $user->id,
-                'sms_ok'   => $smsOk,
+                'user_id' => $user->id,
+                'sms_ok' => $smsOk,
             ]);
+
             return redirect()->route('verify-otp');
         }
 
         ActivityLog::record('login', 'auth', "ورود موفق: {$user->name} ({$user->phone})", $user->id);
         Auth::login($user, $request->boolean('remember'));
         $request->session()->regenerate();
+
         return redirect('/');
     }
 
@@ -104,23 +116,26 @@ class AuthController extends Controller
 
     public function otpForm(Request $request)
     {
-        if (!$request->session()->has('pending_2fa')) {
+        if (! $request->session()->has('pending_2fa')) {
             return redirect()->route('login');
         }
         $smsOk = $request->session()->get('pending_2fa.sms_ok', false);
+
         return Inertia::render('Auth/VerifyOtp', ['smsOk' => $smsOk, 'purpose' => 'login']);
     }
 
     public function verifyOtp(Request $request)
     {
         $pending = $request->session()->get('pending_2fa');
-        if (!$pending) return redirect()->route('login');
+        if (! $pending) {
+            return redirect()->route('login');
+        }
 
         $request->validate(['otp' => 'required|string|size:6']);
 
-        $user  = User::findOrFail($pending['user_id']);
+        $user = User::findOrFail($pending['user_id']);
 
-        if (!$this->otpValid($user->phone, $request->otp, 'login')) {
+        if (! $this->otpValid($user->phone, $request->otp, 'login')) {
             return back()->withErrors(['otp' => 'کد وارد شده نادرست یا منقضی شده است.']);
         }
 
@@ -129,6 +144,7 @@ class AuthController extends Controller
         ActivityLog::record('login', 'auth', "ورود موفق با کد دو مرحله‌ای: {$user->name} ({$user->phone})", $user->id);
         Auth::login($user);
         $request->session()->regenerate();
+
         return redirect('/');
     }
 
@@ -143,7 +159,7 @@ class AuthController extends Controller
     {
         $request->validate(['phone' => 'required|string']);
         $phone = $this->normPhone($request->phone);
-        $user  = User::where('phone', $phone)->first();
+        $user = User::where('phone', $phone)->first();
 
         if ($user) {
             if (config('sms.otp_enabled')) {
@@ -153,43 +169,50 @@ class AuthController extends Controller
         }
 
         $request->session()->put('reset_phone', $phone);
+
         return redirect()->route('reset-password');
     }
 
     public function resetForm(Request $request)
     {
-        if (!$request->session()->has('reset_phone')) return redirect()->route('login');
+        if (! $request->session()->has('reset_phone')) {
+            return redirect()->route('login');
+        }
+
         return Inertia::render('Auth/ResetPassword');
     }
 
     public function reset(Request $request)
     {
         $phone = $request->session()->get('reset_phone');
-        if (!$phone) return redirect()->route('login');
+        if (! $phone) {
+            return redirect()->route('login');
+        }
 
         $request->validate([
-            'otp'      => 'required|string|size:6',
+            'otp' => 'required|string|size:6',
             'password' => UserPassword::rules(),
         ]);
 
-        if (!$this->otpValid($phone, $request->otp, 'reset')) {
+        if (! $this->otpValid($phone, $request->otp, 'reset')) {
             return back()->withErrors(['otp' => 'کد وارد شده نادرست یا منقضی شده است.']);
         }
 
         $user = User::where('phone', $phone)->first();
-        if (!$user) {
+        if (! $user) {
             return back()->withErrors(['otp' => 'کاربری با این شماره پیدا نشد.']);
         }
 
         UserPassword::set($user, $request->password);
         $user->update([
-            'must_reset_password'  => false,
+            'must_reset_password' => false,
             'legacy_password_hash' => null,
         ]);
 
         OtpToken::where('phone', $phone)->where('purpose', 'reset')->delete();
         $request->session()->forget('reset_phone');
         ActivityLog::record('password_reset', 'auth', "بازنشانی رمز عبور: {$user->name} ({$user->phone})", $user->id);
+
         return redirect()->route('login')->with('success', 'رمز عبور با موفقیت تغییر کرد.');
     }
 
@@ -202,6 +225,7 @@ class AuthController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
         return redirect('/');
     }
 
@@ -215,10 +239,10 @@ class AuthController extends Controller
     private function normDigits(string $s): string
     {
         return strtr($s, [
-            '۰'=>'0','۱'=>'1','۲'=>'2','۳'=>'3','۴'=>'4',
-            '۵'=>'5','۶'=>'6','۷'=>'7','۸'=>'8','۹'=>'9',
-            '٠'=>'0','١'=>'1','٢'=>'2','٣'=>'3','٤'=>'4',
-            '٥'=>'5','٦'=>'6','٧'=>'7','٨'=>'8','٩'=>'9',
+            '۰' => '0', '۱' => '1', '۲' => '2', '۳' => '3', '۴' => '4',
+            '۵' => '5', '۶' => '6', '۷' => '7', '۸' => '8', '۹' => '9',
+            '٠' => '0', '١' => '1', '٢' => '2', '٣' => '3', '٤' => '4',
+            '٥' => '5', '٦' => '6', '٧' => '7', '٨' => '8', '٩' => '9',
         ]);
     }
 
@@ -230,7 +254,7 @@ class AuthController extends Controller
         // هشدار امنیتی: اگر مقدار داشته باشد، با همین کد می‌توان رمز هر حساب (از جمله ادمین)
         // را از مسیر «فراموشی رمز» بازنشانی کرد. پیش‌فرض خالی = غیرفعال. اگر تنظیمش می‌کنید،
         // یک رشته‌ی بلند و تصادفی بگذارید، نه چیزی مثل 000000.
-        if (!config('sms.otp_enabled')) {
+        if (! config('sms.otp_enabled')) {
             return false;
         }
 
@@ -242,7 +266,7 @@ class AuthController extends Controller
 
         // Tokens issued before this change were stored as plaintext. Retain a
         // short-lived compatibility path until they expire, but issue only hashes.
-        return $token !== null && (hash_equals($token->otp, $otp) || \Illuminate\Support\Facades\Hash::check($otp, $token->otp));
+        return $token !== null && (hash_equals($token->otp, $otp) || Hash::check($otp, $token->otp));
     }
 
     private function createOtp(string $phone, string $purpose): string
@@ -250,11 +274,12 @@ class AuthController extends Controller
         OtpToken::where('phone', $phone)->where('purpose', $purpose)->delete();
         $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         OtpToken::create([
-            'phone'      => $phone,
-            'otp'        => \Illuminate\Support\Facades\Hash::make($otp),
-            'purpose'    => $purpose,
+            'phone' => $phone,
+            'otp' => Hash::make($otp),
+            'purpose' => $purpose,
             'expires_at' => now()->addMinutes(2),
         ]);
+
         return $otp;
     }
 }

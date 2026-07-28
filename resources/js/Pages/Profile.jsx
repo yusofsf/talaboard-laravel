@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { router, useForm } from '@inertiajs/react';
 import AppLayout from '../Layouts/AppLayout';
+import PasswordInput from '../Components/PasswordInput';
 
 export default function Profile({ user, bankCards, telegramLinkCode, telegramConnection }) {
     const info = useForm({
@@ -48,11 +49,11 @@ export default function Profile({ user, bankCards, telegramLinkCode, telegramCon
                     {Object.values(pw.errors).map((e, i) => <div key={i} className="alert err">{e}</div>)}
                     <form onSubmit={e => { e.preventDefault(); pw.post('/profile/password'); }}>
                         <div className="field"><label>رمز فعلی</label>
-                            <input type="password" value={pw.data.old_password} onChange={e => pw.setData('old_password', e.target.value)} required /></div>
+                            <PasswordInput value={pw.data.old_password} autoComplete="current-password" onChange={e => pw.setData('old_password', e.target.value)} required /></div>
                         <div className="field"><label>رمز جدید</label>
-                            <input type="password" value={pw.data.new_password} onChange={e => pw.setData('new_password', e.target.value)} required /></div>
+                            <PasswordInput value={pw.data.new_password} autoComplete="new-password" onChange={e => pw.setData('new_password', e.target.value)} required /></div>
                         <div className="field"><label>تکرار رمز جدید</label>
-                            <input type="password" value={pw.data.new_password_confirmation} onChange={e => pw.setData('new_password_confirmation', e.target.value)} required /></div>
+                            <PasswordInput value={pw.data.new_password_confirmation} autoComplete="new-password" onChange={e => pw.setData('new_password_confirmation', e.target.value)} required /></div>
                         <button className="btn" type="submit" disabled={pw.processing}>تغییر رمز</button>
                     </form>
                 </div>

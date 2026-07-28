@@ -1,5 +1,6 @@
 import { useForm } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
+import PasswordInput from '../../Components/PasswordInput';
 
 export default function ResetPassword() {
     const { data, setData, post, processing, errors } = useForm({
@@ -27,12 +28,12 @@ export default function ResetPassword() {
                         </div>
                         <div className="field">
                             <label>رمز عبور جدید</label>
-                            <input type="password" value={data.password}
+                            <PasswordInput value={data.password} autoComplete="new-password"
                                 onChange={e => setData('password', e.target.value)} required />
                         </div>
                         <div className="field">
                             <label>تکرار رمز جدید</label>
-                            <input type="password" value={data.password_confirmation}
+                            <PasswordInput value={data.password_confirmation} autoComplete="new-password"
                                 onChange={e => setData('password_confirmation', e.target.value)} required />
                         </div>
                         <button className="btn" type="submit" disabled={processing}>تغییر رمز</button>

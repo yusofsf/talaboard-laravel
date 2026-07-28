@@ -5,6 +5,7 @@ import Pager, { usePager } from '../../Components/Pager';
 import DateRangeFilter, { filterByDateRange } from '../../Components/DateRangeFilter';
 import SearchBox, { filterBySearch } from '../../Components/SearchBox';
 import SearchableSelect from '../../Components/SearchableSelect';
+import PasswordInput from '../../Components/PasswordInput';
 
 const LOG_CAT = {
     auth:       { label: 'ورود/احراز', badge: 'silver' },
@@ -247,14 +248,14 @@ function UserRow({ u, isSelf }) {
                         <form onSubmit={submitPasswordReset} style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', padding: '14px 6px' }}>
                             <div>
                                 <label htmlFor={`password-${u.id}`} style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>رمز جدید</label>
-                                <input id={`password-${u.id}`} type="password" minLength="6" autoComplete="new-password" required
+                                <PasswordInput id={`password-${u.id}`} minLength="6" autoComplete="new-password" required
                                     value={passwordReset.data.password} onChange={e => passwordReset.setData('password', e.target.value)}
                                     style={{ width: 180, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 13 }} />
                                 {passwordReset.errors.password && <div style={{ color: 'var(--down)', fontSize: 12, marginTop: 4 }}>{passwordReset.errors.password}</div>}
                             </div>
                             <div>
                                 <label htmlFor={`password-confirmation-${u.id}`} style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>تکرار رمز جدید</label>
-                                <input id={`password-confirmation-${u.id}`} type="password" minLength="6" autoComplete="new-password" required
+                                <PasswordInput id={`password-confirmation-${u.id}`} minLength="6" autoComplete="new-password" required
                                     value={passwordReset.data.password_confirmation} onChange={e => passwordReset.setData('password_confirmation', e.target.value)}
                                     style={{ width: 180, background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 13 }} />
                             </div>

@@ -5,11 +5,28 @@ namespace Tests\Feature;
 use App\Models\TelegramLinkCode;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class TelegramConnectionTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_profile_knows_whether_the_user_has_generated_a_telegram_link_code(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get('/profile')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('hasGeneratedTelegramLinkCode', false));
+
+        $this->post('/profile/telegram-link')->assertRedirect();
+
+        $this->get('/profile')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('hasGeneratedTelegramLinkCode', true));
+    }
 
     public function test_bot_can_connect_a_site_user_with_a_one_time_code(): void
     {

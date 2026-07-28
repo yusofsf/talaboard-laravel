@@ -3,7 +3,7 @@ import { router, useForm } from '@inertiajs/react';
 import AppLayout from '../Layouts/AppLayout';
 import PasswordInput from '../Components/PasswordInput';
 
-export default function Profile({ user, bankCards, telegramLinkCode, telegramConnection }) {
+export default function Profile({ user, bankCards, telegramLinkCode, hasGeneratedTelegramLinkCode, telegramConnection }) {
     const info = useForm({
         name: user.name || '', phone: user.phone || '',
         email: user.email || '', national_id: user.national_id || '',
@@ -67,7 +67,9 @@ export default function Profile({ user, bankCards, telegramLinkCode, telegramCon
                             حساب تلگرام شما متصل است{telegramConnection.telegram_username ? <>: <strong dir="ltr">@{telegramConnection.telegram_username}</strong></> : null}.
                         </div>
                     )}
-                    <button className="btn" type="button" onClick={() => router.post('/profile/telegram-link')}>ساخت کد اتصال ربات</button>
+                    <button className="btn" type="button" onClick={() => router.post('/profile/telegram-link')}>
+                        {hasGeneratedTelegramLinkCode ? 'تولید کد جدید' : 'تولید کد اتصال ربات'}
+                    </button>
                     {telegramLinkCode && <div className="alert success" style={{ marginTop: 14 }}>کد اتصال: <strong dir="ltr">{telegramLinkCode}</strong><br />در ربات بفرستید: <strong dir="ltr">/connect {telegramLinkCode}</strong></div>}
                 </div>
 

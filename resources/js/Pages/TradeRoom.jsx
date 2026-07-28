@@ -3,6 +3,7 @@ import { router, useForm, usePage } from '@inertiajs/react';
 import AppLayout, { faNum } from '../Layouts/AppLayout';
 import DateRangeFilter, { filterByDateRange } from '../Components/DateRangeFilter';
 import Pager, { usePager } from '../Components/Pager';
+import TradeSourceBadge from '../Components/TradeSourceBadge';
 
 function StatusBadge({ o }) {
     return (
@@ -25,7 +26,7 @@ function MyOfferRow({ o, printOnly }) {
         return (
             <tr>
                 <td><span className={`badge ${vs === 'sell' ? 'sell-b' : 'buy-b'}`}>{vs === 'sell' ? 'فروش' : 'خرید'}</span></td>
-                <td>{o.item_label}</td>
+                <td>{o.item_label} <TradeSourceBadge isFromBot={o.is_from_bot} /></td>
                 <td className="num">{o.grams}</td>
                 <td className="num">{faNum(o.price_per_gram)}</td>
                 <td className="num">{faNum(o.total)}</td>
@@ -41,7 +42,7 @@ function MyOfferRow({ o, printOnly }) {
         <>
             <tr>
                 <td><span className={`badge ${vs === 'sell' ? 'sell-b' : 'buy-b'}`}>{vs === 'sell' ? 'فروش' : 'خرید'}</span></td>
-                <td>{o.item_label}</td>
+                <td>{o.item_label} <TradeSourceBadge isFromBot={o.is_from_bot} /></td>
                 <td className="num">{o.grams}</td>
                 <td className="num">{faNum(o.total)}</td>
                 <td><StatusBadge o={o} /></td>
@@ -71,7 +72,9 @@ function OfferRow({ o, accept, cancel }) {
         <>
             <tr>
                 <td>
-                    {o.item_label}{o.is_mine && <span className="badge gold" style={{ marginInlineStart: 6 }}>شما</span>}
+                    {o.item_label}
+                    {o.is_mine && <span className="badge gold" style={{ marginInlineStart: 6 }}>شما</span>}
+                    <TradeSourceBadge isFromBot={o.is_from_bot} />
                     <div style={{ marginTop: 6 }}>
                         <span className={`badge ${o.allow_partial_fill ? 'buy-b' : 'silver'}`}>
                             {o.allow_partial_fill ? 'پذیرش جزئی مجاز' : 'فقط پذیرش کامل'}

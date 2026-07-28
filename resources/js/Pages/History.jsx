@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import AppLayout, { faNum } from '../Layouts/AppLayout';
 import DateRangeFilter, { filterByDateRange } from '../Components/DateRangeFilter';
 import Pager, { usePager } from '../Components/Pager';
+import TradeSourceBadge from '../Components/TradeSourceBadge';
 
 function TxnRow({ t, i }) {
     const rejected = t.status === 'rejected';
@@ -11,6 +12,7 @@ function TxnRow({ t, i }) {
             <td>
                 <span style={rejected ? { textDecoration: 'line-through' } : undefined}>{t.item_label}</span>
                 {t.source === 'room' && <span className="badge" style={{ marginInlineStart: 6 }}>اتاق معاملاتی</span>}
+                <TradeSourceBadge isFromBot={t.is_from_bot} />
                 {rejected && (
                     <>
                         <span className="badge sell-b" style={{ marginInlineStart: 6 }}>رد شد</span>

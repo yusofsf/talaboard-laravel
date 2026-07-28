@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AssetCollateralRequest;
 use App\Models\TradeRoomOffer;
 use App\Models\User;
 use App\Models\WalletTransaction;
@@ -82,5 +83,54 @@ class TradeRoomExpiryTest extends TestCase
         $this->artisan('trade-room:expire-open-offers')->assertSuccessful();
         $this->assertSame('cancelled', $offer->refresh()->status);
         $this->assertSame(1_000_000, $buyer->refresh()->walletBalance());
+    }
+
+    public function test_telegram_bot_offer_expires_after_two_minutes_and_releases_all_reserves(): void
+    {
+        config()->set('services.telegram.link_api_token', 'test-bot-token');
+        config()->set('logging.default', 'null');
+        Carbon::setTestNow(Carbon::parse('2026-07-13 12:00:00'));
+
+        $buyer = User::factory()->create([
+            'telegram_chat_id' => '778899',
+            'is_vip' => true,
+            'membership_level' => 2,
+        ]);
+        $this->fund($buyer, 1_000);
+        $collateral = AssetCollateralRequest::create([
+            'user_id' => $buyer->id,
+            'asset' => 'gold',
+            'quantity' => 10,
+            'trade_limit_amount' => 5_000,
+            'status' => 'approved',
+            'source' => 'test',
+        ]);
+
+        $this->withToken('test-bot-token')->postJson('/api/telegram/trade-room/offers/create', [
+            'telegram_chat_id' => '778899',
+            'asset' => 'gold',
+            'side' => 'buy',
+            'unit' => 'gram',
+            'quantity' => 3,
+            'unit_price' => 1_000,
+        ])->assertCreated();
+
+        $offer = TradeRoomOffer::firstOrFail();
+        $this->assertSame('telegram_bot', $offer->source);
+        $this->assertSame(0, $buyer->refresh()->walletBalance());
+        $this->assertSame(2_000, (int) $collateral->refresh()->used_amount);
+
+        Carbon::setTestNow(Carbon::parse('2026-07-13 12:01:59'));
+        $this->artisan('trade-room:expire-open-offers')->assertSuccessful();
+        $this->assertSame('open', $offer->refresh()->status);
+
+        Carbon::setTestNow(Carbon::parse('2026-07-13 12:02:00'));
+        $this->withToken('test-bot-token')->postJson('/api/telegram/trade-room/offers', [
+            'telegram_chat_id' => '778899',
+        ])->assertOk()->assertJsonCount(0, 'offers');
+
+        $this->assertSame('cancelled', $offer->refresh()->status);
+        $this->assertSame(1_000, $buyer->refresh()->walletBalance());
+        $this->assertSame(0, (int) $collateral->refresh()->used_amount);
     }
 }

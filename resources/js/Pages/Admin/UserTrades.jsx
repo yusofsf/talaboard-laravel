@@ -3,13 +3,17 @@ import { Link } from '@inertiajs/react';
 import AppLayout, { faNum } from '../../Layouts/AppLayout';
 import DateRangeFilter, { filterByDateRange } from '../../Components/DateRangeFilter';
 import Pager, { usePager } from '../../Components/Pager';
+import TradeSourceBadge from '../../Components/TradeSourceBadge';
 
 function TradeRow({ t }) {
     const rejected = t.status === 'rejected';
     return (
         <tr style={rejected ? { opacity: .6 } : undefined}>
             <td style={{ fontSize: 12, color: 'var(--muted)' }}>{t.created_at}</td>
-            <td><span className={`badge ${t.source === 'فروشگاه' ? 'gold' : 'silver'}`}>{t.source}</span></td>
+            <td>
+                <span className={`badge ${t.source === 'فروشگاه' ? 'gold' : 'silver'}`}>{t.source}</span>
+                <TradeSourceBadge isFromBot={t.is_from_bot} />
+            </td>
             <td style={{ fontSize: 12, color: 'var(--muted)' }}>{t.role}</td>
             <td><span className={`badge ${t.side === 'buy' ? 'buy-b' : 'sell-b'}`}>{t.side === 'buy' ? 'خرید' : 'فروش'}</span></td>
             <td>

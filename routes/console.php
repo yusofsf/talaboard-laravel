@@ -15,5 +15,5 @@ Schedule::command('prices:snapshot')
     ->withoutOverlapping();
 
 Schedule::command('trade-room:expire-open-offers')
-    ->everyMinute()
+    ->everyTenSeconds()
     ->withoutOverlapping();

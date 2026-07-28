@@ -6,13 +6,16 @@ use App\Models\CartItem;
 use App\Models\Notification;
 use App\Models\NotificationRead;
 use App\Models\TradeRoomOffer;
+use App\Services\TradeRoomExpiryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class TokenApiController extends Controller
 {
-    public function offers(): JsonResponse
+    public function offers(TradeRoomExpiryService $expiry): JsonResponse
     {
+        $expiry->expireOpenOffers();
+
         return response()->json(['data' => TradeRoomOffer::query()->where('status', 'open')->orderByDesc('created_at')->get()
             ->map(fn ($o) => ['id' => $o->id, 'metal' => $o->metal, 'item' => $o->item, 'side' => $o->side, 'purity' => $o->purity, 'grams' => (float) $o->grams, 'price_per_gram' => $o->price_per_gram, 'created_at' => $o->created_at])]);
     }

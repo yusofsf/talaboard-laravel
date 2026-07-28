@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AssetCollateralRequest;
 use App\Models\GoldLedger;
 use App\Models\SilverLedger;
 use App\Models\TradeRoomOffer;
@@ -11,6 +12,8 @@ use Illuminate\Support\Facades\DB;
 
 class TradeRoomExpiryService
 {
+    private const TELEGRAM_BOT_TTL_MINUTES = 2;
+
     public function expiresAt(CarbonInterface $createdAt): CarbonInterface
     {
         $expiresAt = $createdAt->copy();
@@ -26,6 +29,12 @@ class TradeRoomExpiryService
 
     public function isExpired(TradeRoomOffer $offer, ?CarbonInterface $now = null): bool
     {
+        if ($offer->source === 'telegram_bot') {
+            return ($now ?? now())->greaterThanOrEqualTo(
+                $offer->created_at->copy()->addMinutes(self::TELEGRAM_BOT_TTL_MINUTES)
+            );
+        }
+
         return ($now ?? now())->greaterThan($this->expiresAt($offer->created_at));
     }
 
@@ -51,10 +60,10 @@ class TradeRoomExpiryService
                         continue;
                     }
 
-                    DB::transaction(function () use ($offer, &$expired) {
+                    DB::transaction(function () use ($offer, $now, &$expired) {
                         $freshOffer = TradeRoomOffer::where('id', $offer->id)->lockForUpdate()->first();
 
-                        if (! $freshOffer || $freshOffer->status !== 'open' || ! $this->isExpired($freshOffer)) {
+                        if (! $freshOffer || $freshOffer->status !== 'open' || ! $this->isExpired($freshOffer, $now)) {
                             return;
                         }
 
@@ -107,11 +116,43 @@ class TradeRoomExpiryService
             return;
         }
 
-        WalletTransaction::create([
-            'user_id' => $offer->user_id,
-            'amount' => $offer->total(),
-            'type' => 'deposit',
-            'description' => "{$reason} #{$offer->id}",
-        ]);
+        $walletRefund = (int) ($offer->wallet_reserved_amount
+            ?: ($offer->collateral_reserved_amount > 0 ? 0 : $offer->total()));
+
+        if ($walletRefund > 0) {
+            WalletTransaction::create([
+                'user_id' => $offer->user_id,
+                'amount' => $walletRefund,
+                'type' => 'deposit',
+                'description' => "{$reason} #{$offer->id}",
+            ]);
+        }
+
+        $this->releaseCollateral($offer->user_id, (int) $offer->collateral_reserved_amount);
+    }
+
+    private function releaseCollateral(int $userId, int $amount): void
+    {
+        if ($amount <= 0) {
+            return;
+        }
+
+        $remaining = $amount;
+        AssetCollateralRequest::query()
+            ->where('user_id', $userId)
+            ->where('status', 'approved')
+            ->where('used_amount', '>', 0)
+            ->lockForUpdate()
+            ->orderByDesc('id')
+            ->get()
+            ->each(function (AssetCollateralRequest $collateral) use (&$remaining) {
+                if ($remaining <= 0) {
+                    return;
+                }
+
+                $release = min($remaining, (int) $collateral->used_amount);
+                $collateral->decrement('used_amount', $release);
+                $remaining -= $release;
+            });
     }
 }

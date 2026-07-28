@@ -47,6 +47,7 @@ class HistoryController extends Controller
                     'id' => 'room-'.$offer->id,
                     'source' => 'room',
                     'source_label' => 'اتاق معاملاتی',
+                    'is_from_bot' => $offer->source === 'telegram_bot',
                     'type' => $side,
                     'item_label' => $this->roomItemLabel($offer),
                     'quantity' => (float) $offer->grams,

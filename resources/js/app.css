@@ -164,6 +164,7 @@ select option { color: #15192b; background: #fff; }
 .badge.silver { background: rgba(215,224,238,.1); color: var(--silver-1); border: 1px solid rgba(215,224,238,.25); }
 .badge.buy-b  { background: rgba(65,225,166,.1); color: var(--up);   border: 1px solid rgba(65,225,166,.3); }
 .badge.sell-b { background: rgba(255,107,120,.1);color: var(--down); border: 1px solid rgba(255,107,120,.3); }
+.badge.bot-source { background: rgba(96,165,250,.12); color: #93c5fd; border: 1px solid rgba(96,165,250,.35); white-space: nowrap; }
 
 .tag-chip {
   display: inline-flex; align-items: center; justify-content: center; gap: 5px;

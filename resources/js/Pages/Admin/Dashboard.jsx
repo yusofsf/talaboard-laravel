@@ -4,6 +4,7 @@ import AppLayout, { faNum } from '../../Layouts/AppLayout';
 import Pager, { usePager } from '../../Components/Pager';
 import DateRangeFilter, { filterByDateRange } from '../../Components/DateRangeFilter';
 import SearchBox, { filterBySearch } from '../../Components/SearchBox';
+import TradeSourceBadge from '../../Components/TradeSourceBadge';
 import SearchableSelect from '../../Components/SearchableSelect';
 import PasswordInput from '../../Components/PasswordInput';
 
@@ -508,7 +509,10 @@ function AllTradeRow({ t, printOnly, rejectingId, setRejectingId, rejectReason, 
     return (
         <tr style={rejected ? { opacity: .6 } : undefined}>
             <td style={{ fontSize: 12, color: 'var(--muted)' }}>{t.created_at}</td>
-            <td><span className={`badge ${t.source === 'shop' ? 'gold' : 'silver'}`}>{t.source_label}</span></td>
+            <td>
+                <span className={`badge ${t.source === 'shop' ? 'gold' : 'silver'}`}>{t.source_label}</span>
+                <TradeSourceBadge isFromBot={t.is_from_bot} />
+            </td>
             <td><strong>{t.user_name}</strong></td>
             <td style={{ color: 'var(--muted)', fontSize: 13 }}>{t.counterparty_name || '—'}</td>
             <td><span className={`badge ${t.side === 'buy' ? 'buy-b' : 'sell-b'}`}>{t.side === 'buy' ? 'خرید' : 'فروش'}</span></td>

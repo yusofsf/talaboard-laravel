@@ -383,6 +383,7 @@ class AdminController extends Controller
                 return [
                     'id' => 'room-'.$o->id,
                     'source' => 'اتاق معاملاتی',
+                    'is_from_bot' => $o->source === 'telegram_bot',
                     'side' => $userIsSeller ? 'sell' : 'buy',
                     'item_label' => $o->metal === 'gold' ? 'طلا (گرم)' : ('نقره '.$o->purity.' (گرم)'),
                     'quantity' => (float) $o->grams,
@@ -583,6 +584,7 @@ class AdminController extends Controller
                 'ref_id' => $o->id,
                 'source' => 'room',
                 'source_label' => 'اتاق معاملاتی',
+                'is_from_bot' => $o->source === 'telegram_bot',
                 'side' => $o->side,
                 'item_label' => $o->metal === 'gold' ? 'طلا (گرم)' : ('نقره '.$o->purity.' (گرم)'),
                 'quantity' => (float) $o->grams,

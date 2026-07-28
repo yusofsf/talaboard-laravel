@@ -39,8 +39,20 @@ class TelegramBotApiTest extends TestCase
             'unit' => 'gram', 'quantity' => 1, 'unit_price' => 1000,
         ])->assertCreated()->assertJsonPath('status', 'open');
 
-        $this->assertDatabaseHas('trade_room_offers', ['user_id' => $user->id, 'metal' => 'gold', 'side' => 'buy', 'status' => 'open']);
+        $this->assertDatabaseHas('trade_room_offers', [
+            'user_id' => $user->id,
+            'source' => 'telegram_bot',
+            'metal' => 'gold',
+            'side' => 'buy',
+            'status' => 'open',
+        ]);
         $this->assertSame(999999000, $user->fresh()->walletBalance());
+
+        $viewer = User::factory()->admin()->create();
+        $this->actingAs($viewer)->get('/trade-room')
+            ->assertInertia(fn ($page) => $page
+                ->where('buyOffers.0.id', TradeRoomOffer::firstOrFail()->id)
+                ->where('buyOffers.0.is_from_bot', true));
     }
 
     public function test_bot_can_create_delivery_request_and_read_its_status(): void

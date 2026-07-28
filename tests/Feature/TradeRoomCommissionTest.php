@@ -104,6 +104,7 @@ class TradeRoomCommissionTest extends TestCase
             'metal' => 'gold', 'side' => 'sell', 'grams' => 1000, 'price_per_gram' => 1000,
         ])->assertRedirect();
         $offer = TradeRoomOffer::firstOrFail();
+        $offer->update(['source' => 'telegram_bot']);
 
         $this->actingAs($buyer)->post("/trade-room/{$offer->id}/accept", ['grams' => 100])
             ->assertRedirect()->assertSessionHasNoErrors();
@@ -114,10 +115,16 @@ class TradeRoomCommissionTest extends TestCase
         $this->assertSame('open', $offer->status);
         $this->assertSame(900.0, (float) $offer->grams);
         $this->assertSame('completed', $fill->status);
+        $this->assertSame('telegram_bot', $fill->source);
         $this->assertSame(100.0, (float) $fill->grams);
         $this->assertSame($offer->id, $fill->parent_offer_id);
         $this->assertSame(100.0, $buyer->refresh()->goldBalance());
         $this->assertSame(1_000_000 - (100 * 1000), $buyer->walletBalance());
+
+        $this->actingAs($seller)->get('/history')
+            ->assertInertia(fn ($page) => $page
+                ->where('transactions.0.id', 'room-'.$fill->id)
+                ->where('transactions.0.is_from_bot', true));
     }
 
     public function test_offerer_can_require_the_entire_order_to_be_accepted(): void

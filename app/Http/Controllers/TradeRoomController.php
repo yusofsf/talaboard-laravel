@@ -112,6 +112,7 @@ class TradeRoomController extends Controller
         DB::transaction(function () use ($user, $request, $metal, $isCoin, $item, $purity, $grams, $total) {
             $offer = TradeRoomOffer::create([
                 'user_id' => $user->id,
+                'source' => 'website',
                 'metal' => $metal,
                 'item' => $item,
                 'side' => $request->side,
@@ -204,6 +205,7 @@ class TradeRoomController extends Controller
                     ? TradeRoomOffer::create([
                         'parent_offer_id' => $offer->id,
                         'user_id' => $offer->user_id,
+                        'source' => $offer->source,
                         'metal' => $offer->metal,
                         'item' => $offer->item,
                         'side' => $offer->side,
@@ -437,6 +439,7 @@ class TradeRoomController extends Controller
             'total' => $o->total(),
             'status' => $o->status,
             'is_mine' => $o->user_id === $viewer->id,
+            'is_from_bot' => $o->source === 'telegram_bot',
             'admin_note' => $o->admin_note,
             'commission' => (int) $o->commission,
             'created_at' => Jalali::format($o->created_at),

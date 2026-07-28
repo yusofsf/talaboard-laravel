@@ -17,6 +17,7 @@ use App\Models\ActivityLog;
 use App\Models\AssetCollateralRequest;
 use App\Models\Setting;
 use App\Services\PriceService;
+use App\Services\TradeRoomExpiryService;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -244,10 +245,11 @@ class TelegramMembershipController extends Controller
     }
 
     /** فهرست سفارش‌های باز اتاق معاملاتی، بدون اطلاعات هویتی طرفین. */
-    public function tradeRoomOffers(Request $request): JsonResponse
+    public function tradeRoomOffers(Request $request, TradeRoomExpiryService $expiry): JsonResponse
     {
         $this->authorize($request);
         $user = $this->vipUserForChat($request);
+        $expiry->expireOpenOffers();
 
         $data = $request->validate([
             'mine' => ['nullable'],
@@ -285,6 +287,8 @@ class TelegramMembershipController extends Controller
                 'unit' => $offer->metal === 'coin' ? 'piece' : 'gram',
                 'total' => $offer->total(),
                 'status' => $offer->status,
+                'source' => $offer->source,
+                'is_from_bot' => $offer->source === 'telegram_bot',
                 'is_mine' => $offer->user_id === $user->id,
                 'is_counterparty' => $offer->counterparty_id === $user->id,
                 'created_at' => $offer->created_at?->toIso8601String(),
@@ -346,7 +350,8 @@ class TelegramMembershipController extends Controller
             $walletReserve = $data['side'] === 'buy' ? min($lockedUser->walletBalance(), $total) : 0;
             $collateralReserve = $data['side'] === 'buy' ? $total - $walletReserve : 0;
             $offer = TradeRoomOffer::create([
-                'user_id' => $lockedUser->id, 'metal' => $asset['metal'], 'item' => $asset['item'],
+                'user_id' => $lockedUser->id, 'source' => 'telegram_bot',
+                'metal' => $asset['metal'], 'item' => $asset['item'],
                 'side' => $data['side'], 'purity' => $asset['purity'], 'grams' => $amount,
                 'price_per_gram' => $price, 'wallet_reserved_amount' => $walletReserve,
                 'collateral_reserved_amount' => $collateralReserve, 'status' => 'open',

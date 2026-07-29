@@ -3,14 +3,20 @@
 namespace App\Http\Middleware;
 
 use Closure;
+use Illuminate\Foundation\Vite;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 class SecurityHeaders
 {
+    public function __construct(private readonly Vite $vite) {}
+
     public function handle(Request $request, Closure $next): Response
     {
-        $request->attributes->set('csp_nonce', bin2hex(random_bytes(16)));
+        $nonce = bin2hex(random_bytes(16));
+
+        $request->attributes->set('csp_nonce', $nonce);
+        $this->vite->useCspNonce($nonce);
 
         $response = $next($request);
 

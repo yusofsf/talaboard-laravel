@@ -89,7 +89,7 @@
 @if ($__inertiaSsrResponse)
     {!! $__inertiaSsrResponse->body !!}
 @else
-    <script data-page="app" type="application/json">{!! json_encode($page) !!}</script>
+    <script data-page="app" type="application/json" @if($cspNonce) nonce="{{ $cspNonce }}" @endif>{!! json_encode($page) !!}</script>
     <div id="app">
         @if (in_array($page['component'] ?? null, ['Articles/Index', 'Articles/Show'], true))
             @include('seo.article-fallback', ['component' => $page['component'], 'props' => $props])

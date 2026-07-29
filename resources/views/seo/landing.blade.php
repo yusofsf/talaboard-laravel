@@ -1,6 +1,7 @@
 @php
     $siteUrl = rtrim(config('seo.url'), '/');
     $logo = $siteUrl . config('seo.logo');
+    $cspNonce = request()->attributes->get('csp_nonce');
     $cards = [
         'silver-prices' => [
             ['label' => 'گرم نقره ۹۹۹', 'value' => data_get($prices, 'silver.gram_999'), 'href' => '/trade/gram_999'],
@@ -75,7 +76,7 @@
 <meta name="twitter:title" content="{{ $meta['title'] }}">
 <meta name="twitter:description" content="{{ $meta['description'] }}">
 <meta name="twitter:image" content="{{ $logo }}">
-<script type="application/ld+json">
+<script type="application/ld+json" @if($cspNonce) nonce="{{ $cspNonce }}" @endif>
 {!! json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) !!}
 </script>
 <link rel="icon" href="/logo.jpg" type="image/jpeg">

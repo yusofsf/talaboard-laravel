@@ -37,5 +37,13 @@ class PublicPagesTest extends TestCase
         $csp = $response->headers->get('Content-Security-Policy');
         $this->assertMatchesRegularExpression("/script-src 'self' 'nonce-[a-f0-9]{32}' https:\/\/s3\.tradingview\.com/", $csp);
         $this->assertStringNotContainsString("script-src 'self' 'unsafe-inline'", $csp);
+
+        preg_match("/'nonce-([a-f0-9]{32})'/", $csp, $nonceMatch);
+        preg_match_all('/<script\b([^>]*)>/i', $response->getContent(), $scriptTags);
+
+        $this->assertNotEmpty($scriptTags[1]);
+        foreach ($scriptTags[1] as $attributes) {
+            $this->assertStringContainsString('nonce="'.$nonceMatch[1].'"', $attributes);
+        }
     }
 }

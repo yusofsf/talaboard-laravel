@@ -43,7 +43,21 @@ export default function AppLayout({ children }) {
 
         document.addEventListener('pointerdown', closeOnOutsidePointerDown);
 
-        return () => document.removeEventListener('pointerdown', closeOnOutsidePointerDown);
+        const closeOnEscape = event => {
+            if (event.key === 'Escape') {
+                setOpen(false);
+                menuButtonRef.current?.focus();
+            }
+        };
+
+        document.addEventListener('keydown', closeOnEscape);
+        document.documentElement.classList.add('simple-menu-open');
+
+        return () => {
+            document.removeEventListener('pointerdown', closeOnOutsidePointerDown);
+            document.removeEventListener('keydown', closeOnEscape);
+            document.documentElement.classList.remove('simple-menu-open');
+        };
     }, [open]);
 
     return (

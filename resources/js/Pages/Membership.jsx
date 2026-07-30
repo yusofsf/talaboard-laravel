@@ -12,6 +12,7 @@ const MAX_VIDEO = 5 * 1024 * 1024;  // ۵ مگابایت
 export default function Membership({ user }) {
     const { errors } = usePage().props;
     const [fileErrors, setFileErrors] = useState({});
+    const [submitError, setSubmitError] = useState('');
     const apply = useForm({
         national_id_doc: null,
         identity_doc: null,
@@ -21,6 +22,7 @@ export default function Membership({ user }) {
     });
 
     function handleImage(field, e) {
+        setSubmitError('');
         const file = e.target.files[0] || null;
         if (file && file.size > MAX_IMAGE) {
             setFileErrors(s => ({ ...s, [field]: `حجم فایل (${(file.size / 1024 / 1024).toFixed(1).toLocaleString('fa-IR')} مگابایت) بیشتر از حد مجاز (۵ مگابایت) است.` }));
@@ -33,6 +35,7 @@ export default function Membership({ user }) {
     }
 
     function handleVideo(file) {
+        setSubmitError('');
         if (file && file.size > MAX_VIDEO) {
             setFileErrors(s => ({ ...s, verification_video: `حجم فیلم (${(file.size / 1024 / 1024).toFixed(1).toLocaleString('fa-IR')} مگابایت) بیشتر از حد مجاز (۵ مگابایت) است. لطفاً کوتاه‌تر ضبط کنید.` }));
             apply.setData('verification_video', null);
@@ -46,10 +49,35 @@ export default function Membership({ user }) {
 
     function submitApply(e) {
         e.preventDefault();
-        if (hasFileError) return;
+        if (!navigator.onLine) {
+            setSubmitError('اتصال اینترنت برقرار نیست. پس از وصل شدن اینترنت دوباره تلاش کنید.');
+            return;
+        }
+        if (!apply.data.birth_date) {
+            setSubmitError('لطفاً تاریخ تولد را انتخاب کنید.');
+            return;
+        }
+        if (!apply.data.residence_address.trim()) {
+            setSubmitError('لطفاً آدرس محل سکونت را وارد کنید.');
+            return;
+        }
+        if (!apply.data.national_id_doc || !apply.data.identity_doc) {
+            setSubmitError('لطفاً هر دو تصویر کارت ملی و جواز صنفی را انتخاب کنید.');
+            return;
+        }
+        if (!apply.data.verification_video) {
+            setSubmitError('ابتدا فیلم اعتبارسنجی را ضبط و پیش‌نمایش آن را بررسی کنید.');
+            return;
+        }
+        if (hasFileError) {
+            setSubmitError('حجم یکی از فایل‌ها بیشتر از حد مجاز است.');
+            return;
+        }
+        setSubmitError('');
         apply.post('/membership/apply', {
             forceFormData: true,
-            onSuccess: () => apply.reset(),
+            onSuccess: () => { apply.reset(); setSubmitError(''); },
+            onError: () => setSubmitError('درخواست ارسال نشد. خطاهای نمایش‌داده‌شده را بررسی و دوباره تلاش کنید.'),
         });
     }
 
@@ -104,7 +132,7 @@ export default function Membership({ user }) {
                     </div>
                     {Object.values(errors).map((e, i) => <div key={i} className="alert err">{e}</div>)}
 
-                    <form onSubmit={submitApply}>
+                    <form onSubmit={submitApply} noValidate>
                         <div className="field">
                             <label>تاریخ تولد (شمسی)</label>
                             <JalaliDatePicker value={apply.data.birth_date} onChange={v => apply.setData('birth_date', v)} />
@@ -156,7 +184,9 @@ export default function Membership({ user }) {
                             </div>
                         )}
 
-                        <button className="btn" type="submit" disabled={apply.processing || !apply.data.verification_video || hasFileError}>
+                        {submitError && <div className="alert err" role="alert" aria-live="assertive">{submitError}</div>}
+
+                        <button className="btn" type="submit" disabled={apply.processing}>
                             {apply.processing
                                 ? (apply.progress ? `در حال آپلود... ${Math.round(apply.progress.percentage).toLocaleString('fa-IR')}٪` : 'در حال ارسال...')
                                 : 'ارسال درخواست'}

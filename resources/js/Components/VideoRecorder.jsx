@@ -2,7 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 
 // محدودیت‌های پایین‌تر برای ضبط، تا حجم فایل خام از همان ابتدا کوچک بماند
 const VIDEO_CONSTRAINTS = { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24 } };
-const RECORDER_OPTIONS = { mimeType: 'video/webm;codecs=vp8,opus', videoBitsPerSecond: 600_000, audioBitsPerSecond: 64_000 };
+const RECORDER_MIME_TYPES = [
+    'video/webm;codecs=vp8,opus',
+    'video/webm;codecs=vp8',
+    'video/webm',
+    'video/mp4',
+];
+const RECORDER_BITRATES = { videoBitsPerSecond: 600_000, audioBitsPerSecond: 64_000 };
 const CAMERA_OPTIONS = [
     { value: 'user', label: 'دوربین جلو' },
     { value: 'environment', label: 'دوربین عقب' },
@@ -69,19 +75,42 @@ export default function VideoRecorder({ onRecorded, maxSeconds = 30 }) {
     }
 
     function startRecording() {
-        if (!streamRef.current) return;
+        if (!streamRef.current) {
+            setError('دوربین آماده نیست. لطفاً دوباره دوربین را باز کنید.');
+            setPhase('error');
+            return;
+        }
         chunksRef.current = [];
         let mr;
         try {
-            mr = new MediaRecorder(streamRef.current, RECORDER_OPTIONS);
-        } catch {
-            mr = new MediaRecorder(streamRef.current); // اگر مرورگر این codec/bitrate را نپذیرفت
+            if (typeof MediaRecorder === 'undefined') {
+                throw new Error('MediaRecorder is unavailable');
+            }
+            const mimeType = RECORDER_MIME_TYPES.find(type => (
+                typeof MediaRecorder.isTypeSupported !== 'function' || MediaRecorder.isTypeSupported(type)
+            ));
+            mr = new MediaRecorder(streamRef.current, mimeType ? { ...RECORDER_BITRATES, mimeType } : RECORDER_BITRATES);
+        } catch (firstError) {
+            try {
+                mr = new MediaRecorder(streamRef.current);
+            } catch {
+                setError('ضبط فیلم در این نسخه مرورگر پشتیبانی نمی‌شود. لطفاً Chrome را به‌روز کنید و دوباره تلاش کنید.');
+                setPhase('error');
+                return;
+            }
         }
         mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
         mr.onstop = () => {
             const mimeType = mr.mimeType || chunksRef.current[0]?.type || 'video/webm';
             const extension = mimeType.includes('mp4') ? 'mp4' : (mimeType.includes('quicktime') ? 'mov' : 'webm');
             const blob = new Blob(chunksRef.current, { type: mimeType });
+            if (!blob.size) {
+                setError('فیلم ذخیره نشد. لطفاً دوباره ضبط کنید و پیش از توقف چند ثانیه منتظر بمانید.');
+                onRecorded(null);
+                stopStream();
+                setPhase('error');
+                return;
+            }
             const file = new File([blob], `verification.${extension}`, { type: mimeType });
             const url = URL.createObjectURL(blob);
             setPreviewUrl(url);
@@ -90,7 +119,19 @@ export default function VideoRecorder({ onRecorded, maxSeconds = 30 }) {
             setPhase('preview');
         };
         mediaRecorderRef.current = mr;
-        mr.start();
+        // دریافت دوره‌ای داده‌ها روی بعضی نسخه‌های Chrome اندروید از فایل خالی جلوگیری می‌کند.
+        try {
+            mr.start(1000);
+        } catch {
+            try {
+                mr.start();
+            } catch {
+                setError('شروع ضبط فیلم ممکن نشد. لطفاً مرورگر را به‌روز کنید و دوباره تلاش کنید.');
+                stopStream();
+                setPhase('error');
+                return;
+            }
+        }
         setSeconds(0);
         setPhase('recording');
         timerRef.current = setInterval(() => {

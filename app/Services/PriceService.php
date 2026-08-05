@@ -67,6 +67,18 @@ class PriceService
         ];
     }
 
+    /** Remove source/transport diagnostics before a price payload is sent to clients. */
+    public static function publicPayload(array $payload): array
+    {
+        $payload['errors'] = array_values(array_filter(
+            $payload['errors'] ?? [],
+            static fn ($error) => is_string($error)
+                && ! preg_match('/(?:انس\\s+(?:طلا|نقره)|curl)/iu', $error)
+        ));
+
+        return $payload;
+    }
+
     /** ضرب همه‌ی مقادیر عددی یک آرایه‌ی قیمت در ضریب (برای ساخت قیمت خرید/فروش از روی قیمت میانی). */
     private function applySpread(array $mid, float $mult): array
     {
@@ -123,8 +135,7 @@ class PriceService
                 }
                 return ['ask' => $ask, 'bid' => $bid];
             } catch (\Throwable $e) {
-                Log::warning('PriceService gold fetch failed: ' . $e->getMessage());
-                $errors[] = 'طلا: ' . $e->getMessage();
+                Log::warning('PriceService gold fetch failed', ['exception' => $e]);
                 return $null;
             }
         });
@@ -146,6 +157,11 @@ class PriceService
                     $errors[] = 'نقره: رکوردی در دیتابیس یافت نشد';
                     return $null;
                 }
+                $ounce = isset($row->silver_ounce) ? (float) $row->silver_ounce : null;
+                if ($ounce === null) {
+                    Log::warning('PriceService silver ounce unavailable');
+                }
+
                 return [
                     'sell' => [
                         'mithqal_999' => (int) round($row->mithqal_price),
@@ -159,11 +175,10 @@ class PriceService
                         'mithqal_995' => isset($row->mithqal_995_price_buy) ? (int) round($row->mithqal_995_price_buy) : null,
                         'gram_995'    => isset($row->gram_995_buy) ? (float) $row->gram_995_buy : null,
                     ],
-                    'ounce' => isset($row->silver_ounce) ? (float) $row->silver_ounce : null,
+                    'ounce' => $ounce,
                 ];
             } catch (\Throwable $e) {
-                Log::warning('PriceService silver fetch failed: ' . $e->getMessage());
-                $errors[] = 'نقره: ' . $e->getMessage();
+                Log::warning('PriceService silver fetch failed', ['exception' => $e]);
                 return $null;
             }
         });
@@ -223,7 +238,7 @@ class PriceService
             $v = $this->fetchGoldOunceYahoo();
             if ($v !== null) return $v;
 
-            $errors[] = 'انس طلا: دریافت نشد';
+            Log::warning('PriceService gold ounce unavailable after all sources failed');
             return null;
         });
     }

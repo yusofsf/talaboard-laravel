@@ -43,7 +43,9 @@ class HomeController extends Controller
             ];
         }
 
-        return PriceSnapshot::latestPayload() ?? $this->prices->all();
+        return PriceService::publicPayload(
+            PriceSnapshot::latestPayload() ?? $this->prices->all()
+        );
     }
 
     private function seo(): array

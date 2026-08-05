@@ -51,6 +51,23 @@ class PriceApiTest extends TestCase
             ->assertJsonPath('updated_at', '12:34:56');
     }
 
+    public function test_price_api_hides_source_and_curl_errors_from_stored_snapshots(): void
+    {
+        $this->configureCredentials();
+        PriceSnapshot::create(['payload' => [
+            'errors' => [
+                'انس طلا: دریافت نشد',
+                'نقره: cURL error 28: Connection timed out',
+                'دلار: قیمت دریافت نشد',
+            ],
+        ]]);
+
+        $this->withBasicAuth('price-client', 'test-secret')
+            ->getJson('/api/v1/prices')
+            ->assertOk()
+            ->assertJsonPath('errors', ['دلار: قیمت دریافت نشد']);
+    }
+
     public function test_admin_can_create_database_backed_price_api_credentials(): void
     {
         $admin = User::factory()->admin()->create();

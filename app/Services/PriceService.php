@@ -223,8 +223,14 @@ class PriceService
             try {
                 $url = env('DOLLAR_GOLD_URL', 'https://alanchand.com/gold-price');
                 $res = Http::timeout(15)->withHeaders(['User-Agent' => self::UA])->get($url);
-                $v = $res->ok() ? $this->findSellInTables($res->body(), 'انس طلا') : null;
+                $v = $res->ok() ? $this->findSellInTables($res->body(), 'انس طلا', 1) : null;
                 if ($v !== null) return (float) $v;
+
+                Log::warning(
+                    $res->ok()
+                        ? 'PriceService gold ounce (alanchand) parse failed'
+                        : "PriceService gold ounce (alanchand) returned HTTP {$res->status()}"
+                );
             } catch (\Throwable $e) {
                 Log::warning('PriceService gold ounce (alanchand) fetch failed: ' . $e->getMessage());
             }
@@ -281,8 +287,8 @@ class PriceService
         }
     }
 
-    /** در جدول‌های HTML: ستون۰=نام، ستون۲=قیمت فروش. */
-    private function findSellInTables(string $html, string $keyword): ?float
+    /** در جدول‌های HTML، ستون۰ نام بازار است؛ شماره ستون قیمت بین صفحات متفاوت است. */
+    private function findSellInTables(string $html, string $keyword, int $priceColumn = 2): ?float
     {
         $prev = libxml_use_internal_errors(true);
         $dom  = new \DOMDocument();
@@ -294,8 +300,8 @@ class PriceService
             foreach ($tr->getElementsByTagName('td') as $td) {
                 $cells[] = trim($td->textContent);
             }
-            if (count($cells) >= 3 && mb_strpos($cells[0], $keyword) !== false) {
-                return $this->parseNumber($cells[2]);
+            if (isset($cells[0], $cells[$priceColumn]) && mb_strpos($cells[0], $keyword) !== false) {
+                return $this->parseNumber($cells[$priceColumn]);
             }
         }
         return null;
@@ -307,8 +313,11 @@ class PriceService
             '۰'=>'0','۱'=>'1','۲'=>'2','۳'=>'3','۴'=>'4','۵'=>'5','۶'=>'6','۷'=>'7','۸'=>'8','۹'=>'9',
             '٠'=>'0','١'=>'1','٢'=>'2','٣'=>'3','٤'=>'4','٥'=>'5','٦'=>'6','٧'=>'7','٨'=>'8','٩'=>'9',
         ]);
-        $s = preg_replace('/[^0-9.]/', '', $s);
-        return $s === '' ? null : (float) $s;
+        $s = str_replace([',', '٬'], '', $s);
+
+        return preg_match('/\d+(?:\.\d+)?/', $s, $matches) === 1
+            ? (float) $matches[0]
+            : null;
     }
 
     /**

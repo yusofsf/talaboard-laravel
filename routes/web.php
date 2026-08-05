@@ -35,9 +35,23 @@ Route::get('/calculator', fn () => Inertia::render('Calculator', [
     ],
 ]))->name('calculator');
 Route::get('/price-calculator', fn () => Inertia::render('PriceCalculator'))->name('price-calculator');
-Route::get('/chart', fn () => Inertia::render('Chart'))->name('chart');
-Route::get('/speed-test', fn () => Inertia::render('SpeedTest'))->name('speed-test');
+Route::get('/chart', fn () => Inertia::render('Chart', [
+    'seo' => [
+        ...config('seo.public_pages.chart'),
+        'canonical' => rtrim(config('seo.url'), '/').'/chart',
+    ],
+]))->name('chart');
+Route::get('/speed-test', fn () => Inertia::render('SpeedTest', [
+    'seo' => [
+        ...config('seo.public_pages.speed-test'),
+        'canonical' => rtrim(config('seo.url'), '/').'/speed-test',
+    ],
+]))->name('speed-test');
 Route::get('/about', fn () => Inertia::render('About', [
+    'seo' => [
+        ...config('seo.public_pages.about'),
+        'canonical' => rtrim(config('seo.url'), '/').'/about',
+    ],
     'content' => [
         'title' => Setting::get('about_title', config('page_content.about.title')),
         'body' => Setting::get('about_body', config('page_content.about.body')),

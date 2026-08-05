@@ -34,6 +34,25 @@ class SeoPagesTest extends TestCase
         }
     }
 
+    public function test_public_pages_listed_in_sitemap_render_indexable_metadata(): void
+    {
+        foreach (['/about', '/contact', '/calculator', '/chart', '/speed-test'] as $path) {
+            $this->get($path)
+                ->assertOk()
+                ->assertSee('name="robots" content="index, follow, max-image-preview:large"', false)
+                ->assertSee('rel="canonical" href="'.rtrim(config('seo.url'), '/').$path.'"', false);
+        }
+    }
+
+    public function test_account_access_pages_remain_noindex(): void
+    {
+        foreach (['/login', '/register', '/forgot-password'] as $path) {
+            $this->get($path)
+                ->assertOk()
+                ->assertSee('name="robots" content="noindex, nofollow"', false);
+        }
+    }
+
     public function test_sitemap_lists_public_commercial_pages(): void
     {
         $siteUrl = rtrim(config('seo.url'), '/');
@@ -54,7 +73,7 @@ class SeoPagesTest extends TestCase
             ->assertSee($siteUrl.'/full-coin-price', false)
             ->assertSee($siteUrl.'/buy-gold', false)
             ->assertSee($siteUrl.'/sell-silver', false)
-            ->assertDontSee($siteUrl.'/trade/geram', false)
+            ->assertSee($siteUrl.'/trade/geram', false)
             ->assertDontSee($siteUrl.'/login', false)
             ->assertDontSee($siteUrl.'/register', false);
     }

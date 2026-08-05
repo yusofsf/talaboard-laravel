@@ -54,6 +54,28 @@ class PriceServiceTest extends TestCase
         Http::assertNotSent(fn ($request) => str_contains($request->url(), 'finance.yahoo.com'));
     }
 
+    public function test_gold_ounce_is_parsed_from_alanchand_current_price_column(): void
+    {
+        Http::fake(fn () => Http::response(<<<'HTML'
+            <table>
+                <tr>
+                    <td>انس طلا</td>
+                    <td><span>۴,۱۸۸.۹۶$</span><span>۲.۶۸%</span></td>
+                    <td>-</td>
+                    <td>-</td>
+                </tr>
+            </table>
+            HTML));
+
+        $errors = [];
+        $result = $this->invokePriceFetcher('fetchGoldOunce', $errors);
+
+        $this->assertSame(4188.96, $result);
+        $this->assertSame([], $errors);
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($request) => $request->url() === 'https://alanchand.com/gold-price');
+    }
+
     public function test_gold_ounce_failure_is_logged_but_not_returned_as_a_user_error(): void
     {
         Http::fake(fn () => Http::response('', 503));
@@ -65,8 +87,11 @@ class PriceServiceTest extends TestCase
         $this->assertNull($result);
         $this->assertSame([], $errors);
         Log::shouldHaveReceived('warning')
-            ->once()
-            ->with('PriceService gold ounce unavailable after all sources failed');
+            ->with('PriceService gold ounce (alanchand) returned HTTP 503')
+            ->once();
+        Log::shouldHaveReceived('warning')
+            ->with('PriceService gold ounce unavailable after all sources failed')
+            ->once();
     }
 
     public function test_public_payload_hides_ounce_and_curl_errors(): void

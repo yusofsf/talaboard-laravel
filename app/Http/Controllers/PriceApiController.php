@@ -18,6 +18,8 @@ class PriceApiController extends Controller
             ? PriceSnapshot::latestPayload()
             : null;
 
-        return response()->json($prices ?? $this->prices->all());
+        return response()->json(PriceService::publicPayload(
+            $prices ?? $this->prices->all()
+        ));
     }
 }

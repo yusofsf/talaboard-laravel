@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Services\PriceService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use ReflectionMethod;
 use Tests\TestCase;
 
@@ -51,6 +52,35 @@ class PriceServiceTest extends TestCase
         $this->assertSame(4797.33, $result);
         $this->assertSame([], $errors);
         Http::assertNotSent(fn ($request) => str_contains($request->url(), 'finance.yahoo.com'));
+    }
+
+    public function test_gold_ounce_failure_is_logged_but_not_returned_as_a_user_error(): void
+    {
+        Http::fake(fn () => Http::response('', 503));
+        Log::spy();
+
+        $errors = [];
+        $result = $this->invokePriceFetcher('fetchGoldOunce', $errors);
+
+        $this->assertNull($result);
+        $this->assertSame([], $errors);
+        Log::shouldHaveReceived('warning')
+            ->once()
+            ->with('PriceService gold ounce unavailable after all sources failed');
+    }
+
+    public function test_public_payload_hides_ounce_and_curl_errors(): void
+    {
+        $payload = PriceService::publicPayload([
+            'errors' => [
+                'انس طلا: دریافت نشد',
+                'انس نقره: دریافت نشد',
+                'طلا: cURL error 28: Connection timed out',
+                'دلار: قیمت دریافت نشد',
+            ],
+        ]);
+
+        $this->assertSame(['دلار: قیمت دریافت نشد'], $payload['errors']);
     }
 
     private function invokePriceFetcher(string $methodName, array &$errors): mixed

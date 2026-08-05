@@ -15,6 +15,10 @@ class ContactController extends Controller
         $intro = Setting::get('contact_intro', config('page_content.contact.intro'));
 
         return Inertia::render('Contact', [
+            'seo' => [
+                ...config('seo.public_pages.contact'),
+                'canonical' => rtrim(config('seo.url'), '/').'/contact',
+            ],
             'content' => [
                 'title' => Setting::get('contact_title', config('page_content.contact.title')),
                 'intro' => $this->removeSupportPhone($intro),

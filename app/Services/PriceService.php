@@ -169,27 +169,38 @@ class PriceService
         });
     }
 
-    /** قیمت فروش دلار از alanchand.com (جدول HTML). */
+    /** قیمت فروش دلار از alanchand.com با TGJU به‌عنوان fallback. */
     private function fetchDollar(array &$errors): array
     {
         return Cache::remember('prices.dollar', $this->cacheTtl, function () use (&$errors) {
+            $price = null;
+
             try {
                 $url = env('DOLLAR_HOME_URL', 'https://alanchand.com/');
                 $res = Http::timeout(15)->withHeaders(['User-Agent' => self::UA])->get($url);
                 $price = $res->ok() ? $this->findSellInTables($res->body(), 'دلار آمریکا') : null;
-                if ($price === null) $errors[] = 'دلار: قیمت استخراج نشد';
-                return ['price' => $price !== null ? (int) round($price) : null, 'label' => 'دلار آمریکا'];
             } catch (\Throwable $e) {
-                Log::warning('PriceService dollar fetch failed: ' . $e->getMessage());
-                $errors[] = 'دلار: ' . $e->getMessage();
-                return ['price' => null, 'label' => 'دلار آمریکا'];
+                Log::warning('PriceService dollar (alanchand) fetch failed: ' . $e->getMessage());
             }
+
+            if ($price === null) {
+                $tgjuPrice = $this->fetchTgjuProfilePrice(
+                    env('TGJU_DOLLAR_URL', 'https://www.tgju.org/profile/price_dollar_rl'),
+                    'dollar'
+                );
+
+                // TGJU publishes the free-dollar profile in rial; this app exposes toman.
+                $price = $tgjuPrice !== null ? $tgjuPrice / 10 : null;
+            }
+
+            if ($price === null) $errors[] = 'دلار: قیمت دریافت نشد';
+
+            return ['price' => $price !== null ? (int) round($price) : null, 'label' => 'دلار آمریکا'];
         });
     }
 
     /**
-     * انس طلا (دلار) — اول alanchand.com/gold-price (Yahoo Finance از ایران معمولاً مسدود/timeout
-     * می‌شود و فقط تأخیر بی‌فایده ایجاد می‌کند)، در صورت خطا Yahoo را هم امتحان می‌کند.
+     * انس طلا (دلار) — اول alanchand.com/gold-price، سپس TGJU و در نهایت Yahoo Finance.
      */
     private function fetchGoldOunce(array &$errors): ?float
     {
@@ -203,12 +214,40 @@ class PriceService
                 Log::warning('PriceService gold ounce (alanchand) fetch failed: ' . $e->getMessage());
             }
 
+            $v = $this->fetchTgjuProfilePrice(
+                env('TGJU_GOLD_OUNCE_URL', 'https://www.tgju.org/profile/ons'),
+                'gold ounce'
+            );
+            if ($v !== null) return $v;
+
             $v = $this->fetchGoldOunceYahoo();
             if ($v !== null) return $v;
 
             $errors[] = 'انس طلا: دریافت نشد';
             return null;
         });
+    }
+
+    private function fetchTgjuProfilePrice(string $url, string $market): ?float
+    {
+        try {
+            $res = Http::timeout(10)->withHeaders(['User-Agent' => self::UA])->get($url);
+            if (!$res->ok()) return null;
+
+            $prev = libxml_use_internal_errors(true);
+            $dom = new \DOMDocument();
+            $dom->loadHTML('<?xml encoding="UTF-8">' . $res->body());
+            libxml_clear_errors();
+            libxml_use_internal_errors($prev);
+
+            $nodes = (new \DOMXPath($dom))->query('//*[@data-col="info.last_trade.PDrCotVal"]');
+            if ($nodes === false || $nodes->length === 0) return null;
+
+            return $this->parseNumber($nodes->item(0)->textContent);
+        } catch (\Throwable $e) {
+            Log::warning("PriceService {$market} (TGJU) fetch failed: " . $e->getMessage());
+            return null;
+        }
     }
 
     private function fetchGoldOunceYahoo(): ?float

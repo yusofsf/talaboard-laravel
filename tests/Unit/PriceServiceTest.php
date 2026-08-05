@@ -94,7 +94,7 @@ class PriceServiceTest extends TestCase
             ->once();
     }
 
-    public function test_public_payload_hides_ounce_and_curl_errors(): void
+    public function test_public_payload_hides_price_source_and_curl_errors(): void
     {
         $payload = PriceService::publicPayload([
             'errors' => [
@@ -105,7 +105,7 @@ class PriceServiceTest extends TestCase
             ],
         ]);
 
-        $this->assertSame(['دلار: قیمت دریافت نشد'], $payload['errors']);
+        $this->assertSame([], $payload['errors']);
     }
 
     private function invokePriceFetcher(string $methodName, array &$errors): mixed

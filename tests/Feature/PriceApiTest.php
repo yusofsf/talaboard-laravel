@@ -65,7 +65,7 @@ class PriceApiTest extends TestCase
         $this->withBasicAuth('price-client', 'test-secret')
             ->getJson('/api/v1/prices')
             ->assertOk()
-            ->assertJsonPath('errors', ['دلار: قیمت دریافت نشد']);
+            ->assertJsonPath('errors', []);
     }
 
     public function test_admin_can_create_database_backed_price_api_credentials(): void

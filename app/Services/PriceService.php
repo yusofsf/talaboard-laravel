@@ -73,6 +73,7 @@ class PriceService
         $payload['errors'] = array_values(array_filter(
             $payload['errors'] ?? [],
             static fn ($error) => is_string($error)
+                && ! str_contains($error, "\u{062F}\u{0644}\u{0627}\u{0631}")
                 && ! preg_match('/(?:انس\\s+(?:طلا|نقره)|curl)/iu', $error)
         ));
 

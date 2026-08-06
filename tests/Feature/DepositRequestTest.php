@@ -15,18 +15,19 @@ class DepositRequestTest extends TestCase
 
     public function test_user_can_request_a_deposit_and_admins_are_notified(): void
     {
-        $user  = User::factory()->create();
+        $user = User::factory()->create();
         $admin = User::factory()->admin()->create();
 
         $this->actingAs($user)->post('/wallet/deposit', [
             'amount' => 500000,
-            'note'   => 'پیگیری ۱۲۳۴',
+            'tracking_number' => '۱۲۳۴۵۶',
         ])->assertRedirect();
 
         $deposit = DepositRequest::first();
         $this->assertSame(500000, $deposit->amount);
         $this->assertSame('pending', $deposit->status);
         $this->assertSame('website', $deposit->source);
+        $this->assertSame('۱۲۳۴۵۶', $deposit->tracking_number);
         $this->assertSame(0, $user->refresh()->walletBalance());
 
         $this->assertTrue(Notification::where('user_id', $admin->id)->exists());
@@ -55,13 +56,14 @@ class DepositRequestTest extends TestCase
 
     public function test_deposit_notification_does_not_include_raw_html_from_legacy_user_name(): void
     {
-        $user  = User::factory()->create();
+        $user = User::factory()->create();
         $admin = User::factory()->admin()->create();
 
         DB::table('users')->where('id', $user->id)->update(['name' => '<script>alert(1)</script>']);
 
         $this->actingAs($user->refresh())->post('/wallet/deposit', [
             'amount' => 500000,
+            'tracking_number' => '987654',
         ])->assertRedirect();
 
         $adminNotif = Notification::where('user_id', $admin->id)->first();
@@ -70,11 +72,22 @@ class DepositRequestTest extends TestCase
         $this->assertStringNotContainsString('</script>', $adminNotif->title);
     }
 
+    public function test_website_deposit_requires_a_tracking_number(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post('/wallet/deposit', [
+            'amount' => 500000,
+        ])->assertSessionHasErrors('tracking_number');
+
+        $this->assertDatabaseCount('deposit_requests', 0);
+    }
+
     public function test_admin_approving_a_deposit_credits_the_wallet_and_notifies_correctly(): void
     {
-        $user        = User::factory()->create();
+        $user = User::factory()->create();
         $actingAdmin = User::factory()->admin()->create(['name' => 'مدیر اول']);
-        $otherAdmin  = User::factory()->admin()->create(['name' => 'مدیر دوم']);
+        $otherAdmin = User::factory()->admin()->create(['name' => 'مدیر دوم']);
         $deposit = DepositRequest::create(['user_id' => $user->id, 'amount' => 300000, 'status' => 'pending']);
 
         $this->actingAs($actingAdmin)->post("/admin/deposits/{$deposit->id}/approve", [
@@ -96,7 +109,7 @@ class DepositRequestTest extends TestCase
 
     public function test_admin_rejecting_a_deposit_requires_a_reason_and_does_not_credit_wallet(): void
     {
-        $user  = User::factory()->create();
+        $user = User::factory()->create();
         $admin = User::factory()->admin()->create();
         $deposit = DepositRequest::create(['user_id' => $user->id, 'amount' => 200000, 'status' => 'pending']);
 

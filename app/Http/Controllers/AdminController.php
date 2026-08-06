@@ -181,6 +181,7 @@ class AdminController extends Controller
                 'user_name' => $d->user?->name,
                 'user_phone' => $d->user?->phone,
                 'amount' => $d->amount,
+                'tracking_number' => $d->tracking_number,
                 'note' => $d->note,
                 'receipt_url' => $d->receipt_path ? asset('storage/'.$d->receipt_path) : null,
                 'status' => $d->status,
@@ -329,6 +330,7 @@ class AdminController extends Controller
             'body' => 'سقف معامله قابل استفاده: '.number_format($data['trade_limit_amount']).' ریال',
             'type' => 'system',
         ]);
+
         return back()->with('success', 'بیعانه دارایی تأیید و سقف معامله ثبت شد.');
     }
 
@@ -344,6 +346,7 @@ class AdminController extends Controller
             'body' => 'دلیل: '.trim($data['reason']),
             'type' => 'system',
         ]);
+
         return back()->with('success', 'درخواست بیعانه دارایی رد شد.');
     }
 

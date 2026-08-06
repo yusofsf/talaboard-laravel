@@ -285,6 +285,7 @@ class TelegramMembershipController extends Controller
                 'quantity' => (float) $offer->grams,
                 'unit_price' => (int) $offer->price_per_gram,
                 'unit' => $offer->metal === 'coin' ? 'piece' : 'gram',
+                'allow_partial' => (bool) $offer->allow_partial_fill,
                 'total' => $offer->total(),
                 'status' => $offer->status,
                 'source' => $offer->source,
@@ -309,6 +310,7 @@ class TelegramMembershipController extends Controller
             'unit' => ['required', 'in:gram,mesghal,piece'],
             'quantity' => ['required', 'numeric', 'min:0.0001', 'max:1000000'],
             'unit_price' => ['required', 'integer', 'min:1'],
+            'allow_partial' => ['sometimes', 'boolean'],
         ]);
 
         $assets = [
@@ -329,7 +331,10 @@ class TelegramMembershipController extends Controller
         $amount = $data['unit'] === 'mesghal' ? round($quantity * $factor, 4) : $quantity;
         $price = $data['unit'] === 'mesghal' ? (int) round($data['unit_price'] / $factor) : (int) $data['unit_price'];
         abort_if($isCoin && floor($amount) !== $amount, 422, 'تعداد سکه باید صحیح باشد.');
-        abort_if($asset['metal'] === 'silver' && $amount < 100, 422, 'حداقل سفارش اتاق معاملاتی ۱۰۰ گرم است.');
+        if (! $isCoin) {
+            $minimum = TradeRoomOffer::minimumGrams($asset['metal']);
+            abort_if($amount < $minimum, 422, "حداقل سفارش اتاق معاملاتی {$minimum} گرم است.");
+        }
         $total = (int) round($amount * $price);
 
         $offer = DB::transaction(function () use ($user, $asset, $isCoin, $data, $amount, $price, $total) {
@@ -353,7 +358,9 @@ class TelegramMembershipController extends Controller
                 'user_id' => $lockedUser->id, 'source' => 'telegram_bot',
                 'metal' => $asset['metal'], 'item' => $asset['item'],
                 'side' => $data['side'], 'purity' => $asset['purity'], 'grams' => $amount,
-                'price_per_gram' => $price, 'wallet_reserved_amount' => $walletReserve,
+                'price_per_gram' => $price,
+                'allow_partial_fill' => ! $isCoin && ($data['allow_partial'] ?? true),
+                'wallet_reserved_amount' => $walletReserve,
                 'collateral_reserved_amount' => $collateralReserve, 'status' => 'open',
             ]);
             if ($data['side'] === 'buy') {
@@ -371,7 +378,12 @@ class TelegramMembershipController extends Controller
         });
 
         ActivityLog::record('telegram_room_offer', 'trade', "ثبت پیشنهاد {$data['side']} در اتاق معاملاتی #{$offer->id}", $user->id);
-        return response()->json(['id' => $offer->id, 'status' => $offer->status, 'total' => $offer->total()], 201);
+        return response()->json([
+            'id' => $offer->id,
+            'status' => $offer->status,
+            'allow_partial' => (bool) $offer->allow_partial_fill,
+            'total' => $offer->total(),
+        ], 201);
     }
 
     /** Accept a room offer for the Telegram bot, using the same atomic wallet

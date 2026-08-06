@@ -7,10 +7,13 @@ use App\Models\Article;
 use App\Models\ArticleTag;
 use App\Models\ArticleTopic;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Inertia\Inertia;
 
 class ArticleController extends Controller
 {
+    private const PER_PAGE = 6;
+
     public function index(Request $request)
     {
         $topic = trim((string) $request->query('topic', ''));
@@ -25,21 +28,23 @@ class ArticleController extends Controller
             return redirect('/articles/tag/'.rawurlencode(Article::taxonomySlug($tag)), 301);
         }
 
-        $articles = Article::published()
+        $paginator = Article::published()
             ->orderByDesc('published_at')
             ->orderByDesc('id')
-            ->get()
-            ->values()
-            ->map(fn (Article $a) => $this->presentCard($a));
+            ->paginate(self::PER_PAGE)
+            ->withQueryString();
+        $articles = $paginator->getCollection()
+            ->map(fn (Article $a) => $this->presentCard($a))
+            ->values();
 
-        $canonical = $siteUrl.'/articles';
+        $canonical = $siteUrl.'/articles'.$this->canonicalPageSuffix($paginator);
 
         return Inertia::render('Articles/Index', [
             'articles' => $articles,
+            'pagination' => $this->presentPagination($paginator),
             'filters' => ['topic' => $topic, 'tag' => $tag],
             'archive' => null,
             'topics' => $this->listValues('topics'),
-            'tags' => $this->listValues('tags'),
             'seo' => [
                 'title' => 'مقالات طلا، نقره و سکه | آبشده صفری‌پور',
                 'description' => 'مقالات آموزشی و تحلیلی درباره خرید و فروش طلا، نقره، سکه، عیارها و بازار فلزات گران‌بها.',
@@ -77,26 +82,37 @@ class ArticleController extends Controller
         abort_unless($value, 404);
 
         $siteUrl = rtrim(config('seo.url'), '/');
-        $canonical = $siteUrl.'/articles/'.$type.'/'.rawurlencode($slug);
-        $articles = Article::published()
+        $canonicalBase = $siteUrl.'/articles/'.$type.'/'.rawurlencode($slug);
+        $matchingArticles = Article::published()
             ->orderByDesc('published_at')
             ->orderByDesc('id')
             ->get()
             ->filter(fn (Article $article) => collect($article->{$field} ?: [])
                 ->contains(fn (string $item) => Article::taxonomySlug($item) === $slug))
-            ->values()
-            ->map(fn (Article $article) => $this->presentCard($article));
+            ->values();
+        $page = LengthAwarePaginator::resolveCurrentPage();
+        $paginator = new LengthAwarePaginator(
+            $matchingArticles->forPage($page, self::PER_PAGE)->values(),
+            $matchingArticles->count(),
+            self::PER_PAGE,
+            $page,
+            ['path' => request()->url(), 'query' => request()->query()],
+        );
+        $articles = $paginator->getCollection()
+            ->map(fn (Article $article) => $this->presentCard($article))
+            ->values();
+        $canonical = $canonicalBase.$this->canonicalPageSuffix($paginator);
         $label = $type === 'topic' ? 'موضوع' : 'برچسب';
 
         return Inertia::render('Articles/Index', [
             'articles' => $articles,
+            'pagination' => $this->presentPagination($paginator),
             'filters' => [
                 'topic' => $type === 'topic' ? $value : '',
                 'tag' => $type === 'tag' ? $value : '',
             ],
             'archive' => ['type' => $type, 'slug' => $slug, 'name' => $value],
             'topics' => $this->listValues('topics'),
-            'tags' => $this->listValues('tags'),
             'seo' => [
                 'title' => "مقالات {$label} {$value} | آبشده صفری‌پور",
                 'description' => "مقالات و راهنماهای {$label} {$value} درباره بازار طلا، نقره و سکه در آبشده صفری‌پور.",
@@ -149,6 +165,38 @@ class ArticleController extends Controller
             'published_at' => $article->published_at ? Jalali::format($article->published_at, false) : null,
             'created_at' => Jalali::format($article->created_at, false),
         ];
+    }
+
+    private function presentPagination(LengthAwarePaginator $paginator): array
+    {
+        $currentPage = $paginator->currentPage();
+        $lastPage = $paginator->lastPage();
+        $visiblePages = collect([1, $lastPage])
+            ->merge(range(max(1, $currentPage - 2), min($lastPage, $currentPage + 2)))
+            ->unique()
+            ->sort()
+            ->values();
+
+        return [
+            'current_page' => $currentPage,
+            'last_page' => $lastPage,
+            'per_page' => $paginator->perPage(),
+            'total' => $paginator->total(),
+            'prev_page_url' => $paginator->previousPageUrl(),
+            'next_page_url' => $paginator->nextPageUrl(),
+            'pages' => $visiblePages
+                ->map(fn (int $page) => [
+                    'page' => $page,
+                    'url' => $paginator->url($page),
+                    'active' => $page === $currentPage,
+                ])
+                ->all(),
+        ];
+    }
+
+    private function canonicalPageSuffix(LengthAwarePaginator $paginator): string
+    {
+        return $paginator->currentPage() > 1 ? '?page='.$paginator->currentPage() : '';
     }
 
     private function relatedArticles(Article $article): array

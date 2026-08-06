@@ -47,6 +47,50 @@ class ArticleTest extends TestCase
                 ->where('article.tags.0', 'نقره'));
     }
 
+    public function test_public_articles_are_paginated_six_per_page(): void
+    {
+        foreach (range(1, 7) as $number) {
+            Article::create([
+                'title' => "مقاله {$number}",
+                'slug' => "article-{$number}",
+                'body' => "متن مقاله {$number}",
+                'topics' => ['راهنما'],
+                'is_published' => true,
+                'published_at' => now()->subMinutes($number),
+            ]);
+        }
+
+        $this->get('/articles')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Articles/Index')
+                ->has('articles', 6)
+                ->where('articles.0.title', 'مقاله 1')
+                ->where('pagination.current_page', 1)
+                ->where('pagination.last_page', 2)
+                ->where('pagination.per_page', 6)
+                ->where('pagination.total', 7)
+                ->where('pagination.pages.1.page', 2));
+
+        $this->get('/articles?page=2')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('articles', 1)
+                ->where('articles.0.title', 'مقاله 7')
+                ->where('pagination.current_page', 2)
+                ->where('pagination.prev_page_url', url('/articles?page=1'))
+                ->where('pagination.next_page_url', null)
+                ->where('seo.canonical', rtrim(config('seo.url'), '/').'/articles?page=2'));
+
+        $this->get('/articles/topic/'.rawurlencode('راهنما').'?page=2')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('articles', 1)
+                ->where('articles.0.title', 'مقاله 7')
+                ->where('pagination.current_page', 2)
+                ->where('pagination.per_page', 6));
+    }
+
     public function test_article_pages_include_indexable_content_in_the_initial_html_response(): void
     {
         $article = Article::create([

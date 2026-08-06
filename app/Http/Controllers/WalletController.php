@@ -49,6 +49,7 @@ class WalletController extends Controller
             ->map(fn ($d) => [
                 'id' => $d->id,
                 'amount' => $d->amount,
+                'tracking_number' => $d->tracking_number,
                 'note' => $d->note,
                 'status' => $d->status,
                 'admin_note' => $d->admin_note,
@@ -63,6 +64,11 @@ class WalletController extends Controller
             'withdrawals' => $withdrawals,
             'deposits' => $deposits,
             'bankCards' => $bankCards,
+            'depositAccount' => [
+                'account_number' => config('deposit.account_number'),
+                'iban' => config('deposit.iban'),
+                'account_holder' => config('deposit.account_holder'),
+            ],
         ]);
     }
 
@@ -176,14 +182,14 @@ class WalletController extends Controller
         }, $groups));
     }
 
-    /** درخواست افزایش موجودی — فعلاً واریز دستی (شماره پیگیری/توضیح)، بررسی و تأیید توسط ادمین. بعداً به درگاه پرداخت متصل می‌شود. */
+    /** درخواست افزایش موجودی پس از واریز بانکی و ثبت شماره پیگیری؛ اعتباردهی فقط پس از تأیید ادمین انجام می‌شود. */
     public function requestDeposit(Request $request)
     {
         $user = $request->user();
 
         $request->validate([
             'amount' => 'required|integer|min:1000',
-            'note' => 'nullable|string|max:200',
+            'tracking_number' => 'required|string|max:100',
         ]);
 
         $admins = User::where('is_admin', true)->get();
@@ -191,7 +197,7 @@ class WalletController extends Controller
         $deposit = DepositRequest::create([
             'user_id' => $user->id,
             'amount' => $request->amount,
-            'note' => $request->note,
+            'tracking_number' => trim($request->tracking_number),
             'source' => 'website',
             'status' => 'pending',
         ]);

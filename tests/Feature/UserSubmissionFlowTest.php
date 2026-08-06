@@ -79,7 +79,7 @@ class UserSubmissionFlowTest extends TestCase
 
         $this->actingAs($user)->post('/wallet/deposit', [
             'amount' => 500_000,
-            'note' => 'رسید پرداخت',
+            'tracking_number' => '987654321',
         ])->assertRedirect()->assertSessionHasNoErrors();
 
         $this->actingAs($user)->post('/wallet/withdraw', [

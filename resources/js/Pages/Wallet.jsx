@@ -9,13 +9,13 @@ const STATUS = {
     rejected: ['رد‌شده', 'sell-b'],
 };
 
-export default function Wallet({ balance, txns, withdrawals, deposits, bankCards }) {
+export default function Wallet({ balance, txns, withdrawals, deposits, bankCards, depositAccount }) {
     const { errors } = usePage().props;
     const [showForm, setShowForm] = useState(false);
     const form = useForm({ amount: '', bank_card_id: '' });
 
     const [showDepositForm, setShowDepositForm] = useState(false);
-    const depositForm = useForm({ amount: '', note: '' });
+    const depositForm = useForm({ amount: '', tracking_number: '' });
     const bankCardOptions = useMemo(() => (bankCards || []).map(card => ({
         value: String(card.id),
         label: card.bank_name || 'کارت بانکی',
@@ -65,18 +65,35 @@ export default function Wallet({ balance, txns, withdrawals, deposits, bankCards
                 {showDepositForm && (
                     <div className="fcard" style={{ marginBottom: 28, maxWidth: 480 }}>
                         <div className="alert info" style={{ marginBottom: 16 }}>
-                            فعلاً افزایش موجودی به‌صورت دستی و با بررسی ادمین انجام می‌شود. به‌زودی به درگاه پرداخت آنلاین متصل خواهد شد.
+                            مبلغ موردنظر را به حساب زیر واریز کنید؛ سپس مبلغ و شماره پیگیری واریز را ثبت کنید. موجودی پس از بررسی و تأیید ادمین افزایش می‌یابد.
+                        </div>
+                        <div style={{ border: '1px solid var(--line)', borderRadius: 14, padding: 14, marginBottom: 16, display: 'grid', gap: 10 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                                <span style={{ color: 'var(--muted)', fontSize: 13 }}>صاحب حساب</span>
+                                <strong>{depositAccount?.account_holder || '—'}</strong>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                                <span style={{ color: 'var(--muted)', fontSize: 13 }}>شماره حساب</span>
+                                <strong className="num" dir="ltr" style={{ userSelect: 'all' }}>{depositAccount?.account_number || '—'}</strong>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                                <span style={{ color: 'var(--muted)', fontSize: 13 }}>شماره شبا</span>
+                                <strong className="num" dir="ltr" style={{ userSelect: 'all', overflowWrap: 'anywhere' }}>{depositAccount?.iban || '—'}</strong>
+                            </div>
                         </div>
                         {Object.values(errors).map((e, i) => <div key={i} className="alert err">{e}</div>)}
                         <form onSubmit={submitDeposit}>
                             <div className="field">
-                                <label>مبلغ (تومان)</label>
-                                <input type="number" min="1000" value={depositForm.data.amount}
+                                <label htmlFor="deposit-amount">مبلغ واریز (تومان)</label>
+                                <input id="deposit-amount" type="number" min="1000" inputMode="numeric" value={depositForm.data.amount}
                                     onChange={e => depositForm.setData('amount', e.target.value)} required />
                             </div>
                             <div className="field">
-                                <label>توضیح / شماره پیگیری واریز (اختیاری)</label>
-                                <input value={depositForm.data.note} onChange={e => depositForm.setData('note', e.target.value)} placeholder="مثلاً شماره پیگیری کارت‌به‌کارت" />
+                                <label htmlFor="deposit-tracking-number">شماره پیگیری واریز</label>
+                                <input id="deposit-tracking-number" dir="ltr" inputMode="numeric" maxLength={100}
+                                    value={depositForm.data.tracking_number}
+                                    onChange={e => depositForm.setData('tracking_number', e.target.value)}
+                                    placeholder="شماره پیگیری درج‌شده روی رسید" required />
                             </div>
                             <button className="btn" type="submit" disabled={depositForm.processing}>
                                 {depositForm.processing ? 'در حال ارسال...' : 'ثبت درخواست'}
@@ -123,7 +140,7 @@ export default function Wallet({ balance, txns, withdrawals, deposits, bankCards
                         <div className="section-title">درخواست‌های افزایش موجودی</div>
                         <div className="table-wrap" style={{ marginBottom: 28 }}>
                             <table>
-                                <thead><tr><th>تاریخ</th><th>مبلغ</th><th>توضیح</th><th>وضعیت</th><th>یادداشت ادمین</th></tr></thead>
+                                <thead><tr><th>تاریخ</th><th>مبلغ</th><th>شماره پیگیری</th><th>وضعیت</th><th>یادداشت ادمین</th></tr></thead>
                                 <tbody>
                                     {deposits.map(d => {
                                         const [label, cls] = STATUS[d.status] || [d.status, 'silver'];
@@ -131,7 +148,7 @@ export default function Wallet({ balance, txns, withdrawals, deposits, bankCards
                                             <tr key={d.id}>
                                                 <td style={{ fontSize: 12, color: 'var(--muted)' }}>{d.created_at}</td>
                                                 <td className="num">{faNum(d.amount)}</td>
-                                                <td style={{ color: 'var(--muted)', fontSize: 13 }}>{d.note || '—'}</td>
+                                                <td className="num" dir="ltr" style={{ color: 'var(--muted)', fontSize: 13 }}>{d.tracking_number || '—'}</td>
                                                 <td><span className={`badge ${cls}`}>{label}</span></td>
                                                 <td style={{ color: 'var(--muted)', fontSize: 13 }}>{d.admin_note || '—'}</td>
                                             </tr>

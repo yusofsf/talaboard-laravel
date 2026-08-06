@@ -67,6 +67,10 @@ class TradeRoomController extends Controller
             ],
             'commissionPercent' => (float) Setting::get('trade_room_commission_percent', 0.1),
             'mithqalGrams' => (float) env('MITHQAL_GRAMS', 4.3318),
+            'minimumGrams' => [
+                'gold' => TradeRoomOffer::GOLD_MIN_GRAMS,
+                'silver' => TradeRoomOffer::SILVER_MIN_GRAMS,
+            ],
         ]);
     }
 
@@ -95,8 +99,9 @@ class TradeRoomController extends Controller
         if ($isCoin && fmod($grams, 1) !== 0.0) {
             return back()->withErrors(['grams' => 'تعداد سکه باید عدد صحیح باشد.']);
         }
-        if (! $isCoin && $grams < 100) {
-            return back()->withErrors(['grams' => 'حداقل مقدار پیشنهاد در اتاق معاملاتی ۱۰۰ گرم است.']);
+        $minimumGrams = TradeRoomOffer::minimumGrams($metal);
+        if (! $isCoin && $grams < $minimumGrams) {
+            return back()->withErrors(['grams' => "حداقل مقدار پیشنهاد در اتاق معاملاتی {$minimumGrams} گرم است."]);
         }
 
         if ($request->side === 'sell') {
@@ -173,6 +178,7 @@ class TradeRoomController extends Controller
                 $metal = $offer->metal;
                 $isCoin = $metal === 'coin';
                 $purity = $offer->purity;
+                $minimumGrams = TradeRoomOffer::minimumGrams($metal);
                 $remainingGrams = (float) $offer->grams;
                 $grams = $request->filled('grams') ? (float) $request->grams : $remainingGrams;
 
@@ -182,8 +188,8 @@ class TradeRoomController extends Controller
                 if ($isCoin && abs($grams - $remainingGrams) > 0.0001) {
                     throw new \RuntimeException('پذیرش جزئی فعلاً فقط برای طلا و نقره امکان‌پذیر است.');
                 }
-                if (! $isCoin && $grams < 100) {
-                    throw new \RuntimeException('حداقل مقدار پذیرش جزئی ۱۰۰ گرم است.');
+                if (! $isCoin && $grams < $minimumGrams) {
+                    throw new \RuntimeException("حداقل مقدار پذیرش جزئی {$minimumGrams} گرم است.");
                 }
                 if ($grams > $remainingGrams + 0.0001) {
                     throw new \RuntimeException('مقدار انتخاب‌شده از مانده‌ی سفارش بیشتر است.');
@@ -191,8 +197,8 @@ class TradeRoomController extends Controller
 
                 $grams = min($grams, $remainingGrams);
                 $remainingAfterAcceptance = round($remainingGrams - $grams, 4);
-                if (! $isCoin && $remainingAfterAcceptance > 0 && $remainingAfterAcceptance < 100) {
-                    throw new \RuntimeException('مقدار انتخابی باید کل سفارش باشد یا حداقل ۱۰۰ گرم برای سفارش باقی بگذارد.');
+                if (! $isCoin && $remainingAfterAcceptance > 0 && $remainingAfterAcceptance < $minimumGrams) {
+                    throw new \RuntimeException("مقدار انتخابی باید کل سفارش باشد یا حداقل {$minimumGrams} گرم برای سفارش باقی بگذارد.");
                 }
 
                 $total = (int) round($grams * $offer->price_per_gram);

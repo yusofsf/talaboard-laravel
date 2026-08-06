@@ -37,13 +37,17 @@ class TelegramBotApiTest extends TestCase
         $this->withToken('test-bot-token')->postJson('/api/telegram/trade-room/offers/create', [
             'telegram_chat_id' => '778899', 'asset' => 'gold', 'side' => 'buy',
             'unit' => 'gram', 'quantity' => 1, 'unit_price' => 1000,
-        ])->assertCreated()->assertJsonPath('status', 'open');
+            'allow_partial' => false,
+        ])->assertCreated()
+            ->assertJsonPath('status', 'open')
+            ->assertJsonPath('allow_partial', false);
 
         $this->assertDatabaseHas('trade_room_offers', [
             'user_id' => $user->id,
             'source' => 'telegram_bot',
             'metal' => 'gold',
             'side' => 'buy',
+            'allow_partial_fill' => false,
             'status' => 'open',
         ]);
         $this->assertSame(999999000, $user->fresh()->walletBalance());
@@ -53,6 +57,31 @@ class TelegramBotApiTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->where('buyOffers.0.id', TradeRoomOffer::firstOrFail()->id)
                 ->where('buyOffers.0.is_from_bot', true));
+    }
+
+    public function test_bot_trade_room_offer_uses_asset_specific_minimums(): void
+    {
+        $user = $this->botUser();
+        WalletTransaction::create(['user_id' => $user->id, 'amount' => 100000, 'type' => 'deposit', 'description' => 'test']);
+
+        $base = [
+            'telegram_chat_id' => '778899',
+            'side' => 'buy',
+            'unit' => 'gram',
+            'unit_price' => 1000,
+        ];
+
+        $this->withToken('test-bot-token')->postJson('/api/telegram/trade-room/offers/create', [
+            ...$base, 'asset' => 'gold', 'quantity' => 0.9999,
+        ])->assertUnprocessable();
+
+        $this->withToken('test-bot-token')->postJson('/api/telegram/trade-room/offers/create', [
+            ...$base, 'asset' => 'silver_999', 'quantity' => 9.9999,
+        ])->assertUnprocessable();
+
+        $this->withToken('test-bot-token')->postJson('/api/telegram/trade-room/offers/create', [
+            ...$base, 'asset' => 'silver_999', 'quantity' => 10,
+        ])->assertCreated();
     }
 
     public function test_bot_can_create_delivery_request_and_read_its_status(): void

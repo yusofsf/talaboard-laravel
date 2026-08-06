@@ -184,21 +184,43 @@ class TradeRoomCommissionTest extends TestCase
     {
         $seller = User::factory()->vip()->admin()->create();
         $buyer = User::factory()->vip()->admin()->create();
-        GoldLedger::create(['user_id' => $seller->id, 'grams' => 150, 'type' => 'admin_adjust', 'description' => 'seed']);
+        GoldLedger::create(['user_id' => $seller->id, 'grams' => 1.5, 'type' => 'admin_adjust', 'description' => 'seed']);
         $this->fund($buyer, 1_000_000);
 
         $this->actingAs($seller)->post('/trade-room', [
-            'metal' => 'gold', 'side' => 'sell', 'grams' => 150, 'price_per_gram' => 1000,
+            'metal' => 'gold', 'side' => 'sell', 'grams' => 1.5, 'price_per_gram' => 1000,
         ]);
         $offer = TradeRoomOffer::firstOrFail();
 
-        $this->actingAs($buyer)->post("/trade-room/{$offer->id}/accept", ['grams' => 100])
+        $this->actingAs($buyer)->post("/trade-room/{$offer->id}/accept", ['grams' => 1])
             ->assertSessionHasErrors('offer');
 
         $offer->refresh();
         $this->assertSame('open', $offer->status);
-        $this->assertSame(150.0, (float) $offer->grams);
+        $this->assertSame(1.5, (float) $offer->grams);
         $this->assertSame(0, TradeRoomOffer::whereNotNull('parent_offer_id')->count());
+    }
+
+    public function test_website_trade_room_uses_gold_and_silver_specific_minimums(): void
+    {
+        $user = User::factory()->vip()->admin()->create();
+        $this->fund($user, 1_000_000);
+
+        $this->actingAs($user)->post('/trade-room', [
+            'metal' => 'gold', 'side' => 'buy', 'grams' => 0.9999, 'price_per_gram' => 1000,
+        ])->assertSessionHasErrors('grams');
+
+        $this->actingAs($user)->post('/trade-room', [
+            'metal' => 'gold', 'side' => 'buy', 'grams' => 1, 'price_per_gram' => 1000,
+        ])->assertSessionHasNoErrors();
+
+        $this->actingAs($user)->post('/trade-room', [
+            'metal' => 'silver', 'purity' => '999', 'side' => 'buy', 'grams' => 9.9999, 'price_per_gram' => 1000,
+        ])->assertSessionHasErrors('grams');
+
+        $this->actingAs($user)->post('/trade-room', [
+            'metal' => 'silver', 'purity' => '999', 'side' => 'buy', 'grams' => 10, 'price_per_gram' => 1000,
+        ])->assertSessionHasNoErrors();
     }
 
     public function test_a_partial_trade_room_fill_appears_in_both_users_history(): void

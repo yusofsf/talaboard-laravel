@@ -116,7 +116,7 @@ const ITEMS = [
     { key: 'rob',       label: 'ربع سکه',      metal: 'coin',   coin: 'rob' },
 ];
 
-export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalance, goldBalance, silverBalance, commissionPercent, mithqalGrams }) {
+export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalance, goldBalance, silverBalance, commissionPercent, mithqalGrams, minimumGrams }) {
     const { errors } = usePage().props;
     const M = mithqalGrams || 4.3318;
     const [myFrom, setMyFrom] = useState('');
@@ -126,6 +126,8 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
     const [acceptance, setAcceptance] = useState(null);
     const form = useForm({ metal: 'silver', side: 'sell', purity: '999', item: '', grams: '', price_per_gram: '', allow_partial_fill: true });
     const isCoinForm = form.data.metal === 'coin';
+    const minimums = minimumGrams || { gold: 1, silver: 10 };
+    const formMinimumGrams = minimums[form.data.metal] || 1;
 
     // اگر از تابلوی قیمت با پارامتر آمده باشد، فلز/عیار/واحد/سکه و آیتم را پیش‌انتخاب کن
     useEffect(() => {
@@ -264,7 +266,10 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                 {acceptance && (() => {
                     const { offer, mode: acceptMode, unit: acceptUnit, quantity } = acceptance;
                     const maxInUnit = acceptUnit === 'mithqal' ? offer.grams / M : offer.grams;
-                    const minInUnit = acceptUnit === 'mithqal' ? 100 / M : 100;
+                    const offerMinimumGrams = minimums[offer.metal] || 1;
+                    const minInUnit = acceptUnit === 'mithqal'
+                        ? Math.ceil((offerMinimumGrams / M) * 10000) / 10000
+                        : offerMinimumGrams;
                     const acceptedGrams = acceptMode === 'full'
                         ? offer.grams
                         : (parseFloat(quantity || 0) * (acceptUnit === 'mithqal' ? M : 1));
@@ -289,7 +294,7 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                                         {[['gram', 'گرم'], ['mithqal', 'مثقال']].map(([u, label]) => <button key={u} type="button" onClick={() => setAcceptance(a => ({ ...a, unit: u, quantity: '' }))} style={{ padding: 9, borderRadius: 10, fontFamily: 'inherit', cursor: 'pointer', border: acceptUnit === u ? '2px solid var(--gold-1)' : '1px solid var(--line)', background: acceptUnit === u ? 'rgba(246,207,99,.15)' : 'transparent', color: acceptUnit === u ? 'var(--gold-1)' : 'var(--txt)' }}>واحد: {label}</button>)}
                                     </div>
                                     <div className="field">
-                                        <label>مقدار پذیرش ({acceptUnit === 'mithqal' ? 'مثقال' : 'گرم'}) — حداقل معادل ۱۰۰ گرم</label>
+                                        <label>مقدار پذیرش ({acceptUnit === 'mithqal' ? 'مثقال' : 'گرم'}) — حداقل معادل {faNum(offerMinimumGrams)} گرم</label>
                                         <input type="number" autoFocus required step="any" min={minInUnit} max={maxInUnit} value={quantity} onChange={e => setAcceptance(a => ({ ...a, quantity: e.target.value }))} />
                                     </div>
                                 </>}
@@ -298,7 +303,7 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                                     <div style={{ color: 'var(--muted)', marginTop: 5 }}>مبلغ تقریبی: <strong className="num" style={{ color: 'var(--gold-1)' }}>{faNum(acceptedTotal)} تومان</strong></div>
                                     {acceptMode === 'partial' && <div style={{ color: 'var(--muted)', marginTop: 5 }}>مانده پس از پذیرش: {faNum(Math.max(0, offer.grams - acceptedGrams).toFixed(4))} گرم</div>}
                                 </div>
-                                {offer.allow_partial_fill && <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.7, margin: '0 0 14px' }}>در پذیرش جزئی، باید پس از معامله حداقل ۱۰۰ گرم در سفارش باقی بماند؛ مگر اینکه کل سفارش را بپذیرید.</p>}
+                                {offer.allow_partial_fill && <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.7, margin: '0 0 14px' }}>در پذیرش جزئی، باید پس از معامله حداقل {faNum(offerMinimumGrams)} گرم در سفارش باقی بماند؛ مگر اینکه کل سفارش را بپذیرید.</p>}
                                 <div style={{ display: 'flex', gap: 10 }}>
                                     <button type="submit" className="btn" style={{ flex: 1 }}>تأیید پذیرش</button>
                                     <button type="button" className="btn-sm" onClick={() => setAcceptance(null)}>انصراف</button>
@@ -448,10 +453,10 @@ export default function TradeRoom({ sellOffers, buyOffers, myOffers, walletBalan
                                 </div>
                             )}
                             <div className="field">
-                                <label>{isCoinForm ? 'تعداد (عدد)' : `مقدار (${unit === 'mithqal' ? 'مثقال' : 'گرم'}) — حداقل معادل ۱۰۰ گرم`}</label>
+                                <label>{isCoinForm ? 'تعداد (عدد)' : `مقدار (${unit === 'mithqal' ? 'مثقال' : 'گرم'}) — حداقل معادل ${faNum(formMinimumGrams)} گرم`}</label>
                                 <input type="number"
                                     step={isCoinForm ? 1 : 'any'}
-                                    min={isCoinForm ? 1 : (unit === 'mithqal' ? (Math.ceil((100 / M) * 100) / 100) : 100)}
+                                    min={isCoinForm ? 1 : (unit === 'mithqal' ? Math.ceil((formMinimumGrams / M) * 10000) / 10000 : formMinimumGrams)}
                                     value={form.data.grams}
                                     onChange={e => form.setData('grams', e.target.value)} required />
                             </div>

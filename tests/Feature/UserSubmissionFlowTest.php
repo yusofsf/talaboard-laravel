@@ -55,6 +55,7 @@ class UserSubmissionFlowTest extends TestCase
 
     public function test_common_user_requests_can_be_submitted(): void
     {
+        Storage::fake('public');
         $user = User::factory()->vip()->create();
         $admin = User::factory()->admin()->create();
 
@@ -79,7 +80,7 @@ class UserSubmissionFlowTest extends TestCase
 
         $this->actingAs($user)->post('/wallet/deposit', [
             'amount' => 500_000,
-            'tracking_number' => '987654321',
+            'receipt' => UploadedFile::fake()->image('deposit-receipt.jpg'),
         ])->assertRedirect()->assertSessionHasNoErrors();
 
         $this->actingAs($user)->post('/wallet/withdraw', [

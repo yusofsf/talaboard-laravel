@@ -51,6 +51,7 @@ class WalletController extends Controller
                 'amount' => $d->amount,
                 'tracking_number' => $d->tracking_number,
                 'note' => $d->note,
+                'receipt_url' => $d->receipt_path ? asset('storage/'.$d->receipt_path) : null,
                 'status' => $d->status,
                 'admin_note' => $d->admin_note,
                 'created_at' => Jalali::format($d->created_at),
@@ -182,22 +183,28 @@ class WalletController extends Controller
         }, $groups));
     }
 
-    /** درخواست افزایش موجودی پس از واریز بانکی و ثبت شماره پیگیری؛ اعتباردهی فقط پس از تأیید ادمین انجام می‌شود. */
+    /** درخواست افزایش موجودی پس از واریز بانکی و ارسال تصویر فیش؛ اعتباردهی فقط پس از تأیید ادمین انجام می‌شود. */
     public function requestDeposit(Request $request)
     {
         $user = $request->user();
 
         $request->validate([
             'amount' => 'required|integer|min:1000',
-            'tracking_number' => 'required|string|max:100',
+            'receipt' => 'required|image|mimes:jpeg,jpg,png,webp|max:5120',
+        ], [
+            'receipt.required' => 'تصویر فیش واریزی را انتخاب کنید.',
+            'receipt.image' => 'فایل فیش باید یک تصویر معتبر باشد.',
+            'receipt.mimes' => 'فرمت تصویر فیش باید JPEG، PNG یا WebP باشد.',
+            'receipt.max' => 'حجم تصویر فیش نباید بیشتر از ۵ مگابایت باشد.',
         ]);
 
         $admins = User::where('is_admin', true)->get();
+        $receiptPath = $request->file('receipt')->store('receipts/deposits', 'public');
 
         $deposit = DepositRequest::create([
             'user_id' => $user->id,
             'amount' => $request->amount,
-            'tracking_number' => trim($request->tracking_number),
+            'receipt_path' => $receiptPath,
             'source' => 'website',
             'status' => 'pending',
         ]);

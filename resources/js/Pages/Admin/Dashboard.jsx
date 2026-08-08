@@ -426,12 +426,12 @@ function DepositRow({ d, printOnly, depositNote, setDepositNote, depositReason, 
             <td className="num" dir="ltr" style={{ fontSize: 13 }}>{d.user_phone}</td>
             <td className="num" style={{ color: 'var(--gold-1)', fontWeight: 700 }}>{faNum(d.amount)}</td>
             <td style={{ color: 'var(--muted)', fontSize: 13 }}>
-                {d.tracking_number ? <><span>شماره پیگیری: </span><strong className="num" dir="ltr">{d.tracking_number}</strong></> : (d.note || '—')}
                 {d.receipt_url && (
-                    <a href={d.receipt_url} target="_blank" rel="noreferrer" title="مشاهده نسخه کامل فیش" style={{ display: 'inline-block', marginTop: 8 }}>
+                    <a href={d.receipt_url} target="_blank" rel="noreferrer" title="مشاهده نسخه کامل فیش" style={{ display: 'inline-block' }}>
                         <img src={d.receipt_url} alt="فیش ارسالی کاربر" loading="lazy" style={{ display: 'block', width: 96, height: 72, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--line)' }} />
                     </a>
                 )}
+                {!d.receipt_url && (d.tracking_number ? <><span>شماره پیگیری: </span><strong className="num" dir="ltr">{d.tracking_number}</strong></> : (d.note || '—'))}
             </td>
             <td style={{ fontSize: 12, color: 'var(--muted)' }}>{d.created_at}</td>
             {!printOnly && (
@@ -1321,7 +1321,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                 {tab === 'deposits' && (
                     <>
                         <div className="no-print" style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 14 }}>
-                            <SearchBox value={depositsQ} onChange={setDepositsQ} placeholder="🔍 جستجو در کاربر، موبایل، شماره پیگیری..." />
+                            <SearchBox value={depositsQ} onChange={setDepositsQ} placeholder="🔍 جستجو در کاربر یا موبایل..." />
                             <DateRangeFilter from={depositsFrom} to={depositsTo} onFromChange={setDepositsFrom} onToChange={setDepositsTo} />
                             {(depositsFrom || depositsTo) && <button type="button" className="btn-sm" onClick={() => { setDepositsFrom(''); setDepositsTo(''); }}>حذف فیلتر تاریخ</button>}
                             <button type="button" className="btn-sm gold" onClick={() => window.print()}>🖨️ چاپ / خروجی PDF</button>
@@ -1329,7 +1329,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                         {filteredDepositRequests.length ? (
                         <div className="table-wrap">
                             <table>
-                                <thead><tr><th>کاربر</th><th>موبایل</th><th>مبلغ</th><th>شماره پیگیری</th><th>تاریخ</th><th></th></tr></thead>
+                                <thead><tr><th>کاربر</th><th>موبایل</th><th>مبلغ</th><th>فیش واریزی</th><th>تاریخ</th><th></th></tr></thead>
                                 <tbody>
                                     {depositsPager.pageItems.map(d => (
                                         <DepositRow key={d.id} d={d} depositNote={depositNote} setDepositNote={setDepositNote}
@@ -1347,7 +1347,7 @@ export default function Dashboard({ users, txns, wTxns, notifs, stats, memberApp
                         <div className="table-wrap print-area print-only-block">
                             <div className="print-only" style={{ marginBottom: 14, fontWeight: 800, fontSize: 16 }}>درخواست‌های افزایش موجودی</div>
                             <table>
-                                <thead><tr><th>کاربر</th><th>موبایل</th><th>مبلغ</th><th>شماره پیگیری</th><th>تاریخ</th></tr></thead>
+                                <thead><tr><th>کاربر</th><th>موبایل</th><th>مبلغ</th><th>فیش واریزی</th><th>تاریخ</th></tr></thead>
                                 <tbody>
                                     {filteredDepositRequests.map(d => <DepositRow key={d.id} d={d} printOnly />)}
                                 </tbody>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link, useForm, usePage } from '@inertiajs/react';
 import AppLayout, { faNum } from '../Layouts/AppLayout';
 import SearchableSelect from '../Components/SearchableSelect';
@@ -15,7 +15,8 @@ export default function Wallet({ balance, txns, withdrawals, deposits, bankCards
     const form = useForm({ amount: '', bank_card_id: '' });
 
     const [showDepositForm, setShowDepositForm] = useState(false);
-    const depositForm = useForm({ amount: '', tracking_number: '' });
+    const depositReceiptRef = useRef(null);
+    const depositForm = useForm({ amount: '', receipt: null });
     const bankCardOptions = useMemo(() => (bankCards || []).map(card => ({
         value: String(card.id),
         label: card.bank_name || 'کارت بانکی',
@@ -31,7 +32,35 @@ export default function Wallet({ balance, txns, withdrawals, deposits, bankCards
 
     function submitDeposit(e) {
         e.preventDefault();
-        depositForm.post('/wallet/deposit', { onSuccess: () => { depositForm.reset(); setShowDepositForm(false); } });
+        depositForm.post('/wallet/deposit', {
+            forceFormData: true,
+            onSuccess: () => {
+                depositForm.reset();
+                if (depositReceiptRef.current) depositReceiptRef.current.value = '';
+                setShowDepositForm(false);
+            },
+        });
+    }
+
+    function selectDepositReceipt(e) {
+        const file = e.target.files?.[0] || null;
+        depositForm.clearErrors('receipt');
+
+        if (file && !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+            depositForm.setData('receipt', null);
+            depositForm.setError('receipt', 'فرمت تصویر فیش باید JPEG، PNG یا WebP باشد.');
+            e.target.value = '';
+            return;
+        }
+
+        if (file && file.size > 5 * 1024 * 1024) {
+            depositForm.setData('receipt', null);
+            depositForm.setError('receipt', 'حجم تصویر فیش نباید بیشتر از ۵ مگابایت باشد.');
+            e.target.value = '';
+            return;
+        }
+
+        depositForm.setData('receipt', file);
     }
 
     return (
@@ -65,7 +94,7 @@ export default function Wallet({ balance, txns, withdrawals, deposits, bankCards
                 {showDepositForm && (
                     <div className="fcard" style={{ marginBottom: 28, maxWidth: 480 }}>
                         <div className="alert info" style={{ marginBottom: 16 }}>
-                            مبلغ موردنظر را به حساب زیر واریز کنید؛ سپس مبلغ و شماره پیگیری واریز را ثبت کنید. موجودی پس از بررسی و تأیید ادمین افزایش می‌یابد.
+                            مبلغ موردنظر را به حساب زیر واریز کنید؛ سپس مبلغ و تصویر فیش واریزی را ارسال کنید. موجودی پس از بررسی و تأیید ادمین افزایش می‌یابد.
                         </div>
                         <div style={{ border: '1px solid var(--line)', borderRadius: 14, padding: 14, marginBottom: 16, display: 'grid', gap: 10 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
@@ -89,11 +118,10 @@ export default function Wallet({ balance, txns, withdrawals, deposits, bankCards
                                     onChange={e => depositForm.setData('amount', e.target.value)} required />
                             </div>
                             <div className="field">
-                                <label htmlFor="deposit-tracking-number">شماره پیگیری واریز</label>
-                                <input id="deposit-tracking-number" dir="ltr" inputMode="numeric" maxLength={100}
-                                    value={depositForm.data.tracking_number}
-                                    onChange={e => depositForm.setData('tracking_number', e.target.value)}
-                                    placeholder="شماره پیگیری درج‌شده روی رسید" required />
+                                <label htmlFor="deposit-receipt">تصویر فیش واریزی</label>
+                                <input ref={depositReceiptRef} id="deposit-receipt" type="file" accept="image/jpeg,image/png,image/webp"
+                                    onChange={selectDepositReceipt} required />
+                                <small style={{ display: 'block', marginTop: 6, color: 'var(--muted)' }}>فرمت‌های JPEG، PNG یا WebP؛ حداکثر ۵ مگابایت</small>
                             </div>
                             <button className="btn" type="submit" disabled={depositForm.processing}>
                                 {depositForm.processing ? 'در حال ارسال...' : 'ثبت درخواست'}
@@ -140,7 +168,7 @@ export default function Wallet({ balance, txns, withdrawals, deposits, bankCards
                         <div className="section-title">درخواست‌های افزایش موجودی</div>
                         <div className="table-wrap" style={{ marginBottom: 28 }}>
                             <table>
-                                <thead><tr><th>تاریخ</th><th>مبلغ</th><th>شماره پیگیری</th><th>وضعیت</th><th>یادداشت ادمین</th></tr></thead>
+                                <thead><tr><th>تاریخ</th><th>مبلغ</th><th>فیش واریزی</th><th>وضعیت</th><th>یادداشت ادمین</th></tr></thead>
                                 <tbody>
                                     {deposits.map(d => {
                                         const [label, cls] = STATUS[d.status] || [d.status, 'silver'];
@@ -148,7 +176,13 @@ export default function Wallet({ balance, txns, withdrawals, deposits, bankCards
                                             <tr key={d.id}>
                                                 <td style={{ fontSize: 12, color: 'var(--muted)' }}>{d.created_at}</td>
                                                 <td className="num">{faNum(d.amount)}</td>
-                                                <td className="num" dir="ltr" style={{ color: 'var(--muted)', fontSize: 13 }}>{d.tracking_number || '—'}</td>
+                                                <td>
+                                                    {d.receipt_url ? (
+                                                        <a href={d.receipt_url} target="_blank" rel="noreferrer" title="مشاهده نسخه کامل فیش">
+                                                            <img src={d.receipt_url} alt="فیش واریزی" loading="lazy" style={{ display: 'block', width: 72, height: 54, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--line)' }} />
+                                                        </a>
+                                                    ) : <span style={{ color: 'var(--muted)', fontSize: 13 }}>{d.tracking_number || '—'}</span>}
+                                                </td>
                                                 <td><span className={`badge ${cls}`}>{label}</span></td>
                                                 <td style={{ color: 'var(--muted)', fontSize: 13 }}>{d.admin_note || '—'}</td>
                                             </tr>

@@ -6,28 +6,50 @@ use App\Models\DepositRequest;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class DepositRequestTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_wallet_page_receives_the_configured_deposit_account(): void
+    {
+        config()->set('deposit.account_holder', 'Deposit Account Holder');
+        config()->set('deposit.account_number', '1234567890');
+        config()->set('deposit.iban', 'IR001234567890123456789012');
+
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get('/wallet')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Wallet')
+                ->where('depositAccount.account_holder', 'Deposit Account Holder')
+                ->where('depositAccount.account_number', '1234567890')
+                ->where('depositAccount.iban', 'IR001234567890123456789012'));
+    }
+
     public function test_user_can_request_a_deposit_and_admins_are_notified(): void
     {
+        Storage::fake('public');
         $user = User::factory()->create();
         $admin = User::factory()->admin()->create();
 
         $this->actingAs($user)->post('/wallet/deposit', [
             'amount' => 500000,
-            'tracking_number' => '۱۲۳۴۵۶',
+            'receipt' => UploadedFile::fake()->image('receipt.jpg'),
         ])->assertRedirect();
 
         $deposit = DepositRequest::first();
         $this->assertSame(500000, $deposit->amount);
         $this->assertSame('pending', $deposit->status);
         $this->assertSame('website', $deposit->source);
-        $this->assertSame('۱۲۳۴۵۶', $deposit->tracking_number);
+        $this->assertNotNull($deposit->receipt_path);
+        Storage::disk('public')->assertExists($deposit->receipt_path);
         $this->assertSame(0, $user->refresh()->walletBalance());
 
         $this->assertTrue(Notification::where('user_id', $admin->id)->exists());
@@ -56,6 +78,7 @@ class DepositRequestTest extends TestCase
 
     public function test_deposit_notification_does_not_include_raw_html_from_legacy_user_name(): void
     {
+        Storage::fake('public');
         $user = User::factory()->create();
         $admin = User::factory()->admin()->create();
 
@@ -63,7 +86,7 @@ class DepositRequestTest extends TestCase
 
         $this->actingAs($user->refresh())->post('/wallet/deposit', [
             'amount' => 500000,
-            'tracking_number' => '987654',
+            'receipt' => UploadedFile::fake()->image('receipt.png'),
         ])->assertRedirect();
 
         $adminNotif = Notification::where('user_id', $admin->id)->first();
@@ -72,13 +95,26 @@ class DepositRequestTest extends TestCase
         $this->assertStringNotContainsString('</script>', $adminNotif->title);
     }
 
-    public function test_website_deposit_requires_a_tracking_number(): void
+    public function test_website_deposit_requires_a_receipt_image(): void
     {
         $user = User::factory()->create();
 
         $this->actingAs($user)->post('/wallet/deposit', [
             'amount' => 500000,
-        ])->assertSessionHasErrors('tracking_number');
+        ])->assertSessionHasErrors('receipt');
+
+        $this->assertDatabaseCount('deposit_requests', 0);
+    }
+
+    public function test_website_deposit_rejects_a_non_image_receipt(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post('/wallet/deposit', [
+            'amount' => 500000,
+            'receipt' => UploadedFile::fake()->create('receipt.pdf', 100, 'application/pdf'),
+        ])->assertSessionHasErrors('receipt');
 
         $this->assertDatabaseCount('deposit_requests', 0);
     }

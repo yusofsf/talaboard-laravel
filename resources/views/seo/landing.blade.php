@@ -134,19 +134,15 @@
     </div>
 
     <section class="content">
-        <h2>راهنمای سریع {{ $meta['heading'] }}</h2>
-        <p>
-            برای جست‌وجوهایی مثل {{ implode('، ', array_slice($meta['keywords'] ?? [], 0, 4)) }}، صفحه‌های تخصصی به موتور جست‌وجو کمک می‌کنند
-            موضوع هر بخش را دقیق‌تر بفهمد. این صفحه به‌صورت اختصاصی روی همین عبارت‌ها و نیاز کاربران بازار فلزات گران‌بها تمرکز دارد.
-        </p>
-        <p>
-            قیمت نهایی معامله ممکن است بر اساس موجودی، کارمزد، شرایط بازار و زمان ثبت سفارش تغییر کند؛ برای اقدام نهایی از صفحه معامله یا تماس با مجموعه استفاده کنید.
-        </p>
-        <div class="chips">
-            @foreach (($meta['keywords'] ?? []) as $keyword)
-                <span class="chip">{{ $keyword }}</span>
+        <h2>{{ $guide['heading'] }}</h2>
+        @foreach ($guide['paragraphs'] as $paragraph)
+            <p>{{ $paragraph }}</p>
+        @endforeach
+        <ul>
+            @foreach ($guide['points'] as $point)
+                <li>{{ $point }}</li>
             @endforeach
-        </div>
+        </ul>
     </section>
 
     @if (! empty($meta['faq']))

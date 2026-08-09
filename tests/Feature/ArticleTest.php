@@ -444,7 +444,8 @@ class ArticleTest extends TestCase
                 ->where('filters.tag', 'تحلیل بازار')
                 ->where('archive.type', 'tag')
                 ->where('articles.0.title', 'تحلیل بازار سکه')
-                ->where('seo.canonical', rtrim(config('seo.url'), '/').'/articles/tag/'.rawurlencode('تحلیل-بازار')));
+                ->where('seo.canonical', rtrim(config('seo.url'), '/').'/articles/tag/'.rawurlencode('تحلیل-بازار'))
+                ->where('seo.robots', 'noindex, follow'));
 
         $this->get('/articles/tag/not-found')->assertNotFound();
         $this->get('/articles/topic/not-found')->assertNotFound();

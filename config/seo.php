@@ -7,6 +7,7 @@ return [
     'locale' => 'fa_IR',
     'twitter_card' => 'summary_large_image',
     'force_https' => env('SEO_FORCE_HTTPS', env('APP_ENV') === 'production'),
+    'taxonomy_min_indexable_articles' => 2,
 
     'default' => [
         'title' => 'آبشده صفرپور | قیمت لحظه‌ای طلا، نقره و سکه',

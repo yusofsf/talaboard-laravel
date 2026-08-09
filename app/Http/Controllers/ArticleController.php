@@ -38,6 +38,7 @@ class ArticleController extends Controller
             ->values();
 
         $canonical = $siteUrl.'/articles'.$this->canonicalPageSuffix($paginator);
+        $siteName = config('seo.site_name');
 
         return Inertia::render('Articles/Index', [
             'articles' => $articles,
@@ -46,7 +47,7 @@ class ArticleController extends Controller
             'archive' => null,
             'topics' => $this->listValues('topics'),
             'seo' => [
-                'title' => 'مقالات طلا، نقره و سکه | آبشده صفری‌پور',
+                'title' => "مقالات طلا، نقره و سکه | {$siteName}",
                 'description' => 'مقالات آموزشی و تحلیلی درباره خرید و فروش طلا، نقره، سکه، عیارها و بازار فلزات گران‌بها.',
                 'canonical' => $canonical,
                 'schema' => $this->articleListSchema($articles->all(), $canonical),
@@ -103,6 +104,8 @@ class ArticleController extends Controller
             ->values();
         $canonical = $canonicalBase.$this->canonicalPageSuffix($paginator);
         $label = $type === 'topic' ? 'موضوع' : 'برچسب';
+        $siteName = config('seo.site_name');
+        $isIndexable = $matchingArticles->count() >= max(2, (int) config('seo.taxonomy_min_indexable_articles', 2));
 
         return Inertia::render('Articles/Index', [
             'articles' => $articles,
@@ -114,9 +117,12 @@ class ArticleController extends Controller
             'archive' => ['type' => $type, 'slug' => $slug, 'name' => $value],
             'topics' => $this->listValues('topics'),
             'seo' => [
-                'title' => "مقالات {$label} {$value} | آبشده صفری‌پور",
-                'description' => "مقالات و راهنماهای {$label} {$value} درباره بازار طلا، نقره و سکه در آبشده صفری‌پور.",
+                'title' => "مقالات {$label} {$value} | {$siteName}",
+                'description' => "مقالات و راهنماهای {$label} {$value} درباره بازار طلا، نقره و سکه در {$siteName}.",
                 'canonical' => $canonical,
+                'robots' => $isIndexable
+                    ? 'index, follow, max-image-preview:large'
+                    : 'noindex, follow',
                 'schema' => $this->articleListSchema($articles->all(), $canonical, "مقالات {$label} {$value}"),
             ],
         ]);
@@ -128,12 +134,13 @@ class ArticleController extends Controller
         $siteUrl = rtrim(config('seo.url'), '/');
         $canonical = $siteUrl.'/articles/'.$article->slug;
         $image = $this->absoluteUrl($article->thumbnail_image ?: $article->body_image);
+        $siteName = config('seo.site_name');
 
         return Inertia::render('Articles/Show', [
             'article' => $this->present($article),
             'relatedArticles' => $this->relatedArticles($article),
             'seo' => [
-                'title' => $article->title.' | آبشده صفری‌پور',
+                'title' => $article->title.' | '.$siteName,
                 'description' => $article->summary ?: mb_substr(strip_tags($article->body), 0, 150),
                 'canonical' => $canonical,
                 'type' => 'article',
@@ -264,7 +271,7 @@ class ArticleController extends Controller
         return [
             '@context' => 'https://schema.org',
             '@type' => 'CollectionPage',
-            'name' => $name ?: 'مقالات آبشده صفری‌پور',
+            'name' => $name ?: 'مقالات '.config('seo.site_name'),
             'url' => $canonical,
             'mainEntity' => [
                 '@type' => 'ItemList',

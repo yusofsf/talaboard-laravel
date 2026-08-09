@@ -80,14 +80,16 @@ foreach (config('seo.keyword_pages', []) as $page => $meta) {
 Route::get('/sitemap.xml', function () {
     $siteUrl = rtrim(config('seo.url'), '/');
     $articles = Article::published()->orderByDesc('published_at')->get();
+    $taxonomyMinArticles = max(2, (int) config('seo.taxonomy_min_indexable_articles', 2));
     $taxonomyPages = collect(['topic' => 'topics', 'tag' => 'tags'])
         ->flatMap(fn (string $field, string $type) => $articles
-            ->pluck($field)
-            ->flatten()
-            ->filter()
-            ->map(fn (string $value) => Article::taxonomySlug($value))
-            ->filter()
-            ->unique()
+            ->flatMap(fn (Article $article) => collect($article->{$field} ?: [])
+                ->map(fn (string $value) => Article::taxonomySlug($value))
+                ->filter()
+                ->unique())
+            ->countBy()
+            ->filter(fn (int $count) => $count >= $taxonomyMinArticles)
+            ->keys()
             ->map(fn (string $slug) => [
                 'path' => '/articles/'.$type.'/'.rawurlencode($slug),
                 'changefreq' => 'weekly',

@@ -82,7 +82,7 @@
 <body>
 @php
     // Inertia's client-side fallback is normally an empty #app element. Public
-    // article pages also include meaningful HTML in the first response so
+    // indexable pages also include meaningful HTML in the first response so
     // crawlers and link preview services do not depend on JavaScript rendering.
     $__inertiaSsrResponse = app(\Inertia\Ssr\SsrState::class)->setPage($page)->dispatch();
 @endphp
@@ -93,6 +93,14 @@
     <div id="app">
         @if (in_array($page['component'] ?? null, ['Articles/Index', 'Articles/Show'], true))
             @include('seo.article-fallback', ['component' => $page['component'], 'props' => $props])
+        @elseif ($hasSeo)
+            @include('seo.app-fallback', [
+                'component' => $page['component'] ?? '',
+                'props' => $props,
+                'seo' => $seo,
+                'title' => $title,
+                'description' => $description,
+            ])
         @endif
     </div>
 @endif

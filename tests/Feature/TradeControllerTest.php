@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\CartItem;
+use App\Models\PriceSnapshot;
 use App\Models\SilverLedger;
 use App\Models\Transaction;
 use App\Models\User;
@@ -64,6 +65,23 @@ class TradeControllerTest extends TestCase
         $response->assertOk();
         $response->assertSee('index, follow, max-image-preview:large', false);
         $response->assertSee('https://metalsp.ir/trade/mithqal', false);
+        $response->assertSee('data-server-rendered-app-fallback', false);
+        $response->assertSee('قیمت قطعی سفارش هنگام ثبت درخواست دوباره از منبع زنده بررسی می‌شود.');
+    }
+
+    public function test_trade_page_uses_snapshot_without_calling_external_price_service(): void
+    {
+        PriceSnapshot::create(['payload' => [
+            'gold' => ['geram' => 51_000_000],
+            'gold_buy' => ['geram' => 50_000_000],
+        ]]);
+        $this->mock(PriceService::class, fn ($mock) => $mock->shouldNotReceive('all'));
+
+        $this->get('/trade/geram')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('sellPrice', 51_000_000)
+                ->where('buyPrice', 50_000_000));
     }
 
     public function test_buy_gold_adds_to_cart_without_creating_transaction(): void

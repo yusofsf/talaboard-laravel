@@ -86,8 +86,17 @@ class SeoPagesTest extends TestCase
             'title' => 'راهنمای بازار طلا',
             'slug' => 'gold-market-guide',
             'topics' => ['آموزش خرید', 'آموزش  خرید', '!!!'],
-            'tags' => ['طلای آبشده', '---'],
+            'tags' => ['طلای آبشده', 'تک مقاله', '---'],
             'body' => 'متن مقاله',
+            'is_published' => true,
+            'published_at' => now(),
+        ]);
+        Article::create([
+            'title' => 'راهنمای دوم بازار طلا',
+            'slug' => 'second-gold-market-guide',
+            'topics' => ['آموزش خرید'],
+            'tags' => ['طلای آبشده'],
+            'body' => 'متن مقاله دوم',
             'is_published' => true,
             'published_at' => now(),
         ]);
@@ -106,6 +115,7 @@ class SeoPagesTest extends TestCase
             ->assertSee($siteUrl.'/articles/gold-market-guide', false)
             ->assertSee($siteUrl.'/articles/topic/'.rawurlencode('آموزش-خرید'), false)
             ->assertSee($siteUrl.'/articles/tag/'.rawurlencode('طلای-آبشده'), false)
+            ->assertDontSee($siteUrl.'/articles/tag/'.rawurlencode('تک-مقاله'), false)
             ->assertDontSee($siteUrl.'/articles/draft-guide', false)
             ->assertDontSee(rawurlencode('موضوع-پیش-نویس'), false)
             ->assertDontSee(rawurlencode('تگ-پیش-نویس'), false);
@@ -113,5 +123,14 @@ class SeoPagesTest extends TestCase
         $this->assertSame(1, substr_count($response->getContent(), $siteUrl.'/articles/topic/'.rawurlencode('آموزش-خرید')));
         $this->assertStringNotContainsString('/articles/topic/</loc>', $response->getContent());
         $this->assertStringNotContainsString('/articles/tag/</loc>', $response->getContent());
+    }
+
+    public function test_indexable_public_pages_have_server_rendered_links_before_javascript_runs(): void
+    {
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('data-server-rendered-app-fallback', false)
+            ->assertSee('<a href="/gold-prices">', false)
+            ->assertSee('<a href="/articles">', false);
     }
 }

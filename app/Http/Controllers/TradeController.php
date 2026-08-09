@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Models\CartItem;
+use App\Models\PriceSnapshot;
 use App\Models\Transaction;
 use App\Services\PriceService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 
 class TradeController extends Controller
@@ -35,7 +37,9 @@ class TradeController extends Controller
         $meta = self::ITEMS[$item] ?? null;
         if (!$meta) return redirect('/');
 
-        $data = $this->prices->all();
+        // نمایش صفحه نباید منتظر APIها و scrapeهای بیرونی بماند. قیمت قطعی هنگام
+        // ثبت سفارش در store() همچنان به‌صورت زنده دریافت می‌شود.
+        $data = $this->displayPrices();
 
         return Inertia::render('Trade', [
             'item'      => $item,
@@ -123,6 +127,19 @@ class TradeController extends Controller
         return $meta['group'] === 'gold'
             ? ($data[$goldKey][$item] ?? null)
             : ($data[$silverKey][$item] ?? null);
+    }
+
+    private function displayPrices(): array
+    {
+        if (Schema::hasTable('price_snapshots')) {
+            $snapshot = PriceSnapshot::latestPayload();
+
+            if ($snapshot !== null) {
+                return $snapshot;
+            }
+        }
+
+        return $this->prices->all();
     }
 
     private function tradeSeo(string $item, array $meta): array

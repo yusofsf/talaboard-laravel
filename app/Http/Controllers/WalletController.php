@@ -260,8 +260,11 @@ class WalletController extends Controller
         $admins = User::where('is_admin', true)->get();
 
         DB::transaction(function () use ($user, $request, $admins, $card) {
+            $lockedUser = User::query()->lockForUpdate()->findOrFail($user->id);
+            abort_if($lockedUser->walletBalance() < (int) $request->amount, 422, 'موجودی کیف پول شما کافی نیست.');
+
             $withdrawal = WithdrawalRequest::create([
-                'user_id' => $user->id,
+                'user_id' => $lockedUser->id,
                 'amount' => $request->amount,
                 'card_number' => $card->card_number,
                 'shaba' => $card->shaba,
@@ -269,14 +272,14 @@ class WalletController extends Controller
             ]);
 
             WalletTransaction::create([
-                'user_id' => $user->id,
+                'user_id' => $lockedUser->id,
                 'amount' => -$request->amount,
                 'type' => 'withdraw',
                 'description' => "درخواست تسویه حساب #{$withdrawal->id}",
             ]);
 
             Notification::create([
-                'user_id' => $user->id,
+                'user_id' => $lockedUser->id,
                 'title' => 'درخواست تسویه حساب ثبت شد',
                 'body' => number_format($request->amount).' تومان — تاریخ: '.Jalali::now().' — در حال بررسی.',
                 'type' => 'wallet',

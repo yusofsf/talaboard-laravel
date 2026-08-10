@@ -51,21 +51,39 @@ class CartController extends Controller
         }
 
         $walletShortage = $this->walletShortage($user, $items);
+
         if ($walletShortage > 0) {
-            return redirect()->route('wallet')->with('error', 'موجودی کیف پول کافی نیست. لطفاً کیف پول را حداقل به مبلغ ' . number_format($walletShortage) . ' تومان شارژ کنید و سپس سبد خرید را نهایی کنید.');
+            return redirect()->route('wallet')->with('error', 'موجودی کیف پول کافی نیست. لطفاً کیف پول را حداقل به مبلغ '.number_format($walletShortage).' تومان شارژ کنید و سپس سبد خرید را نهایی کنید.');
         }
 
         $error = $this->validateItems($user, $items);
+
         if ($error) {
             return back()->with('error', $error);
         }
 
-        DB::transaction(function () use ($user, $items) {
-            foreach ($items as $item) {
-                $this->executeItem($user, $item);
+        DB::transaction(function () use ($user) {
+            $lockedUser = User::query()->lockForUpdate()->findOrFail($user->id);
+            $lockedItems = CartItem::query()
+                ->where('user_id', $lockedUser->id)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            // A concurrent checkout may have completed while this request was
+            // waiting for the user row. Never execute a stale in-memory cart.
+            if ($lockedItems->isEmpty()) {
+                return;
             }
 
-            CartItem::whereIn('id', $items->pluck('id'))->delete();
+            abort_if($this->walletShortage($lockedUser, $lockedItems) > 0, 422, 'موجودی کیف پول کافی نیست.');
+            abort_if($error = $this->validateItems($lockedUser, $lockedItems), 422, $error);
+
+            foreach ($lockedItems as $item) {
+                $this->executeItem($lockedUser, $item);
+            }
+
+            CartItem::whereIn('id', $lockedItems->pluck('id'))->delete();
         });
 
         return redirect()->route('history')->with('success', 'سفارش‌های سبد خرید با موفقیت ثبت شد.');
@@ -74,6 +92,7 @@ class CartController extends Controller
     private function validateItems(User $user, $items): ?string
     {
         $totalBuy = (int) $items->where('trade_type', 'buy')->sum('total');
+
         if ($totalBuy > 0 && $user->walletBalance() < $totalBuy) {
             return 'موجودی کیف پول شما برای ثبت سفارش‌های خرید کافی نیست.';
         }
@@ -151,7 +170,7 @@ class CartController extends Controller
         Notification::create([
             'user_id' => $user->id,
             'title' => "ثبت {$typeLabel} — {$item->item_label}",
-            'body' => "نوع: {$typeLabel} | مقدار: {$item->quantity} | مبلغ: " . number_format($item->total) . " تومان | تاریخ: " . Jalali::now(),
+            'body' => "نوع: {$typeLabel} | مقدار: {$item->quantity} | مبلغ: ".number_format($item->total).' تومان | تاریخ: '.Jalali::now(),
             'type' => 'trade',
         ]);
 
@@ -176,8 +195,8 @@ class CartController extends Controller
             ]);
         }
 
-        ActivityLog::record('trade_' . $item->trade_type, 'trade',
-            "{$typeLabel} {$item->item_label} از سبد خرید — مقدار: {$item->quantity} — مبلغ: " . number_format($item->total) . " تومان — کاربر: {$user->name}", $user->id);
+        ActivityLog::record('trade_'.$item->trade_type, 'trade',
+            "{$typeLabel} {$item->item_label} از سبد خرید — مقدار: {$item->quantity} — مبلغ: ".number_format($item->total)." تومان — کاربر: {$user->name}", $user->id);
     }
 
     private function present(CartItem $item): array
@@ -215,6 +234,7 @@ class CartController extends Controller
     private function coinHolding(int $userId, string $item): float
     {
         $base = Transaction::where('user_id', $userId)->where('item', $item)->where('status', 'active');
+
         return round((float) (clone $base)->where('type', 'buy')->sum('quantity') - (float) (clone $base)->where('type', 'sell')->sum('quantity'), 4);
     }
 
@@ -222,6 +242,7 @@ class CartController extends Controller
     {
         $purity = str_contains($item, '995') ? '995' : '999';
         $grams = str_starts_with($item, 'mithqal_') ? $qty * (float) env('MITHQAL_GRAMS', 4.3318) : $qty;
+
         return [$purity, round($grams, 4)];
     }
 

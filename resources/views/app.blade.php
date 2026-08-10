@@ -60,11 +60,11 @@
     'currenciesAccepted' => 'IRR',
     'areaServed' => 'IR',
     'knowsAbout' => ['طلا', 'نقره', 'نقره آبشده', 'سکه', 'نیم سکه', 'ربع سکه', 'سکه تمام', 'ساچمه نقره', 'نقره عیار ۹۹۹', 'نقره عیار ۹۹۵'],
-], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) !!}
+], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}
 </script>
 @if (! empty($schema))
 <script data-inertia="page-schema" type="application/ld+json" @if($cspNonce) nonce="{{ $cspNonce }}" @endif>
-{!! json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) !!}
+{!! json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}
 </script>
 @endif
 
@@ -89,7 +89,7 @@
 @if ($__inertiaSsrResponse)
     {!! $__inertiaSsrResponse->body !!}
 @else
-    <script data-page="app" type="application/json" @if($cspNonce) nonce="{{ $cspNonce }}" @endif>{!! json_encode($page) !!}</script>
+    <script data-page="app" type="application/json" @if($cspNonce) nonce="{{ $cspNonce }}" @endif>{!! json_encode($page, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}</script>
     <div id="app">
         @if (in_array($page['component'] ?? null, ['Articles/Index', 'Articles/Show'], true))
             @include('seo.article-fallback', ['component' => $page['component'], 'props' => $props])

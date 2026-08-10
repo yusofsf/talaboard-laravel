@@ -5,6 +5,15 @@ import PwaInstallButton from '../Components/PwaInstallButton';
 const FA = s => String(s ?? '').replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]).replace(/,/g, '٬');
 export const faNum = n => n == null ? '—' : FA(Number(n).toLocaleString('en'));
 
+function safeJsonLd(value) {
+    return JSON.stringify(value)
+        .replace(/</g, '\\u003c')
+        .replace(/>/g, '\\u003e')
+        .replace(/&/g, '\\u0026')
+        .replace(/\u2028/g, '\\u2028')
+        .replace(/\u2029/g, '\\u2029');
+}
+
 function levelLabel(user) {
     if (user.is_admin && (user.is_vip || user.membership_level === 2)) return 'مدیر ویژه';
     if (user.is_admin) return 'مدیر سایت';
@@ -83,7 +92,7 @@ export default function AppLayout({ children }) {
                     <script
                         head-key="page-schema"
                         type="application/ld+json"
-                        dangerouslySetInnerHTML={{ __html: JSON.stringify(seo.schema) }}
+                        dangerouslySetInnerHTML={{ __html: safeJsonLd(seo.schema) }}
                     />
                 )}
             </Head>

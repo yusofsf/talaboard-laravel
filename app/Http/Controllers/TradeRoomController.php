@@ -115,8 +115,19 @@ class TradeRoomController extends Controller
         }
 
         DB::transaction(function () use ($user, $request, $metal, $isCoin, $item, $purity, $grams, $total) {
+            $lockedUser = User::query()->lockForUpdate()->findOrFail($user->id);
+
+            if ($request->side === 'sell') {
+                $holding = $isCoin
+                    ? $this->coinHolding($lockedUser->id, $item)
+                    : $this->balance($lockedUser, $metal, $purity);
+                abort_if($holding < $grams, 422, 'موجودی شما برای این مورد کافی نیست.');
+            } else {
+                abort_if($lockedUser->walletBalance() < $total, 422, 'موجودی کیف پول شما برای این مبلغ کافی نیست.');
+            }
+
             $offer = TradeRoomOffer::create([
-                'user_id' => $user->id,
+                'user_id' => $lockedUser->id,
                 'source' => 'website',
                 'metal' => $metal,
                 'item' => $item,
@@ -133,11 +144,11 @@ class TradeRoomController extends Controller
             if ($request->side === 'sell') {
                 // سکه دفترکل گرمی ندارد؛ مثل فروشگاه موجودی هنگام پذیرش دوباره بررسی می‌شود (بدون رزرو).
                 if (! $isCoin) {
-                    $this->createLedger($user->id, $metal, $purity, -$grams, 'offer_escrow', $offer->id, "رزرو برای پیشنهاد فروش #{$offer->id}");
+                    $this->createLedger($lockedUser->id, $metal, $purity, -$grams, 'offer_escrow', $offer->id, "رزرو برای پیشنهاد فروش #{$offer->id}");
                 }
             } else {
                 WalletTransaction::create([
-                    'user_id' => $user->id, 'amount' => -$total, 'type' => 'withdraw',
+                    'user_id' => $lockedUser->id, 'amount' => -$total, 'type' => 'withdraw',
                     'description' => "رزرو برای پیشنهاد خرید #{$offer->id}",
                 ]);
             }
@@ -164,6 +175,7 @@ class TradeRoomController extends Controller
         try {
             DB::transaction(function () use ($acceptor, $id, $request) {
                 $offer = TradeRoomOffer::where('id', $id)->lockForUpdate()->firstOrFail();
+                $acceptor = User::query()->lockForUpdate()->findOrFail($acceptor->id);
 
                 if ($offer->status !== 'open') {
                     throw new \RuntimeException('این پیشنهاد دیگر باز نیست.');

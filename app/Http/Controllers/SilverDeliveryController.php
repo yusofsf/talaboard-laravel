@@ -47,8 +47,14 @@ class SilverDeliveryController extends Controller
         $itemLabel = $metal === 'gold' ? 'طلا' : "نقره {$purity}";
 
         DB::transaction(function () use ($user, $request, $metal, $purity, $grams, $admins, $itemLabel, $deliveryMethod, $address, $postalCode) {
+            $lockedUser = User::query()->lockForUpdate()->findOrFail($user->id);
+            $lockedBalance = $metal === 'gold'
+                ? $lockedUser->goldBalance()
+                : $lockedUser->silverBalance($purity);
+            abort_if($lockedBalance < $grams, 422, 'موجودی شما برای این مورد کافی نیست.');
+
             $delivery = SilverDeliveryRequest::create([
-                'user_id' => $user->id,
+                'user_id' => $lockedUser->id,
                 'metal' => $metal,
                 'purity' => $purity,
                 'grams' => $grams,
@@ -62,20 +68,20 @@ class SilverDeliveryController extends Controller
 
             if ($metal === 'gold') {
                 GoldLedger::create([
-                    'user_id' => $user->id, 'grams' => -$grams,
+                    'user_id' => $lockedUser->id, 'grams' => -$grams,
                     'type' => 'delivery', 'reference_type' => SilverDeliveryRequest::class, 'reference_id' => $delivery->id,
                     'description' => "درخواست تحویل فیزیکی #{$delivery->id}",
                 ]);
             } else {
                 SilverLedger::create([
-                    'user_id' => $user->id, 'purity' => $purity, 'grams' => -$grams,
+                    'user_id' => $lockedUser->id, 'purity' => $purity, 'grams' => -$grams,
                     'type' => 'delivery', 'reference_type' => SilverDeliveryRequest::class, 'reference_id' => $delivery->id,
                     'description' => "درخواست تحویل فیزیکی #{$delivery->id}",
                 ]);
             }
 
             Notification::create([
-                'user_id' => $user->id,
+                'user_id' => $lockedUser->id,
                 'title' => 'درخواست تحویل فیزیکی ثبت شد',
                 'body' => "{$grams} گرم {$itemLabel} — تاریخ: ".Jalali::now().' — در حال بررسی.',
                 'type' => 'system',

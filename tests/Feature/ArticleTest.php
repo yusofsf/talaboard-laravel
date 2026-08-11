@@ -270,6 +270,39 @@ class ArticleTest extends TestCase
                 ->where('pagination.prev_page_url', url('/admin/articles?page=1')));
     }
 
+    public function test_admin_article_tags_and_topics_are_paginated_ten_per_page(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        foreach (range(1, 11) as $number) {
+            ArticleTopic::create(['name' => "موضوع صفحه‌بندی {$number}"]);
+            ArticleTag::create(['name' => "تگ صفحه‌بندی {$number}"]);
+        }
+
+        $topicCount = ArticleTopic::count();
+        $tagCount = ArticleTag::count();
+
+        $this->actingAs($admin)->get('/admin/articles')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('topics', 10)
+                ->has('tags', 10)
+                ->where('topicsPagination.per_page', 10)
+                ->where('tagsPagination.per_page', 10)
+                ->where('topicsPagination.total', $topicCount)
+                ->where('tagsPagination.total', $tagCount)
+                ->where('topicsPagination.next_page_url', url('/admin/articles?topics_page=2'))
+                ->where('tagsPagination.next_page_url', url('/admin/articles?tags_page=2')));
+
+        $this->actingAs($admin)->get('/admin/articles?topics_page=2&tags_page=2')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('topicsPagination.current_page', 2)
+                ->where('tagsPagination.current_page', 2)
+                ->where('topicsPagination.prev_page_url', url('/admin/articles?tags_page=2&topics_page=1'))
+                ->where('tagsPagination.prev_page_url', url('/admin/articles?topics_page=2&tags_page=1')));
+    }
+
     public function test_admin_can_edit_and_delete_article_topics_and_tags(): void
     {
         $admin = User::factory()->admin()->create();

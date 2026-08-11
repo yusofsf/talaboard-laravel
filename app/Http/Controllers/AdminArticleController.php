@@ -8,6 +8,7 @@ use App\Models\ArticleTag;
 use App\Models\ArticleTopic;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -25,21 +26,18 @@ class AdminArticleController extends Controller
         $articles = $paginator->getCollection()
             ->map(fn (Article $article) => $this->presentArticle($article))
             ->values();
+        $tags = $this->paginateTaxonomies('tags');
+        $topics = $this->paginateTaxonomies('topics');
 
         return Inertia::render('Admin/Articles', [
             'articles' => $articles,
-            'pagination' => [
-                'current_page' => $paginator->currentPage(),
-                'last_page' => $paginator->lastPage(),
-                'per_page' => $paginator->perPage(),
-                'total' => $paginator->total(),
-                'prev_page_url' => $paginator->previousPageUrl(),
-                'next_page_url' => $paginator->nextPageUrl(),
-            ],
+            'pagination' => $this->presentPagination($paginator),
             'tagOptions' => $this->listValues('tags'),
             'topicOptions' => $this->listValues('topics'),
-            'tags' => $this->listTaxonomies('tags'),
-            'topics' => $this->listTaxonomies('topics'),
+            'tags' => $tags['items'],
+            'tagsPagination' => $tags['pagination'],
+            'topics' => $topics['items'],
+            'topicsPagination' => $topics['pagination'],
         ]);
     }
 
@@ -216,7 +214,7 @@ class AdminArticleController extends Controller
             ->all();
     }
 
-    private function listTaxonomies(string $field): array
+    private function paginateTaxonomies(string $field): array
     {
         $model = $field === 'topics' ? ArticleTopic::class : ArticleTag::class;
         $counts = Article::query()
@@ -225,9 +223,11 @@ class AdminArticleController extends Controller
             ->map(fn ($item) => Article::taxonomySlug((string) $item))
             ->countBy();
 
-        return $model::query()
+        $paginator = $model::query()
             ->orderBy('name')
-            ->get()
+            ->paginate(self::PER_PAGE, ['*'], $field.'_page')
+            ->withQueryString();
+        $items = $paginator->getCollection()
             ->map(fn ($item) => [
                 'id' => $item->id,
                 'name' => $item->name,
@@ -236,6 +236,23 @@ class AdminArticleController extends Controller
             ])
             ->values()
             ->all();
+
+        return [
+            'items' => $items,
+            'pagination' => $this->presentPagination($paginator),
+        ];
+    }
+
+    private function presentPagination(LengthAwarePaginator $paginator): array
+    {
+        return [
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'per_page' => $paginator->perPage(),
+            'total' => $paginator->total(),
+            'prev_page_url' => $paginator->previousPageUrl(),
+            'next_page_url' => $paginator->nextPageUrl(),
+        ];
     }
 
     private function validatedTaxonomy(Request $request, string $model, ?int $ignoreId = null): array

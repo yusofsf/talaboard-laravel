@@ -14,31 +14,51 @@ use Inertia\Inertia;
 
 class AdminArticleController extends Controller
 {
-    public function index()
+    private const PER_PAGE = 10;
+
+    public function index(Request $request)
     {
-        $articles = Article::orderByDesc('created_at')->get()
-            ->map(fn (Article $a) => [
-                'id' => $a->id,
-                'title' => $a->title,
-                'slug' => $a->slug,
-                'summary' => $a->summary,
-                'thumbnail_image' => $a->thumbnail_image,
-                'body_image' => $a->body_image,
-                'body' => $a->body,
-                'tags' => implode(', ', $a->tags ?: []),
-                'topics' => implode(', ', $a->topics ?: []),
-                'is_published' => $a->is_published,
-                'published_at' => $a->published_at ? Jalali::format($a->published_at, false) : null,
-                'created_at' => Jalali::format($a->created_at, false),
-            ]);
+        $paginator = Article::orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->paginate(self::PER_PAGE)
+            ->withQueryString();
+        $articles = $paginator->getCollection()
+            ->map(fn (Article $article) => $this->presentArticle($article))
+            ->values();
 
         return Inertia::render('Admin/Articles', [
             'articles' => $articles,
+            'pagination' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'prev_page_url' => $paginator->previousPageUrl(),
+                'next_page_url' => $paginator->nextPageUrl(),
+            ],
             'tagOptions' => $this->listValues('tags'),
             'topicOptions' => $this->listValues('topics'),
             'tags' => $this->listTaxonomies('tags'),
             'topics' => $this->listTaxonomies('topics'),
         ]);
+    }
+
+    private function presentArticle(Article $article): array
+    {
+        return [
+            'id' => $article->id,
+            'title' => $article->title,
+            'slug' => $article->slug,
+            'summary' => $article->summary,
+            'thumbnail_image' => $article->thumbnail_image,
+            'body_image' => $article->body_image,
+            'body' => $article->body,
+            'tags' => implode(', ', $article->tags ?: []),
+            'topics' => implode(', ', $article->topics ?: []),
+            'is_published' => $article->is_published,
+            'published_at' => $article->published_at ? Jalali::format($article->published_at, false) : null,
+            'created_at' => Jalali::format($article->created_at, false),
+        ];
     }
 
     public function store(Request $request)

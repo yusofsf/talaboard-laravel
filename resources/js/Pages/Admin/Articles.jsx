@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, router, useForm } from '@inertiajs/react';
-import AppLayout from '../../Layouts/AppLayout';
+import AppLayout, { faNum } from '../../Layouts/AppLayout';
 
 const empty = {
     title: '',
@@ -19,7 +19,7 @@ const empty = {
 const splitList = value => String(value || '').split(/[،,\n]+/).map(v => v.trim()).filter(Boolean);
 const joinList = items => [...new Set(items)].join('، ');
 
-export default function Articles({ articles, tagOptions = [], topicOptions = [], tags = [], topics = [] }) {
+export default function Articles({ articles, pagination, tagOptions = [], topicOptions = [], tags = [], topics = [] }) {
     const form = useForm(empty);
     const [editing, setEditing] = useState(null);
 
@@ -179,8 +179,33 @@ export default function Articles({ articles, tagOptions = [], topicOptions = [],
                         </tbody>
                     </table>
                 </div>
+                <ArticlePagination pagination={pagination} />
             </main>
         </AppLayout>
+    );
+}
+
+function ArticlePagination({ pagination }) {
+    if (!pagination || pagination.last_page <= 1) return null;
+
+    const controlStyle = { minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' };
+
+    return (
+        <nav aria-label="صفحه‌بندی مقالات مدیریت" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10, flexWrap: 'wrap', margin: '16px 0' }}>
+            {pagination.prev_page_url ? (
+                <Link href={pagination.prev_page_url} className="btn-sm" style={controlStyle} aria-label="صفحه قبلی مقالات">قبلی</Link>
+            ) : (
+                <span className="btn-sm" aria-disabled="true" style={{ ...controlStyle, opacity: 0.45 }}>قبلی</span>
+            )}
+            <span style={{ fontSize: 13, color: 'var(--muted)' }}>
+                صفحه {faNum(pagination.current_page)} از {faNum(pagination.last_page)} · {faNum(pagination.total)} مقاله
+            </span>
+            {pagination.next_page_url ? (
+                <Link href={pagination.next_page_url} className="btn-sm" style={controlStyle} aria-label="صفحه بعدی مقالات">بعدی</Link>
+            ) : (
+                <span className="btn-sm" aria-disabled="true" style={{ ...controlStyle, opacity: 0.45 }}>بعدی</span>
+            )}
+        </nav>
     );
 }
 
@@ -477,7 +502,7 @@ function RichTextEditor({ value, onChange, uploadUrl }) {
                 onMouseUp={rememberSelection}
                 onKeyUp={rememberSelection}
                 onBlur={rememberSelection}
-                style={{ minHeight: 280, padding: 14, outline: 'none', lineHeight: 2.1, color: 'var(--txt)' }}
+                style={{ height: 360, overflowY: 'auto', padding: 14, outline: 'none', lineHeight: 2.1, color: 'var(--txt)' }}
             />
             {uploadError && <div className="alert err" style={{ margin: 10 }}>{uploadError}</div>}
         </div>

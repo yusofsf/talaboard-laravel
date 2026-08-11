@@ -19,7 +19,7 @@ const empty = {
 const splitList = value => String(value || '').split(/[،,\n]+/).map(v => v.trim()).filter(Boolean);
 const joinList = items => [...new Set(items)].join('، ');
 
-export default function Articles({ articles, pagination, tagOptions = [], topicOptions = [], tags = [], topics = [] }) {
+export default function Articles({ articles, pagination, tagOptions = [], topicOptions = [], tags = [], topics = [], tagsPagination, topicsPagination }) {
     const form = useForm(empty);
     const [editing, setEditing] = useState(null);
 
@@ -144,6 +144,7 @@ export default function Articles({ articles, pagination, tagOptions = [], topicO
                         title="موضوعات کلی"
                         help="موضوع‌ها دسته‌بندی‌های اصلی مقاله‌ها هستند؛ مثل نقره، سکه یا تحلیل بازار."
                         items={topics}
+                        pagination={topicsPagination}
                         storeUrl="/admin/article-topics"
                         baseUrl="/admin/article-topics"
                         deleteMessage="این موضوع حذف شود؟ از مقاله‌های مرتبط هم برداشته می‌شود."
@@ -152,6 +153,7 @@ export default function Articles({ articles, pagination, tagOptions = [], topicO
                         title="تگ‌ها"
                         help="تگ‌ها برچسب‌های جزئی‌تر مقاله هستند و برای عبارت‌های فعلی/قدیمی مناسب‌اند."
                         items={tags}
+                        pagination={tagsPagination}
                         storeUrl="/admin/article-tags"
                         baseUrl="/admin/article-tags"
                         deleteMessage="این تگ حذف شود؟ از مقاله‌های مرتبط هم برداشته می‌شود."
@@ -179,29 +181,29 @@ export default function Articles({ articles, pagination, tagOptions = [], topicO
                         </tbody>
                     </table>
                 </div>
-                <ArticlePagination pagination={pagination} />
+                <PaginationControls pagination={pagination} label="مقالات مدیریت" itemLabel="مقاله" />
             </main>
         </AppLayout>
     );
 }
 
-function ArticlePagination({ pagination }) {
+function PaginationControls({ pagination, label, itemLabel }) {
     if (!pagination || pagination.last_page <= 1) return null;
 
     const controlStyle = { minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' };
 
     return (
-        <nav aria-label="صفحه‌بندی مقالات مدیریت" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10, flexWrap: 'wrap', margin: '16px 0' }}>
+        <nav aria-label={`صفحه‌بندی ${label}`} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10, flexWrap: 'wrap', margin: '16px 0' }}>
             {pagination.prev_page_url ? (
-                <Link href={pagination.prev_page_url} className="btn-sm" style={controlStyle} aria-label="صفحه قبلی مقالات">قبلی</Link>
+                <Link href={pagination.prev_page_url} className="btn-sm" style={controlStyle} aria-label={`صفحه قبلی ${label}`}>قبلی</Link>
             ) : (
                 <span className="btn-sm" aria-disabled="true" style={{ ...controlStyle, opacity: 0.45 }}>قبلی</span>
             )}
             <span style={{ fontSize: 13, color: 'var(--muted)' }}>
-                صفحه {faNum(pagination.current_page)} از {faNum(pagination.last_page)} · {faNum(pagination.total)} مقاله
+                صفحه {faNum(pagination.current_page)} از {faNum(pagination.last_page)} · {faNum(pagination.total)} {itemLabel}
             </span>
             {pagination.next_page_url ? (
-                <Link href={pagination.next_page_url} className="btn-sm" style={controlStyle} aria-label="صفحه بعدی مقالات">بعدی</Link>
+                <Link href={pagination.next_page_url} className="btn-sm" style={controlStyle} aria-label={`صفحه بعدی ${label}`}>بعدی</Link>
             ) : (
                 <span className="btn-sm" aria-disabled="true" style={{ ...controlStyle, opacity: 0.45 }}>بعدی</span>
             )}
@@ -209,7 +211,7 @@ function ArticlePagination({ pagination }) {
     );
 }
 
-function TaxonomyManager({ title, help, items, storeUrl, baseUrl, deleteMessage }) {
+function TaxonomyManager({ title, help, items, pagination, storeUrl, baseUrl, deleteMessage }) {
     const taxonomyForm = useForm({ name: '' });
     const [editingId, setEditingId] = useState(null);
 
@@ -306,6 +308,7 @@ function TaxonomyManager({ title, help, items, storeUrl, baseUrl, deleteMessage 
             ) : (
                 <div className="empty" style={{ padding: 18 }}>موردی ثبت نشده است.</div>
             )}
+            <PaginationControls pagination={pagination} label={title} itemLabel={title === 'تگ‌ها' ? 'تگ' : 'موضوع'} />
         </section>
     );
 }

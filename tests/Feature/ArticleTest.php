@@ -235,6 +235,41 @@ class ArticleTest extends TestCase
                 ->where('tags.0.name', 'سرمایه‌گذاری'));
     }
 
+    public function test_admin_articles_are_paginated_ten_per_page(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        foreach (range(1, 11) as $number) {
+            Article::create([
+                'title' => "مقاله مدیریت {$number}",
+                'slug' => "admin-article-{$number}",
+                'body' => 'متن مقاله',
+                'is_published' => true,
+                'published_at' => now(),
+                'created_at' => now()->addSeconds($number),
+                'updated_at' => now()->addSeconds($number),
+            ]);
+        }
+
+        $this->actingAs($admin)->get('/admin/articles')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Admin/Articles')
+                ->has('articles', 10)
+                ->where('articles.0.title', 'مقاله مدیریت 11')
+                ->where('pagination.per_page', 10)
+                ->where('pagination.current_page', 1)
+                ->where('pagination.last_page', 2)
+                ->where('pagination.next_page_url', url('/admin/articles?page=2')));
+
+        $this->actingAs($admin)->get('/admin/articles?page=2')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('articles', 1)
+                ->where('articles.0.title', 'مقاله مدیریت 1')
+                ->where('pagination.prev_page_url', url('/admin/articles?page=1')));
+    }
+
     public function test_admin_can_edit_and_delete_article_topics_and_tags(): void
     {
         $admin = User::factory()->admin()->create();

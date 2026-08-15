@@ -62,7 +62,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ $meta['title'] }}</title>
 <meta name="description" content="{{ $meta['description'] }}">
-<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="robots" content="{{ $meta['robots'] }}">
 <link rel="canonical" href="{{ $meta['canonical'] }}">
 <link rel="alternate" hreflang="fa-IR" href="{{ $meta['canonical'] }}">
 <meta property="og:type" content="website">

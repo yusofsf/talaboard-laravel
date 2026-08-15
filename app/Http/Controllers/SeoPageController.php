@@ -28,6 +28,11 @@ class SeoPageController extends Controller
             'meta' => [
                 ...$meta,
                 'canonical' => $canonical,
+                // Keep narrow keyword variants available to visitors without
+                // asking search engines to index near-duplicate landing pages.
+                'robots' => array_key_exists($page, config('seo.keyword_pages', []))
+                    ? 'noindex, follow'
+                    : 'index, follow, max-image-preview:large',
             ],
             'prices' => $prices,
             'schema' => $this->schema($meta, $canonical),

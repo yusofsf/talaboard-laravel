@@ -80,40 +80,13 @@ foreach (config('seo.keyword_pages', []) as $page => $meta) {
 Route::get('/sitemap.xml', function () {
     $siteUrl = rtrim(config('seo.url'), '/');
     $articles = Article::published()->orderByDesc('published_at')->get();
-    $taxonomyMinArticles = max(2, (int) config('seo.taxonomy_min_indexable_articles', 2));
-    $taxonomyPages = collect(['topic' => 'topics', 'tag' => 'tags'])
-        ->flatMap(fn (string $field, string $type) => $articles
-            ->flatMap(fn (Article $article) => collect($article->{$field} ?: [])
-                ->map(fn (string $value) => Article::taxonomySlug($value))
-                ->filter()
-                ->unique())
-            ->countBy()
-            ->filter(fn (int $count) => $count >= $taxonomyMinArticles)
-            ->keys()
-            ->map(fn (string $slug) => [
-                'path' => '/articles/'.$type.'/'.rawurlencode($slug),
-                'changefreq' => 'weekly',
-                'priority' => '0.58',
-            ]))
-        ->values()
-        ->all();
-    $tradePages = collect(['mithqal', 'geram', 'bahar', 'nim', 'rob', 'mithqal_999', 'gram_999', 'mithqal_995', 'gram_995'])
-        ->map(fn (string $item) => [
-            'path' => '/trade/'.$item,
-            'changefreq' => 'hourly',
-            'priority' => '0.74',
-        ])
-        ->all();
     $pages = [
         ...config('seo.public_pages', []),
-        ...config('seo.keyword_pages', []),
         [
             'path' => '/articles',
             'changefreq' => 'daily',
             'priority' => '0.72',
         ],
-        ...$tradePages,
-        ...$taxonomyPages,
         ...$articles
             ->map(fn (Article $article) => [
                 'path' => '/articles/'.$article->slug,

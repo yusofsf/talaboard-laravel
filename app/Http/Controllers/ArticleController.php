@@ -105,8 +105,6 @@ class ArticleController extends Controller
         $canonical = $canonicalBase.$this->canonicalPageSuffix($paginator);
         $label = $type === 'topic' ? 'موضوع' : 'برچسب';
         $siteName = config('seo.site_name');
-        $isIndexable = $matchingArticles->count() >= max(2, (int) config('seo.taxonomy_min_indexable_articles', 2));
-
         return Inertia::render('Articles/Index', [
             'articles' => $articles,
             'pagination' => $this->presentPagination($paginator),
@@ -120,9 +118,9 @@ class ArticleController extends Controller
                 'title' => "مقالات {$label} {$value} | {$siteName}",
                 'description' => "مقالات و راهنماهای {$label} {$value} درباره بازار طلا، نقره و سکه در {$siteName}.",
                 'canonical' => $canonical,
-                'robots' => $isIndexable
-                    ? 'index, follow, max-image-preview:large'
-                    : 'noindex, follow',
+                // Tags and topics help visitors navigate, but indexing many
+                // near-identical archives dilutes the site's editorial pages.
+                'robots' => 'noindex, follow',
                 'schema' => $this->articleListSchema($articles->all(), $canonical, "مقالات {$label} {$value}"),
             ],
         ]);

@@ -184,13 +184,15 @@ select option { color: #15192b; background: #fff; }
 }
 .article-tag:hover { color: var(--gold-1); }
 
-/* تصاویر مقاله: تصویر کامل دیده می‌شود و عکس‌های عمودی/افقی بریده نمی‌شوند. */
+/* تصاویر مقاله: نسبت اصلی تصویر حفظ می‌شود و هیچ بخشی از آن بریده نمی‌شود. */
 .article-card__image {
-  display: grid; place-items: center; width: 100%; aspect-ratio: 16 / 9;
-  overflow: hidden; background: rgba(5,8,18,.42); border-bottom: 1px solid var(--line);
+  display: grid; place-items: center; width: 100%; aspect-ratio: 16 / 10;
+  overflow: hidden; padding: 10px; box-sizing: border-box;
+  background: rgba(5,8,18,.42); border-bottom: 1px solid var(--line);
 }
 .article-card__image img {
-  display: block; width: 100%; height: 100%; object-fit: cover; object-position: center;
+  display: block; width: 100%; height: 100%; object-fit: contain; object-position: center;
+  border-radius: 8px;
   transition: transform .22s ease, opacity .22s ease;
 }
 .article-card__image:hover img { transform: scale(1.015); opacity: .94; }
@@ -200,11 +202,11 @@ select option { color: #15192b; background: #fff; }
   background: rgba(5,8,18,.42);
 }
 .article-hero-image img {
-  display: block; width: auto; max-width: 100%; height: auto; max-height: min(68vh, 680px);
+  display: block; width: 100%; max-width: 100%; height: auto;
   object-fit: contain;
 }
 .article-content-image {
-  display: block; width: auto; max-width: 100%; height: auto; max-height: min(72vh, 760px);
+  display: block; width: 100%; max-width: 100%; height: auto;
   object-fit: contain; margin: 18px auto 24px; border-radius: 12px; border: 1px solid var(--line);
   background: rgba(5,8,18,.28);
 }
@@ -255,7 +257,7 @@ tbody tr:hover td { background: rgba(246,207,99,.06); }
 .article-body ul, .article-body ol { margin: 0 24px 18px 0; padding: 0 18px 0 0; }
 .article-body li { margin-bottom: 8px; }
 .article-body img {
-  display: block; width: auto; max-width: 100%; height: auto; max-height: min(72vh, 760px);
+  display: block; width: 100%; max-width: 100%; height: auto;
   object-fit: contain; margin: 18px auto 24px; border-radius: 12px; border: 1px solid var(--line);
   background: rgba(5,8,18,.28);
 }
@@ -266,8 +268,9 @@ tbody tr:hover td { background: rgba(246,207,99,.06); }
 .article-body a { color: var(--gold-1); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
 
 @media (max-width: 600px) {
-  .article-hero-image img { max-height: 56vh; }
-  .article-content-image, .article-body img { max-height: 64vh; }
+  .article-card__image { aspect-ratio: 4 / 3; padding: 8px; }
+  .article-hero-image { border-radius: 10px; }
+  .article-content-image, .article-body img { border-radius: 10px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

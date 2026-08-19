@@ -32,18 +32,22 @@ export default function Show({ article, relatedArticles = [] }) {
                     <h1 style={{ fontSize: 30, lineHeight: 1.5, margin: '0 0 10px' }}>{article.title}</h1>
                     <div style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 18 }}>{article.published_at || article.created_at}</div>
                     {article.summary && <p style={{ color: 'var(--muted)', fontSize: 16, lineHeight: 2, marginBottom: 20 }}>{article.summary}</p>}
-                    {article.thumbnail_image && <img src={article.thumbnail_image} alt={article.title} style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', borderRadius: 10, border: '1px solid var(--line)', marginBottom: 24 }} />}
+                    {article.thumbnail_image && (
+                        <figure className="article-hero-image">
+                            <img src={article.thumbnail_image} alt={article.title} decoding="async" fetchPriority="high" />
+                        </figure>
+                    )}
 
                     {hasHtml(article.body) ? (
                         <div>
-                            {article.body_image && <img src={article.body_image} alt={`${article.title} - تصویر داخل متن`} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--line)', margin: '10px 0 22px', objectFit: 'cover', maxHeight: 430 }} />}
+                            {article.body_image && <img className="article-content-image" src={article.body_image} alt={`${article.title} - تصویر داخل متن`} loading="lazy" decoding="async" />}
                             <div className="article-body" dangerouslySetInnerHTML={{ __html: article.body }} />
                         </div>
                     ) : (
                         <div style={{ fontSize: 16, lineHeight: 2.25, color: 'var(--txt)' }}>
                             {paragraphs(article.body).map((p, i) => (
                                 <div key={i}>
-                                    {i === 1 && article.body_image && <img src={article.body_image} alt={`${article.title} - تصویر داخل متن`} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--line)', margin: '10px 0 22px', objectFit: 'cover', maxHeight: 430 }} />}
+                                    {i === 1 && article.body_image && <img className="article-content-image" src={article.body_image} alt={`${article.title} - تصویر داخل متن`} loading="lazy" decoding="async" />}
                                     <p style={{ margin: '0 0 18px', textAlign: 'justify' }}>{p}</p>
                                 </div>
                             ))}

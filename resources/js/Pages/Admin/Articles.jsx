@@ -86,6 +86,7 @@ export default function Articles({ articles, pagination, tagOptions = [], topicO
                         </Field>
                         <UploadField
                             label="تصویر بندانگشتی"
+                            hint="پیشنهادی: ۱۲۰۰×۶۷۵ پیکسل (نسبت ۱۶:۹)"
                             urlValue={form.data.thumbnail_image}
                             uploadError={form.errors.thumbnail_upload}
                             urlError={form.errors.thumbnail_image}
@@ -94,6 +95,7 @@ export default function Articles({ articles, pagination, tagOptions = [], topicO
                         />
                         <UploadField
                             label="تصویر داخل متن"
+                            hint="پیشنهادی: عرض ۱۲۰۰ پیکسل؛ ارتفاع متناسب با تصویر"
                             urlValue={form.data.body_image}
                             uploadError={form.errors.body_upload}
                             urlError={form.errors.body_image}
@@ -317,13 +319,14 @@ function Field({ label, error, children }) {
     return <div className="field"><label>{label}</label>{children}{error && <div className="alert err" style={{ marginTop: 6 }}>{error}</div>}</div>;
 }
 
-function UploadField({ label, urlValue, urlError, uploadError, onUrlChange, onFileChange }) {
+function UploadField({ label, hint, urlValue, urlError, uploadError, onUrlChange, onFileChange }) {
     return (
         <Field label={label} error={urlError || uploadError}>
             <div style={{ display: 'grid', gap: 8 }}>
                 <input dir="ltr" value={urlValue} onChange={e => onUrlChange(e.target.value)} placeholder="/storage/articles/image.jpg" />
                 <input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => onFileChange(e.target.files?.[0] || null)} />
-                {urlValue && <img src={urlValue} alt="" style={{ width: '100%', maxHeight: 110, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--line)' }} />}
+                {hint && <small style={{ color: 'var(--muted)', lineHeight: 1.8 }}>{hint}</small>}
+                {urlValue && <img src={urlValue} alt="" style={{ width: '100%', height: 150, objectFit: 'contain', background: 'rgba(0,0,0,.18)', borderRadius: 8, border: '1px solid var(--line)' }} />}
             </div>
         </Field>
     );

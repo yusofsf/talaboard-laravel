@@ -190,7 +190,7 @@ select option { color: #15192b; background: #fff; }
   overflow: hidden; background: rgba(5,8,18,.42); border-bottom: 1px solid var(--line);
 }
 .article-card__image img {
-  display: block; width: 100%; height: 100%; object-fit: contain;
+  display: block; width: 100%; height: 100%; object-fit: cover; object-position: center;
   transition: transform .22s ease, opacity .22s ease;
 }
 .article-card__image:hover img { transform: scale(1.015); opacity: .94; }

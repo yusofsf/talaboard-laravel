@@ -184,6 +184,31 @@ select option { color: #15192b; background: #fff; }
 }
 .article-tag:hover { color: var(--gold-1); }
 
+/* تصاویر مقاله: تصویر کامل دیده می‌شود و عکس‌های عمودی/افقی بریده نمی‌شوند. */
+.article-card__image {
+  display: grid; place-items: center; width: 100%; aspect-ratio: 16 / 9;
+  overflow: hidden; background: rgba(5,8,18,.42); border-bottom: 1px solid var(--line);
+}
+.article-card__image img {
+  display: block; width: 100%; height: 100%; object-fit: contain;
+  transition: transform .22s ease, opacity .22s ease;
+}
+.article-card__image:hover img { transform: scale(1.015); opacity: .94; }
+.article-hero-image {
+  display: grid; place-items: center; width: 100%; margin: 0 0 24px;
+  overflow: hidden; border: 1px solid var(--line); border-radius: 12px;
+  background: rgba(5,8,18,.42);
+}
+.article-hero-image img {
+  display: block; width: auto; max-width: 100%; height: auto; max-height: min(68vh, 680px);
+  object-fit: contain;
+}
+.article-content-image {
+  display: block; width: auto; max-width: 100%; height: auto; max-height: min(72vh, 760px);
+  object-fit: contain; margin: 18px auto 24px; border-radius: 12px; border: 1px solid var(--line);
+  background: rgba(5,8,18,.28);
+}
+
 /* جدول */
 .table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid var(--line); margin-top: 20px; -webkit-overflow-scrolling: touch; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -230,14 +255,25 @@ tbody tr:hover td { background: rgba(246,207,99,.06); }
 .article-body ul, .article-body ol { margin: 0 24px 18px 0; padding: 0 18px 0 0; }
 .article-body li { margin-bottom: 8px; }
 .article-body img {
-  display: block; max-width: 100%; height: auto;
-  margin: 18px auto; border-radius: 12px; border: 1px solid var(--line);
+  display: block; width: auto; max-width: 100%; height: auto; max-height: min(72vh, 760px);
+  object-fit: contain; margin: 18px auto 24px; border-radius: 12px; border: 1px solid var(--line);
+  background: rgba(5,8,18,.28);
 }
 .article-body blockquote {
   margin: 18px 0; padding: 12px 16px; border-inline-start: 4px solid var(--gold-1);
   background: rgba(246,207,99,.08); border-radius: 10px; color: var(--silver-1);
 }
 .article-body a { color: var(--gold-1); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+
+@media (max-width: 600px) {
+  .article-hero-image img { max-height: 56vh; }
+  .article-content-image, .article-body img { max-height: 64vh; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .article-card__image img { transition: none; }
+  .article-card__image:hover img { transform: none; }
+}
 
 /* تب */
 .tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--line); margin-bottom: 24px; overflow-x: auto; }

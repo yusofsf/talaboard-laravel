@@ -41,10 +41,10 @@ export default function Index({ articles, pagination, filters = {}, topics = [] 
                     <>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 18 }}>
                             {articles.map(a => (
-                                <article key={a.id} className="fcard" style={{ overflow: 'hidden', padding: 0 }}>
+                                <article key={a.id} className="fcard article-card" style={{ overflow: 'hidden', padding: 0 }}>
                                     {a.thumbnail_image && (
-                                        <Link href={`/articles/${a.slug}`}>
-                                            <img src={a.thumbnail_image} alt={a.title} style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', display: 'block' }} />
+                                        <Link href={`/articles/${a.slug}`} className="article-card__image" aria-label={`مطالعه مقاله ${a.title}`}>
+                                            <img src={a.thumbnail_image} alt={a.title} loading="lazy" decoding="async" />
                                         </Link>
                                     )}
                                     <div style={{ padding: 18 }}>

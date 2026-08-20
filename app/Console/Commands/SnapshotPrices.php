@@ -2,9 +2,11 @@
 
 namespace App\Console\Commands;
 
+use App\Models\GoldPrice;
 use App\Models\PriceSnapshot;
 use App\Services\PriceService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 class SnapshotPrices extends Command
 {
@@ -14,13 +16,20 @@ class SnapshotPrices extends Command
 
     public function handle(PriceService $prices): int
     {
-        PriceSnapshot::create(['payload' => $prices->all()]);
+        $payload = $prices->all();
 
-        // فقط چند رکورد آخر را نگه می‌داریم تا جدول بی‌نهایت رشد نکند.
-        $cutoff = PriceSnapshot::query()->latest('id')->skip(20)->value('id');
-        if ($cutoff) {
-            PriceSnapshot::query()->where('id', '<=', $cutoff)->delete();
-        }
+        DB::transaction(function () use ($payload) {
+            PriceSnapshot::create(['payload' => $payload]);
+
+            // تاریخچه‌ی ستونی طلا مستقل از اسنپ‌شات‌های موقت نگهداری می‌شود.
+            GoldPrice::create(GoldPrice::fromPayload($payload));
+
+            // فقط چند اسنپ‌شات JSON آخر برای نمایش سریع صفحه نگه داشته می‌شود.
+            $cutoff = PriceSnapshot::query()->latest('id')->skip(20)->value('id');
+            if ($cutoff) {
+                PriceSnapshot::query()->where('id', '<=', $cutoff)->delete();
+            }
+        });
 
         return self::SUCCESS;
     }

@@ -271,11 +271,28 @@ class PriceService
     }
 
     /**
-     * انس نقره از جدول «شاخص در روز جاری» TGJU؛ مقدار دیتابیس فقط fallback است.
+     * انس نقره — ابتدا قیمت لحظه‌ای alanchand، سپس TGJU و Yahoo؛ مقدار دیتابیس fallback نهایی است.
      */
     private function fetchSilverOunce(?float $fallback = null): ?float
     {
         return Cache::remember('prices.ounce_silver', $this->cacheTtl, function () use ($fallback) {
+            try {
+                $url = env('DOLLAR_GOLD_URL', 'https://alanchand.com/gold-price');
+                $res = Http::timeout(15)->withHeaders(['User-Agent' => self::UA])->get($url);
+                $price = $res->ok() ? $this->findSellInTables($res->body(), 'انس نقره', 1) : null;
+                if ($price !== null) {
+                    return (float) $price;
+                }
+
+                Log::warning(
+                    $res->ok()
+                        ? 'PriceService silver ounce (alanchand) parse failed'
+                        : "PriceService silver ounce (alanchand) returned HTTP {$res->status()}"
+                );
+            } catch (\Throwable $e) {
+                Log::warning('PriceService silver ounce (alanchand) fetch failed: '.$e->getMessage());
+            }
+
             $price = $this->fetchTgjuTodayLatestPrice(
                 env('TGJU_SILVER_URL', 'https://www.tgju.org/profile/silver/today'),
                 'silver ounce'
@@ -285,7 +302,12 @@ class PriceService
                 return $price;
             }
 
-            Log::warning('PriceService silver ounce (TGJU today) unavailable; using database fallback');
+            $price = $this->fetchSilverOunceYahoo();
+            if ($price !== null) {
+                return $price;
+            }
+
+            Log::warning('PriceService silver ounce unavailable after alanchand, TGJU, and Yahoo; using database fallback');
 
             return $fallback;
         });
@@ -382,8 +404,17 @@ class PriceService
 
     private function fetchGoldOunceYahoo(): ?float
     {
+        return $this->fetchOunceYahoo(env('GOLD_OUNCE_SYMBOL', 'GC=F'), 'gold');
+    }
+
+    private function fetchSilverOunceYahoo(): ?float
+    {
+        return $this->fetchOunceYahoo(env('SILVER_OUNCE_SYMBOL', 'SI=F'), 'silver');
+    }
+
+    private function fetchOunceYahoo(string $symbol, string $market): ?float
+    {
         try {
-            $symbol = env('GOLD_OUNCE_SYMBOL', 'GC=F');
             $res = Http::timeout(5)
                 ->withHeaders(['User-Agent' => self::UA])
                 ->get("https://query1.finance.yahoo.com/v8/finance/chart/{$symbol}");
@@ -392,7 +423,7 @@ class PriceService
 
             return $price !== null ? (float) $price : null;
         } catch (\Throwable $e) {
-            Log::warning('PriceService gold ounce (Yahoo) fetch failed: '.$e->getMessage());
+            Log::warning("PriceService {$market} ounce (Yahoo) fetch failed: ".$e->getMessage());
 
             return null;
         }

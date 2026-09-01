@@ -18,6 +18,7 @@ class GoldPrice extends Model
         'geram_sell',
         'geram_buy',
         'ounce',
+        'silver_ounce',
     ];
 
     protected function casts(): array
@@ -34,6 +35,7 @@ class GoldPrice extends Model
             'geram_sell' => 'integer',
             'geram_buy' => 'integer',
             'ounce' => 'float',
+            'silver_ounce' => 'float',
         ];
     }
 
@@ -55,6 +57,7 @@ class GoldPrice extends Model
             'geram_sell' => $sell['geram'] ?? null,
             'geram_buy' => $buy['geram'] ?? null,
             'ounce' => $payload['ounce']['gold'] ?? null,
+            'silver_ounce' => $payload['ounce']['silver'] ?? null,
         ];
     }
 }

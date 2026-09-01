@@ -30,7 +30,7 @@ class SnapshotPricesTest extends TestCase
                     'mithqal' => 345_000_000,
                     'geram' => 79_600_000,
                 ],
-                'ounce' => ['gold' => 3_345.67],
+                'ounce' => ['gold' => 3_345.67, 'silver' => 38.42],
             ]);
         });
 
@@ -48,6 +48,7 @@ class SnapshotPricesTest extends TestCase
             'geram_sell' => 80_800_000,
             'geram_buy' => 79_600_000,
             'ounce' => 3_345.67,
+            'silver_ounce' => 38.42,
         ]);
         $this->assertCount(1, GoldPrice::all());
         $this->assertDatabaseCount('price_snapshots', 1);

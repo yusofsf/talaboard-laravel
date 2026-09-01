@@ -95,6 +95,40 @@ class PriceServiceTest extends TestCase
         Http::assertSent(fn ($request) => $request->url() === 'https://www.tgju.org/profile/silver/today');
     }
 
+    public function test_silver_ounce_is_parsed_from_alanchand_before_tgju(): void
+    {
+        Http::fake(fn ($request) => Http::response(<<<'HTML'
+            <table>
+                <tr>
+                    <td>انس نقره</td>
+                    <td><span>۶۵.۰۷۵$</span><span>۲.۳۳%</span></td>
+                </tr>
+            </table>
+            HTML));
+
+        $result = $this->invokeMethod('fetchSilverOunce', [61.25]);
+
+        $this->assertSame(65.075, $result);
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($request) => $request->url() === 'https://alanchand.com/gold-price');
+    }
+
+    public function test_silver_ounce_falls_back_to_yahoo_after_alanchand_and_tgju(): void
+    {
+        Http::fake(function ($request) {
+            if (str_contains($request->url(), 'finance.yahoo.com')) {
+                return Http::response(['chart' => ['result' => [['meta' => ['regularMarketPrice' => 31.42]]]]]);
+            }
+
+            return Http::response('', 503);
+        });
+
+        $result = $this->invokeMethod('fetchSilverOunce', [61.25]);
+
+        $this->assertSame(31.42, $result);
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'finance.yahoo.com/v8/finance/chart/SI=F'));
+    }
+
     public function test_silver_ounce_falls_back_to_database_value_when_tgju_is_unavailable(): void
     {
         Http::fake(fn () => Http::response('', 503));

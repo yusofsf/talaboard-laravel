@@ -76,6 +76,34 @@ class PriceServiceTest extends TestCase
         Http::assertSent(fn ($request) => $request->url() === 'https://alanchand.com/gold-price');
     }
 
+    public function test_silver_ounce_uses_latest_price_from_tgju_today_table(): void
+    {
+        Http::fake(fn () => Http::response(<<<'HTML'
+            <table class="data-table">
+                <thead><tr><th>قیمت</th><th>زمان</th><th>تغییر</th></tr></thead>
+                <tbody>
+                    <tr><td>۶۴.۶۲۶</td><td>۱۳:۰۳:۰۰</td><td>۰.۰۴۷</td></tr>
+                    <tr><td>۶۴.۷۳۶</td><td>۱۳:۰۴:۵۱</td><td>۰.۱۱</td></tr>
+                    <tr><td>۶۴.۶۷۳</td><td>۱۲:۵۹:۵۸</td><td>۰.۰۶۲</td></tr>
+                </tbody>
+            </table>
+            HTML));
+
+        $result = $this->invokeMethod('fetchSilverOunce', [61.25]);
+
+        $this->assertSame(64.736, $result);
+        Http::assertSent(fn ($request) => $request->url() === 'https://www.tgju.org/profile/silver/today');
+    }
+
+    public function test_silver_ounce_falls_back_to_database_value_when_tgju_is_unavailable(): void
+    {
+        Http::fake(fn () => Http::response('', 503));
+
+        $result = $this->invokeMethod('fetchSilverOunce', [61.25]);
+
+        $this->assertSame(61.25, $result);
+    }
+
     public function test_gold_ounce_failure_is_logged_but_not_returned_as_a_user_error(): void
     {
         Http::fake(fn () => Http::response('', 503));
@@ -113,5 +141,12 @@ class PriceServiceTest extends TestCase
         $method = new ReflectionMethod(PriceService::class, $methodName);
 
         return $method->invokeArgs(new PriceService, [&$errors]);
+    }
+
+    private function invokeMethod(string $methodName, array $arguments = []): mixed
+    {
+        $method = new ReflectionMethod(PriceService::class, $methodName);
+
+        return $method->invokeArgs(new PriceService, $arguments);
     }
 }

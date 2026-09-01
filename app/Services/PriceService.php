@@ -14,55 +14,57 @@ class PriceService
     // key داخلی ما → (stockId در طلالند، حالت: direct | gram)
     private const STOCK_MAP = [
         'mithqal' => ['ABSHODE',   'direct'],  // مثقال طلا (آبشده)
-        'geram'   => ['ABSHODE',   'gram'],    // گرم طلا = مثقال ÷ وزن مثقال
-        'bahar'   => ['SEKKE',     'direct'],  // سکه تمام / بهار آزادی
-        'nim'     => ['SEKKE-NIM', 'direct'],  // نیم سکه
-        'rob'     => ['SEKKE-ROB', 'direct'],  // ربع سکه
+        'geram' => ['ABSHODE',   'gram'],    // گرم طلا = مثقال ÷ وزن مثقال
+        'bahar' => ['SEKKE',     'direct'],  // سکه تمام / بهار آزادی
+        'nim' => ['SEKKE-NIM', 'direct'],  // نیم سکه
+        'rob' => ['SEKKE-ROB', 'direct'],  // ربع سکه
     ];
 
-    private int   $cacheTtl;
+    private int $cacheTtl;
+
     private float $mithqalGrams;
+
     private float $factor;
 
     public function __construct()
     {
-        $this->cacheTtl     = (int) env('CACHE_TTL', 30);
+        $this->cacheTtl = (int) env('CACHE_TTL', 30);
         $this->mithqalGrams = (float) env('MITHQAL_GRAMS', 4.3318);
-        $this->factor       = (float) env('GOLD_FACTOR', 0);
+        $this->factor = (float) env('GOLD_FACTOR', 0);
     }
 
     public function all(): array
     {
         $errors = [];
 
-        $goldData   = $this->fetchGold($errors);
+        $goldData = $this->fetchGold($errors);
         $silverData = $this->fetchSilver($errors);
-        $dollar     = $this->fetchDollar($errors);
+        $dollar = $this->fetchDollar($errors);
 
         // طلا: فروش از askPrice، خرید از bidPrice طلالند — هرکدام با فاکتور خودش
-        $gold    = $this->applySpread($goldData['ask'], 1 + $this->factor);
+        $gold = $this->applySpread($goldData['ask'], 1 + $this->factor);
         $goldBuy = $this->applySpread($goldData['bid'], 1 - $this->factor);
 
         // نقره: ستون‌های فروش/خرید مستقیماً از دیتابیس ربات نقره می‌آیند (بدون فاکتور)
-        $silver    = $silverData['sell'];
+        $silver = $silverData['sell'];
         $silverBuy = $silverData['buy'];
 
         $ounce = [
-            'gold'   => $this->fetchGoldOunce($errors),
-            'silver' => $silverData['ounce'] ?? null,
+            'gold' => $this->fetchGoldOunce($errors),
+            'silver' => $this->fetchSilverOunce($silverData['ounce'] ?? null),
         ];
 
         $open = $this->trackOpenPrices(compact('gold', 'silver', 'dollar'));
 
         return [
-            'gold'       => $gold,
-            'gold_buy'   => $goldBuy,
-            'silver'     => $silver,
+            'gold' => $gold,
+            'gold_buy' => $goldBuy,
+            'silver' => $silver,
             'silver_buy' => $silverBuy,
-            'dollar'     => $dollar,
-            'ounce'      => $ounce,
-            'open'       => $open,
-            'errors'     => $errors,
+            'dollar' => $dollar,
+            'ounce' => $ounce,
+            'open' => $open,
+            'errors' => $errors,
             'updated_at' => now()->setTimezone('Asia/Tehran')->format('H:i:s'),
         ];
     }
@@ -87,6 +89,7 @@ class PriceService
         foreach ($mid as $key => $v) {
             $out[$key] = is_numeric($v) ? (is_int($v) ? (int) round($v * $mult) : round($v * $mult, 2)) : $v;
         }
+
         return $out;
     }
 
@@ -101,12 +104,13 @@ class PriceService
 
         return Cache::remember('prices.gold', $this->cacheTtl, function () use (&$errors, $null) {
             try {
-                $base     = rtrim(env('TALALAND_API_BASE', 'https://api.talaland.net/api'), '/');
+                $base = rtrim(env('TALALAND_API_BASE', 'https://api.talaland.net/api'), '/');
                 $username = env('TALALAND_USERNAME', '');
-                $token    = env('TALALAND_TOKEN', '');
+                $token = env('TALALAND_TOKEN', '');
 
-                if (!$username || !$token) {
+                if (! $username || ! $token) {
                     $errors[] = 'طلا: نام‌کاربری/توکن طلالند تنظیم نشده';
+
                     return $null;
                 }
 
@@ -116,14 +120,17 @@ class PriceService
 
                 $js = $res->json();
 
-                if (!$js || ($js['hasError'] ?? false) || !in_array($js['resultCode'] ?? 0, [0, null], true)) {
-                    $errors[] = 'طلا: ' . ($js['message'] ?? 'خطای نامشخص');
+                if (! $js || ($js['hasError'] ?? false) || ! in_array($js['resultCode'] ?? 0, [0, null], true)) {
+                    $errors[] = 'طلا: '.($js['message'] ?? 'خطای نامشخص');
+
                     return $null;
                 }
 
                 $byId = [];
                 foreach (($js['result'] ?? []) as $it) {
-                    if (isset($it['stockId'])) $byId[$it['stockId']] = $it;
+                    if (isset($it['stockId'])) {
+                        $byId[$it['stockId']] = $it;
+                    }
                 }
 
                 $ask = [];
@@ -134,9 +141,11 @@ class PriceService
                     $ask[$key] = $a !== null ? (int) round($mode === 'gram' ? $a / $this->mithqalGrams : $a) : null;
                     $bid[$key] = $b !== null ? (int) round($mode === 'gram' ? $b / $this->mithqalGrams : $b) : null;
                 }
+
                 return ['ask' => $ask, 'bid' => $bid];
             } catch (\Throwable $e) {
                 Log::warning('PriceService gold fetch failed', ['exception' => $e]);
+
                 return $null;
             }
         });
@@ -154,8 +163,9 @@ class PriceService
         return Cache::remember('prices.silver', $this->cacheTtl, function () use (&$errors, $null) {
             try {
                 $row = DB::connection('silver')->table('silver_prices')->orderByDesc('id')->first();
-                if (!$row) {
+                if (! $row) {
                     $errors[] = 'نقره: رکوردی در دیتابیس یافت نشد';
+
                     return $null;
                 }
                 $ounce = isset($row->silver_ounce) ? (float) $row->silver_ounce : null;
@@ -166,20 +176,21 @@ class PriceService
                 return [
                     'sell' => [
                         'mithqal_999' => (int) round($row->mithqal_price),
-                        'gram_999'    => (float) $row->gram_price,
+                        'gram_999' => (float) $row->gram_price,
                         'mithqal_995' => isset($row->mithqal_995_price) ? (int) round($row->mithqal_995_price) : null,
-                        'gram_995'    => isset($row->gram_995) ? (float) $row->gram_995 : null,
+                        'gram_995' => isset($row->gram_995) ? (float) $row->gram_995 : null,
                     ],
                     'buy' => [
                         'mithqal_999' => isset($row->mithqal_price_buy) ? (int) round($row->mithqal_price_buy) : null,
-                        'gram_999'    => isset($row->gram_price_buy) ? (float) $row->gram_price_buy : null,
+                        'gram_999' => isset($row->gram_price_buy) ? (float) $row->gram_price_buy : null,
                         'mithqal_995' => isset($row->mithqal_995_price_buy) ? (int) round($row->mithqal_995_price_buy) : null,
-                        'gram_995'    => isset($row->gram_995_buy) ? (float) $row->gram_995_buy : null,
+                        'gram_995' => isset($row->gram_995_buy) ? (float) $row->gram_995_buy : null,
                     ],
                     'ounce' => $ounce,
                 ];
             } catch (\Throwable $e) {
                 Log::warning('PriceService silver fetch failed', ['exception' => $e]);
+
                 return $null;
             }
         });
@@ -196,7 +207,7 @@ class PriceService
                 $res = Http::timeout(15)->withHeaders(['User-Agent' => self::UA])->get($url);
                 $price = $res->ok() ? $this->findSellInTables($res->body(), 'دلار آمریکا') : null;
             } catch (\Throwable $e) {
-                Log::warning('PriceService dollar (alanchand) fetch failed: ' . $e->getMessage());
+                Log::warning('PriceService dollar (alanchand) fetch failed: '.$e->getMessage());
             }
 
             if ($price === null) {
@@ -209,7 +220,9 @@ class PriceService
                 $price = $tgjuPrice !== null ? $tgjuPrice / 10 : null;
             }
 
-            if ($price === null) $errors[] = 'دلار: قیمت دریافت نشد';
+            if ($price === null) {
+                $errors[] = 'دلار: قیمت دریافت نشد';
+            }
 
             return ['price' => $price !== null ? (int) round($price) : null, 'label' => 'دلار آمریکا'];
         });
@@ -225,7 +238,9 @@ class PriceService
                 $url = env('DOLLAR_GOLD_URL', 'https://alanchand.com/gold-price');
                 $res = Http::timeout(15)->withHeaders(['User-Agent' => self::UA])->get($url);
                 $v = $res->ok() ? $this->findSellInTables($res->body(), 'انس طلا', 1) : null;
-                if ($v !== null) return (float) $v;
+                if ($v !== null) {
+                    return (float) $v;
+                }
 
                 Log::warning(
                     $res->ok()
@@ -233,20 +248,46 @@ class PriceService
                         : "PriceService gold ounce (alanchand) returned HTTP {$res->status()}"
                 );
             } catch (\Throwable $e) {
-                Log::warning('PriceService gold ounce (alanchand) fetch failed: ' . $e->getMessage());
+                Log::warning('PriceService gold ounce (alanchand) fetch failed: '.$e->getMessage());
             }
 
             $v = $this->fetchTgjuProfilePrice(
                 env('TGJU_GOLD_OUNCE_URL', 'https://www.tgju.org/profile/ons'),
                 'gold ounce'
             );
-            if ($v !== null) return $v;
+            if ($v !== null) {
+                return $v;
+            }
 
             $v = $this->fetchGoldOunceYahoo();
-            if ($v !== null) return $v;
+            if ($v !== null) {
+                return $v;
+            }
 
             Log::warning('PriceService gold ounce unavailable after all sources failed');
+
             return null;
+        });
+    }
+
+    /**
+     * انس نقره از جدول «شاخص در روز جاری» TGJU؛ مقدار دیتابیس فقط fallback است.
+     */
+    private function fetchSilverOunce(?float $fallback = null): ?float
+    {
+        return Cache::remember('prices.ounce_silver', $this->cacheTtl, function () use ($fallback) {
+            $price = $this->fetchTgjuTodayLatestPrice(
+                env('TGJU_SILVER_URL', 'https://www.tgju.org/profile/silver/today'),
+                'silver ounce'
+            );
+
+            if ($price !== null) {
+                return $price;
+            }
+
+            Log::warning('PriceService silver ounce (TGJU today) unavailable; using database fallback');
+
+            return $fallback;
         });
     }
 
@@ -254,20 +295,87 @@ class PriceService
     {
         try {
             $res = Http::timeout(10)->withHeaders(['User-Agent' => self::UA])->get($url);
-            if (!$res->ok()) return null;
+            if (! $res->ok()) {
+                return null;
+            }
 
             $prev = libxml_use_internal_errors(true);
-            $dom = new \DOMDocument();
-            $dom->loadHTML('<?xml encoding="UTF-8">' . $res->body());
+            $dom = new \DOMDocument;
+            $dom->loadHTML('<?xml encoding="UTF-8">'.$res->body());
             libxml_clear_errors();
             libxml_use_internal_errors($prev);
 
             $nodes = (new \DOMXPath($dom))->query('//*[@data-col="info.last_trade.PDrCotVal"]');
-            if ($nodes === false || $nodes->length === 0) return null;
+            if ($nodes === false || $nodes->length === 0) {
+                return null;
+            }
 
             return $this->parseNumber($nodes->item(0)->textContent);
         } catch (\Throwable $e) {
-            Log::warning("PriceService {$market} (TGJU) fetch failed: " . $e->getMessage());
+            Log::warning("PriceService {$market} (TGJU) fetch failed: ".$e->getMessage());
+
+            return null;
+        }
+    }
+
+    /** آخرین ردیف زمانی جدول روز جاری TGJU را استخراج می‌کند. */
+    private function fetchTgjuTodayLatestPrice(string $url, string $market): ?float
+    {
+        try {
+            $res = Http::timeout(10)->withHeaders([
+                'User-Agent' => self::UA,
+                'Accept' => 'text/html,application/xhtml+xml',
+            ])->get($url);
+            if (! $res->ok()) {
+                return null;
+            }
+
+            $prev = libxml_use_internal_errors(true);
+            $dom = new \DOMDocument;
+            $dom->loadHTML('<?xml encoding="UTF-8">'.$res->body());
+            libxml_clear_errors();
+            libxml_use_internal_errors($prev);
+
+            $latestPrice = null;
+            $latestSeconds = -1;
+
+            foreach ($dom->getElementsByTagName('table') as $table) {
+                $tableText = preg_replace('/\s+/u', ' ', $table->textContent);
+                if (! str_contains($tableText, 'قیمت') || ! str_contains($tableText, 'زمان')) {
+                    continue;
+                }
+
+                foreach ($table->getElementsByTagName('tr') as $tr) {
+                    $cells = [];
+                    foreach ($tr->getElementsByTagName('td') as $td) {
+                        $cells[] = trim($td->textContent);
+                    }
+                    if (count($cells) < 2) {
+                        continue;
+                    }
+
+                    $time = $this->latinDigits($cells[1]);
+                    if (preg_match('/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/', $time, $parts) !== 1) {
+                        continue;
+                    }
+
+                    $price = $this->parseNumber($cells[0]);
+                    if ($price === null) {
+                        continue;
+                    }
+
+                    $seconds = ((int) $parts[1] * 3600) + ((int) $parts[2] * 60) + (int) ($parts[3] ?? 0);
+                    if ($seconds > $latestSeconds) {
+                        $latestSeconds = $seconds;
+                        $latestPrice = $price;
+                    }
+                }
+            }
+
+            return $latestPrice;
+        } catch (\Throwable $e) {
+            Log::warning("PriceService {$market} (TGJU today) fetch failed: ".$e->getMessage());
+
             return null;
         }
     }
@@ -281,9 +389,11 @@ class PriceService
                 ->get("https://query1.finance.yahoo.com/v8/finance/chart/{$symbol}");
 
             $price = $res->json('chart.result.0.meta.regularMarketPrice');
+
             return $price !== null ? (float) $price : null;
         } catch (\Throwable $e) {
-            Log::warning('PriceService gold ounce (Yahoo) fetch failed: ' . $e->getMessage());
+            Log::warning('PriceService gold ounce (Yahoo) fetch failed: '.$e->getMessage());
+
             return null;
         }
     }
@@ -292,8 +402,8 @@ class PriceService
     private function findSellInTables(string $html, string $keyword, int $priceColumn = 2): ?float
     {
         $prev = libxml_use_internal_errors(true);
-        $dom  = new \DOMDocument();
-        $dom->loadHTML('<?xml encoding="UTF-8">' . $html);
+        $dom = new \DOMDocument;
+        $dom->loadHTML('<?xml encoding="UTF-8">'.$html);
         libxml_use_internal_errors($prev);
 
         foreach ($dom->getElementsByTagName('tr') as $tr) {
@@ -305,20 +415,26 @@ class PriceService
                 return $this->parseNumber($cells[$priceColumn]);
             }
         }
+
         return null;
     }
 
     private function parseNumber(string $s): ?float
     {
-        $s = strtr($s, [
-            '۰'=>'0','۱'=>'1','۲'=>'2','۳'=>'3','۴'=>'4','۵'=>'5','۶'=>'6','۷'=>'7','۸'=>'8','۹'=>'9',
-            '٠'=>'0','١'=>'1','٢'=>'2','٣'=>'3','٤'=>'4','٥'=>'5','٦'=>'6','٧'=>'7','٨'=>'8','٩'=>'9',
-        ]);
+        $s = $this->latinDigits($s);
         $s = str_replace([',', '٬'], '', $s);
 
         return preg_match('/\d+(?:\.\d+)?/', $s, $matches) === 1
             ? (float) $matches[0]
             : null;
+    }
+
+    private function latinDigits(string $value): string
+    {
+        return strtr($value, [
+            '۰' => '0', '۱' => '1', '۲' => '2', '۳' => '3', '۴' => '4', '۵' => '5', '۶' => '6', '۷' => '7', '۸' => '8', '۹' => '9',
+            '٠' => '0', '١' => '1', '٢' => '2', '٣' => '3', '٤' => '4', '٥' => '5', '٦' => '6', '٧' => '7', '٨' => '8', '٩' => '9',
+        ]);
     }
 
     /**
@@ -327,15 +443,17 @@ class PriceService
      */
     private function trackOpenPrices(array $sections): array
     {
-        $todayKey = 'prices.open.' . now()->setTimezone('Asia/Tehran')->format('Y-m-d');
-        $open     = Cache::get($todayKey, []);
-        $changed  = false;
+        $todayKey = 'prices.open.'.now()->setTimezone('Asia/Tehran')->format('Y-m-d');
+        $open = Cache::get($todayKey, []);
+        $changed = false;
 
         foreach ($sections as $section => $vals) {
-            if (!is_array($vals)) continue;
+            if (! is_array($vals)) {
+                continue;
+            }
             foreach ($vals as $k => $v) {
                 $flatKey = "{$section}.{$k}";
-                if ($v !== null && !array_key_exists($flatKey, $open)) {
+                if ($v !== null && ! array_key_exists($flatKey, $open)) {
                     $open[$flatKey] = $v;
                     $changed = true;
                 }

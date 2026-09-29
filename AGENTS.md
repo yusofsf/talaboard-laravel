@@ -1,0 +1,243 @@
+# AGENTS.md
+
+This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
+
+## What this is
+
+A live gold/silver price board + trading platform for a jewelry/bullion shop (آبشده صفرپور), serving `metalsp.ir`. Laravel 13 (PHP 8.3) + Inertia.js + React 19, SQLite. This is a Laravel/React rewrite of an earlier Flask app (`talaboard-python`); the import command for migrating that app's data still exists (see below).
+
+The whole UI is Persian/RTL (`dir="rtl"`, `APP_LOCALE=fa`). There is no English-language UI variant — don't add one.
+
+## Commands
+
+```bash
+# Setup
+composer install && npm install
+cp .env.example .env && php artisan key:generate
+touch database/database.sqlite && php artisan migrate
+php artisan storage:link   # required for membership docs/videos and delivery-request uploads to be servable
+
+# Dev (server + queue + log tailer + vite, concurrently)
+composer dev
+
+# Build frontend only
+npm run build        # production
+npm run dev          # hot-reload
+
+# Tests
+composer test                       # = php artisan config:clear + php artisan test
+php artisan test --filter=TradeControllerTest
+php artisan test --filter=test_buy_gold_succeeds_and_debits_wallet
+
+# Code style (Laravel Pint)
+vendor/bin/pint
+```
+
+There is no JS linter/formatter configured (no ESLint/Prettier config present) — match existing style by hand.
+
+### One-time data import from the old Flask app
+
+```bash
+php artisan import:flask-shop /path/to/shop.db   # or set FLASK_SHOP_DB_PATH in .env
+```
+
+Idempotent (upserts on `id`, preserves cross-table relations). **Imported users cannot log in with their old password** — Werkzeug hashed them with `scrypt`, which PHP has no compatible primitive for. Imported rows get `must_reset_password=true`; `AuthController::login()` detects this and force-redirects to the OTP password-reset flow instead of checking the password. Do not try to "fix" this by attempting scrypt verification in PHP — it was deliberately punted.
+
+## Architecture
+
+### Money/metal model — the load-bearing concept
+
+Every user has **three balances**, each its own append-only ledger (never update/delete rows, only insert signed deltas and sum them):
+
+| Balance | Table | Sum method |
+|---|---|---|
+| Cash (toman) | `wallet_transactions` | `User::walletBalance()` |
+| Gold (grams) | `gold_ledger` | `User::goldBalance()` |
+| Silver (grams, per purity 999/995) | `silver_ledger` | `User::silverBalance($purity)` |
+
+Every feature that moves money or metal — shop trades, the P2P trade room, physical delivery requests, wallet settlement requests, admin manual adjustments — works by inserting rows into these three tables inside a `DB::transaction()`, never by mutating a stored balance column. When adding a new money/metal-moving feature, follow this pattern instead of inventing a new one.
+
+**Escrow convention**: anything that reserves funds before a counterparty acts (trade-room offers, delivery requests, withdrawal requests) debits the ledger/wallet *immediately on creation*, then either completes the flow or refunds the exact amount back via a new ledger row tagged `*_refund` if rejected/cancelled. Never go back and edit the original entry.
+
+### Gold/silver items are gram-based, with mesghal (مثقال) as an alternate unit on top
+
+`TradeController::ITEMS` defines the tradeable catalogue: `mithqal`, `geram` (gold, gram-equivalent of `ABSHODE` stock), `bahar`/`nim`/`rob` (coins, piece-counted, no gram conversion), and `mithqal_999`/`gram_999`/`mithqal_995`/`gram_995` (silver). Mesghal quantities are converted to grams via `MITHQAL_GRAMS` (env, default 4.3318) before touching `gold_ledger`/`silver_ledger` — see `TradeController::goldGrams()` / `silverGrams()`. Coins are **not** tracked in a gram ledger; their "do you own enough to sell" check sums `transactions` directly (`coinHolding()`).
+
+If you add another mesghal/gram pair for either metal, route it through the same conversion helpers rather than adding ad-hoc math.
+
+### Price pipeline (`app/Services/PriceService.php`)
+
+`PriceService::all()` is the single source of truth for current prices (no model caching beyond per-source `Cache::remember($key, CACHE_TTL)` inside each fetch method). It returns:
+
+```
+['gold' => [...], 'gold_buy' => [...], 'silver' => [...], 'silver_buy' => [...],
+ 'dollar' => [...], 'ounce' => ['gold' => ..., 'silver' => ...],
+ 'open' => [...], 'errors' => [...], 'updated_at' => ...]
+```
+
+- **Gold**: fetched from Talaland's `getAllPrices` API (`TALALAND_API_BASE`/`USERNAME`/`TOKEN`). `askPrice` is the sell-side mid, `bidPrice` the buy-side mid — these are genuinely different API fields, not the same number with a sign flip. `sell = ask * (1 + GOLD_FACTOR)`, `buy = bid * (1 - GOLD_FACTOR)`. Don't synthesize buy from sell or vice versa.
+- **Silver**: read live from a separate SQLite database (`SILVER_DB_PATH`, connection name `silver` in `config/database.php`) that belongs to a *different* project (`sachmebot_laravel`, a Telegram price bot) — not generated by this app. Sell/buy come from that DB's own `_buy` columns directly, no factor applied.
+- **Gold ounce (USD)**: alanchand.com scrape tried first, Yahoo Finance (`GC=F`) as fallback — deliberately in that order, because Yahoo is frequently unreachable from Iran and trying it first just burns the request timeout for nothing.
+- **`open` prices**: the first non-null price seen each Jalali day, cached until end-of-day, used to compute the up/down % shown on the home page. This is a daily baseline snapshot, not a true previous-close.
+
+**The home page / `/api/prices` no longer call `PriceService::all()` live.** The `prices:snapshot` artisan command (`SnapshotPrices`) runs `PriceService::all()` and writes the whole payload as a JSON row into `price_snapshots`; it's scheduled `everyTenSeconds()` in `routes/console.php` (keeps only the last ~20 rows). `HomeController::latestPrices()` reads `PriceSnapshot::latestPayload()` and only falls back to a live `all()` if no snapshot row exists yet. This decouples the external API/scrape latency from page loads. **Requires the scheduler to actually run** — `php artisan schedule:work` in dev (already part of `composer dev`'s queue/log concurrency story is not — add it), or a minute-level `schedule:run` cron in production. Set `CACHE_TTL` ≤ 10 if you want each 10s snapshot to genuinely re-hit the upstream sources rather than reuse the per-source cache. `TradeController` still calls `PriceService::all()` directly so actual trades always price against the freshest data, not a snapshot.
+
+**Gold source outage fallback**: when the Talaland gold fetch fails (fully or partially), `SnapshotPrices` backfills every null `gold`/`gold_buy` key in the *served* snapshot payload with the newest non-null value of the matching `gold_prices` column (`GoldPrice::lastKnownSellBuy()`), so the price board and the channel-facing `/api/v1/prices` keep returning the last known prices instead of nulls. The normalized `gold_prices` history deliberately keeps observed-only values (no carry-forward), live trade pricing (`TradeController::store()`) does NOT use this fallback, and the other sections (silver/dollar/ounce) rely on their own per-source fallbacks.
+
+### Dates are Jalali (Shamsi) everywhere, with two independent implementations
+
+- **PHP**: `App\Helpers\Jalali` (no package dependency — hand-rolled conversion). `Jalali::format($carbonOrString, $withTime = true)` and `Jalali::now()`.
+- **JS**: `resources/js/jalali.js`. Conversion uses `jalCal()` (Nowruz-date algorithm) for the Jalali side, but deliberately uses **native `Date.UTC` epoch-day arithmetic** for the Gregorian side rather than the classical `g2d`/`d2j` Julian-day formulas — those were found to silently misdate Jan/Feb-adjacent dates and pre-1980s years during development. If you touch this file, re-verify against known fixed points (Nowruz dates, 22 Bahman 1357 = 1979-02-11) before trusting it; round-trip-testing only against recent dates will not catch the bug class that bit this once already.
+
+Both Jalali implementations independently convert/display dates; there is no shared date format passed between PHP and JS — the PHP side renders Jalali strings server-side for display, the JS side (`JalaliDatePicker.jsx`) is only used for date *input* (birth date), converting back to a Gregorian `YYYY-MM-DD` string before it ever reaches the backend.
+
+### Inertia shared state (`HandleInertiaRequests`)
+
+`auth.user` is shared on every request and carries `is_vip`, `is_admin`, `membership_level`, `wallet_balance`, `unread_count` precomputed — pages read these from `usePage().props` rather than fetching separately. `is_admin` is `$user->is_admin OR phone === ADMIN_PHONE` (env-based admin bootstrapping — first login from that phone auto-promotes, see `AuthController::login()`).
+
+`is_vip` (boolean) and `membership_level` (1 = regular, 2 = VIP) are kept in sync everywhere they're set (`AdminController::setLevel()`, membership approval, invite-code redemption) — both checked together in most VIP gates (`User::isVipMember()`), so don't update one without the other.
+
+### VIP membership: two independent paths to the same result
+
+1. **Invite code** (`InviteCode` model) — instant, no review. Mostly legacy.
+2. **Identity verification** (`MembershipController::apply()`) — national ID photo + business-license photo + a short self-recorded declaration video + birth date + address, reviewed by an admin (`AdminController::membershipApprove/Reject`). Client-side size caps (200KB images, 5MB video) are enforced in `Membership.jsx` *before* upload starts, in addition to server-side `max:` validation — don't remove the client-side check on the theory that server validation is enough, the point is avoiding a slow upload that fails at the end.
+
+Video is recorded in-browser via `VideoRecorder.jsx` (`getUserMedia` + `MediaRecorder`, capped at 640×480/600kbps to keep file size down), not picked from disk — there's no plain `<input type=file>` fallback for video.
+
+### Admin-editable settings (key-value `Setting`)
+
+Runtime-editable config lives in the `settings` table via `Setting::get($key, $default)` / `Setting::put($key, $value)` (cached with `Cache::rememberForever`, busted on write). This is distinct from env/config values (`GOLD_FACTOR`, `MITHQAL_GRAMS`, …) which are deploy-time only — use `Setting` when an admin must change something from the UI without a redeploy. Currently the only key is `trade_room_commission_percent` (default `0.1`), editable from the new "⚙️ تنظیمات" tab in `Admin/Dashboard.jsx` (`AdminController::updateSettings`). When adding another admin-tunable value, add a key here rather than a new column/env.
+
+### Trade-room commission
+
+On a completed trade-room deal (`TradeRoomController::accept`), a commission of `Setting::get('trade_room_commission_percent')`% of the deal total is split **half between buyer and seller** (buyer pays `total + buyerFee`, seller receives `total − sellerFee`). The fee **leaves the user-wallet system** (platform share — not credited to any user wallet, so the sum of user wallets drops by the fee), is snapshotted onto the offer's `commission` column, shown in both parties' notifications, and admins are notified of every completed deal. If you change who-pays, keep the ledger balanced (every debit needs a destination; here the destination is "out of the system").
+
+### Trade room entry unit: gram vs mithqal
+
+The trade room stores everything in **grams** (`grams`, `price_per_gram`), but the offer form has a گرم/مثقال unit toggle. When mithqal is selected, the form's quantity & price inputs are interpreted as mithqal and converted to grams + per-gram price via `MITHQAL_GRAMS` (passed to the page as `mithqalGrams`) **at submit time only** (`form.transform`) — the order book and storage stay gram-canonical. The price-board cards (`Home.jsx`) deep-link VIPs into `/trade-room?metal=…&purity=…&unit=…`; `TradeRoom.jsx` reads those params on mount to preselect the item + unit. Min order is still 100 grams (the mithqal `min` is rounded up so it can't fall under the gram floor).
+
+### Trade room (`TradeRoomController`) vs. shop trades (`TradeController`)
+
+Two unrelated trading mechanisms:
+- **Shop trades** (`/trade/{item}`): user buys from / sells to the shop itself, at `PriceService` prices. Requires VIP for nothing — open to all logged-in users. Minimum order size is **10 grams** for weight items (`geram`, `mithqal`, and all four silver items — converted via `goldGrams()`/`silverGrams()` before comparing), enforced in `TradeController::store()`. Coins (`bahar`/`nim`/`rob`) are exempt — they're priced per piece, not per gram, so a gram minimum doesn't translate.
+- **Trade room** (`/trade-room`): VIP-only P2P order board. One VIP posts a buy/sell offer (escrowing wallet or metal on creation per the convention above), another VIP accepts it, ledgers settle directly between the two users — the shop is not a counterparty. `TradeRoomOffer.metal` distinguishes gold (no purity) from silver (purity 999/995); gold offers store `purity = ''` rather than `null` to dodge a `doctrine/dbal` dependency that would otherwise be needed to alter the column nullable. **`metal` must stay in `TradeRoomOffer::$fillable`** — it was missing once, and because the column defaults to `'silver'`, every gold offer was silently saved as silver (so accept-side settlement hit the wrong ledger). Regression-prone; don't drop it. Minimum order size here is **100 grams** (`TradeRoomController::store()` validation) — a separate, higher minimum than shop trades, since trade-room offers are between individual users rather than against the shop's own liquidity.
+
+Admin sees both at once: `AdminController::allTradesHistory()` merges shop `Transaction` rows and completed `TradeRoomOffer` rows into a single admin-only list (`all_trades` tab in `Admin/Dashboard.jsx`), sorted by whichever date is most relevant per row (`completed_at` for trade-room, `created_at` for shop) — this is a read-only reporting view assembled in the controller, not a new table.
+
+### Trade room open offers are split into two sorted order-book sections
+
+`TradeRoomController::index()` no longer returns a single merged `offers` list — it returns `sellOffers` (cheapest `price_per_gram` first) and `buyOffers` (priciest first), each its own query/sort, rendered side-by-side in `TradeRoom.jsx` via the `OfferSection` helper component. This mirrors a standard order-book: the best price for whichever side a viewer wants to take is always at the top of its column.
+
+On top of that, `TradeRoom.jsx` has a client-side item selector (`ITEMS`: gold / silver-999 / silver-995) that filters `sellOffers`/`buyOffers` down to just that item's pair of order-book columns — gold, silver-999, and silver-995 are never shown mixed together. Picking an item also pre-fills the new-offer form's `metal`/`purity`, so selecting what to view doubles as selecting what to trade. The filtering is purely client-side (the controller still sends all open offers); add new items to the `ITEMS` array, not as a new prop, if more metals/purities are ever added.
+
+### Client-side pagination, search, and date-range filtering — the shared pattern for any list that can exceed 10 rows
+
+Lists are passed to the page fully loaded (often capped server-side, e.g. `limit(200)`/`limit(400)`) and then paginated/filtered/searched entirely in React — there is no server-side pagination anywhere in this app. Three small components in `resources/js/Components/` implement this uniformly:
+
+- **`Pager.jsx`** — `usePager(items, resetKey)` slices to 10 items per page; pass a `resetKey` (e.g. the active search string or filter values, often concatenated) so the page resets to 1 whenever a filter changes. `<Pager page totalPages onChange>` renders the prev/next control and renders nothing if there's only one page.
+- **`DateRangeFilter.jsx`** — two `JalaliDatePicker`s (از تاریخ / تا تاریخ) plus `filterByDateRange(items, from, to, dateField = 'date_raw')`, replacing the older single-date filter pattern everywhere it appeared.
+- **`SearchBox.jsx`** — a single text input plus `filterBySearch(items, query, fields)`, a case-insensitive substring match across whichever field names you pass (e.g. `['name', 'phone', 'email']`).
+
+These three compose freely: filter by search → filter by date range → feed the result into `usePager`. Every list-bearing tab in `Admin/Dashboard.jsx` (users, txns, all_trades, wallet, notifs, membership, vip, delivery, withdrawals, logs) follows this same compose-then-paginate order, as do `History.jsx`, `Inventory.jsx`, `TradeRoom.jsx` (mine tab), `Admin/UserTrades.jsx`, and `Notifications.jsx`.
+
+**Print/PDF export always uses the full filtered list, never just the current page.** Pages that combine pagination with the print mechanism (above) render the table twice: once normally (paginated, no special class) for on-screen use, and once more wrapped in `print-area print-only-block` containing the *entire* filtered (unpaginated) list. The `print-only-block` CSS class (in `app.css`, alongside `print-only`) is `display: none` normally and `display: block` only inside `@media print` — so the duplicate full table is invisible until the user actually prints, at which point `.print-area`'s existing visibility rules take over and pagination is bypassed entirely for the printed output. If you add pagination to a page that already has print/PDF export, follow this two-table pattern rather than only printing whatever page happens to be showing.
+
+Admin Dashboard tabs with a real date axis (`txns`, `wallet`, `all_trades`, `delivery`, `withdrawals`, `logs`) all have this from/to date-range + print/PDF export wired in — each got a `date_raw` field added to its controller mapping (`AdminController::dashboard()`) specifically so `filterByDateRange`'s default `dateField` works without extra plumbing. Row-rendering for these tabs (`TxnRow`, `WTxnRow`, `DeliveryRow`, `WithdrawalRow`, `AllTradeRow`, `LogRow`) is factored into standalone components accepting a `printOnly` boolean that hides the actions column, so the same row JSX can be reused for both the paginated on-screen table and the full print-only-block table without duplicating markup. Tabs without a meaningful per-row date (`users`, `membership`, `vip`, `notifs`) only get search + pagination, not date-range/print.
+
+### Print/PDF export pattern (no server-side PDF library)
+
+History.jsx, TradeRoom.jsx (`mine` tab), and Admin/Dashboard.jsx (`all_trades` tab) each have a Jalali date filter + a "چاپ / خروجی PDF" button that just calls `window.print()` — there is no `barryvdh/laravel-dompdf` or similar dependency, and there shouldn't be one added for this. The PDF comes from the browser's native "Save as PDF" print destination. The mechanism is pure CSS in `app.css`: `.print-area`/`.print-area *` get `visibility: visible` while everything else is hidden, `.no-print` force-hides UI chrome (tabs, filter controls, buttons) during print, and `.print-only` (hidden normally) shows a printed-only heading. Each row-array carries a `date_raw` field (`Y-m-d`, Gregorian) from the controller specifically for this client-side day filter — `created_at` is already Jalali-formatted for display and isn't comparable. If you add another printable table, follow this same three-class pattern rather than reaching for a PDF package.
+
+`JalaliDatePicker` defaults its year range to birth-date use (1–100 years ago, excludes current year) — pass `yearsBack`/`allowCurrentYear` props to use it for filters on recent activity instead, as these three pages do.
+
+### Client-side pagination and date-range filtering (`Components/Pager.jsx`, `Components/DateRangeFilter.jsx`)
+
+`usePager(items, resetKey?)` from `Pager.jsx` is the standard way to paginate a list that's already been sent in full via Inertia (10/page, fixed — see `PAGE_SIZE`). Pass a `resetKey` (e.g. a filter value) so the page resets to 1 when filters change; render `<Pager page totalPages onChange={setPage} />` below the table. `DateRangeFilter.jsx` exports the `<DateRangeFilter from to onFromChange onToChange />` component (two `JalaliDatePicker`s, "از تاریخ"/"تا تاریخ") plus `filterByDateRange(items, from, to, dateField='date_raw')`, replacing the older single-date filters.
+
+For any page that both paginates *and* prints (e.g. `History.jsx`), render **two** tables: a normal `.table-wrap` showing only `pager.pageItems` (what the user sees and pages through on screen), and a second `.table-wrap.print-area.print-only-block` containing the *full* filtered (unpaginated) list — wrapped in the `.print-only-block` CSS class (`app.css`) which is `display: none` normally and `display: block` only inside `@media print`. This is the pattern to copy for any future paginated+printable list: pagination must never truncate what gets printed.
+
+### Admin-sent notifications can be edited, deleted, and tracked for read status
+
+`AdminController::notify/updateNotification/deleteNotification` cover the full lifecycle of an admin-broadcast `Notification`. The `notifs` tab in `Admin/Dashboard.jsx` shows each notification's read progress (`read_count`/`target_count`, computed via `Notification::withCount('reads')` against `NotificationRead`) — `target_count` is `1` for a single-recipient notification or the total user count for a broadcast (`user_id = null`). Editing reuses the same validation as sending; it does not reset anyone's read status. This admin-side read tracking is independent of the *row itself* ever being deleted (see below) — the `Notification` row persists for as long as any recipient might still need to see it; admins always see it regardless of per-user read state.
+
+### A user's notification list only shows *unread* notifications
+
+`NotificationController::index()` excludes any notification the current user has already created a `NotificationRead` row for (`whereNotIn('id', $readIds)`) — clicking the ✓ button effectively removes it from that user's own list rather than just toggling a "read" visual state. This is per-user: a broadcast notification (`user_id = null`) read by one recipient still shows for every other recipient who hasn't read it yet, and the `Notification` row itself is never deleted by this flow (admins still see and can manage it in the `notifs` tab regardless of who's read it).
+
+### Online users (admin-only)
+
+`UpdateLastSeen` middleware (registered globally in the `web` group in `bootstrap/app.php`) stamps `users.last_seen_at` on every authenticated request, throttled to once per 60 seconds per user (`saveQuietly()`, no model events) to keep the write cheap. `AdminController::onlineUsers()` lists users with `last_seen_at` in the last 5 minutes, rendered at `/admin/online-users` (`Admin/OnlineUsers.jsx`), which polls itself every 15s via `router.reload({ only: ['users'] })`. Gated by the same `admin` middleware as the rest of `/admin/*` — the "🟢 کاربران آنلاین" menu link in `AppLayout.jsx` only renders when `user.is_admin`, same as the "🛠️ مدیریت" link.
+
+### Admin actions notify every *other* admin, not just the affected user
+
+`AdminController::notifyOtherAdmins()` is called at the end of every admin action (level changes, wallet credits, inventory adjustments, membership approve/reject, delivery status updates, user/transaction edits and deletes, withdrawal approve/reject, manual notifications) to create a `Notification` row for each admin except the one who performed the action, naming the acting admin in the body. This is so admins can see what other admins are doing without a separate audit log table. When adding a new admin action, call this helper rather than only notifying the affected user — that's the established convention now, not a one-off.
+
+### Admin can reject/reverse a completed trade with a reason
+
+Both shop trades and trade-room deals can be reversed by an admin from the `all_trades` tab in `Admin/Dashboard.jsx` (`AdminController::transactionReject` / `tradeRoomReject`). Rejection is a full financial unwind via compensating ledger/wallet entries (type `trade_reject`), never a delete — same append-only convention as the escrow refunds. Shop transactions gain a `status` column (`active`/`rejected`) + `admin_note`; a rejected shop transaction is excluded from accounting summaries (`HistoryController::buildSummary`), admin stats, and — critically — coin holdings (`TradeController::coinHolding` filters `status = active`, since coin ownership is derived from transaction rows, not a ledger). Trade-room reversals reverse *both* parties' wallet and metal ledgers and set the offer back to `cancelled` with an `admin_note` (reusing the existing enum value to avoid a SQLite enum-check migration). The plain admin "delete transaction" action still exists but does **not** reverse balances — prefer reject.
+
+### Activity log (سیستم لاگ)
+
+`ActivityLog::record($action, $category, $description, $userId)` writes one row to `activity_logs` (categories: `auth`/`trade`/`wallet`/`admin`/`membership`/`other`) **and** appends the same event to a dedicated daily file log on the server (`storage/logs/activity-YYYY-MM-DD.log`, via the `activity` channel in `config/logging.php`, retained `ACTIVITY_LOG_DAYS` days, default 90) — so the log survives even if the DB row insert fails and is readable from cPanel File Manager without DB access. Both writes swallow their own exceptions so logging can never break the main flow. Wired into auth events (login success/fail, register, logout, password reset), shop + trade-room trades, withdrawal requests, and membership applications. **Every admin action is logged automatically** because `AdminController::notifyOtherAdmins()` (already called by every admin method) also calls `ActivityLog::record(...)` — so to log a new admin action you don't add anything, just keep calling that helper. Viewed by admins in the `logs` tab of `Admin/Dashboard.jsx` with category/date filters + print-to-PDF.
+
+**On top of the curated `ActivityLog` events, every state-changing request is logged wholesale by `LogRequest` middleware** (registered in the `web` group in `bootstrap/app.php`, after `UpdateLastSeen`). Its `terminate()` hook writes one line per `POST`/`PUT`/`PATCH`/`DELETE` request to the `access` daily channel (`storage/logs/access-YYYY-MM-DD.log`, `config/logging.php`, retained `ACCESS_LOG_DAYS` days, default 90) — method+path, route name, response status, user id/phone, `is_admin`, IP, and the *names* of submitted fields (values are never logged; `password`/`otp`/`code`/`token`/`_token` keys are stripped). GETs are deliberately skipped (page views and the `/api/prices` poll would flood it). This is the catch-all guarantee that no user/admin action goes unlogged on the server even if a controller forgets to call `ActivityLog::record()`; the two coexist (curated DB rows + admin UI via `ActivityLog`, exhaustive server-file trail via `LogRequest`). It's file-only — it does **not** write the `activity_logs` DB table or appear in the admin `logs` tab.
+
+### SMS can be killed entirely via one config flag, independent of the API key
+
+`SmsService::enabled()` checks `config('sms.enabled', true)` (env `SMS_ENABLED`, default `true`) **in addition to** the Kavenegar API key being non-empty — so setting `SMS_ENABLED=false` silences every outgoing SMS (OTP login/reset, welcome, trade confirms, delivery/withdrawal notices, admin manual sends) without touching `KAVENEGAR_API_KEY`, letting it be flipped back on instantly with no credential re-entry. This is a separate concern from `TWO_FA_ENABLED` — disabling SMS doesn't change the 2FA login branch in `AuthController::login()`; it just makes any `sendOtpLogin` call inside that branch silently fail, same as if Kavenegar itself were down (the existing `smsOk` fallback to `MASTER_OTP` on the verify-otp page already handles that case).
+
+### Support tickets
+
+`Ticket` (one per conversation, `status`: `open`/`answered`/`closed`) + `TicketMessage` (one row per message, `is_admin` flag, optional `user_id` of the sender) implement a simple back-and-forth thread. User-facing routes (`TicketController` — `/tickets`, `/tickets/{id}`, reply) are scoped to `where('user_id', $request->user()->id)` everywhere, so one user can never see or reply to another's ticket (404, not 403, to avoid leaking existence). Admin-facing routes (`AdminController::ticketShow/ticketReply/ticketClose`) are unscoped and live under the existing `/admin` + `admin` middleware group.
+
+**Admin name visibility follows the same rule as everywhere else in this app**: `ticketReply()` sends the user a notification with just the reply text (no admin name), but calls `notifyOtherAdmins()` (which *does* name the acting admin) so other admins know who answered — same convention as delivery/withdrawal notifications. The admin-side thread (`Admin/TicketShow.jsx`) shows `admin_name` per message; the user-side thread (`Tickets/Show.jsx`) never receives that field from the controller at all (not just hidden client-side).
+
+A user replying to their own ticket flips `status` back to `open` (even if it was `answered`) and re-notifies all admins — closing the loop without needing a separate "needs attention" flag. `closed` and `resolved` are both dead ends for replying (rejected with a flash error, checked in `reply()` on both `TicketController` and `AdminController::ticketReply`) until the user opens a new ticket; there's no reopen action.
+
+`resolved` (`TicketController::resolve()`) is the user's own "problem solved" declaration — distinct from `closed` (admin-only, via `ticketClose()`) so the UI/notification copy can say "you marked this solved" instead of "an admin closed this." It still posts a `مشکل حل شد.` system-style message into the thread and notifies all admins (same as ticket creation/reply), and blocks further replies from *both* sides identically to `closed`.
+
+### Admin per-user trade detail
+
+`AdminController::userTrades($uid)` → `Admin/UserTrades.jsx` shows one user's shop transactions plus the trade-room deals they were on either side of (offerer or counterparty), with the user's role and a normalized buy/sell `side` from *that user's* perspective, date filter, totals, and print-to-PDF. Linked from the "ریز معاملات" button in the users table. Separate from the combined `all_trades` tab (which spans all users).
+
+### Calculator
+
+`/calculator` (public route, `Calculator.jsx`) is a self-contained standard arithmetic calculator (keypad + keyboard support), no backend. Linked in the nav menu for everyone. Persian digits in the display, Latin internally.
+
+### Auth endpoints are rate-limited
+
+`login`, `verify-otp`, `forgot-password`, `reset-password`, and `register` carry `throttle:` middleware (see `routes/web.php`) — the 6-digit OTP/reset codes would otherwise be brute-forceable. Keep these limits when touching auth routes.
+
+### Physical delivery & cash-out requests live on the Inventory/Wallet pages, not standalone pages
+
+`SilverDeliveryController` (handles gold *and* silver despite the class name — kept for historical reasons) and the withdrawal-request flow in `WalletController` are both embedded directly into `Inventory.jsx` and `Wallet.jsx` respectively as inline forms + history tables, not separate routed pages. If you're tempted to give them their own page, that was explicitly undone once already per a prior request ("تو موجودی انبار باشه" — keep it in inventory).
+
+### Withdrawals go through saved bank cards, not free-text fields
+
+`BankCard` (`profile/bank-cards` CRUD in `ProfileController`) lets a user save card number/account number/shaba once; `WalletController::requestWithdrawal()` takes a `bank_card_id` instead of typing card details every time, validates the card belongs to the requesting user, then **copies** `card_number`/`shaba` onto the `WithdrawalRequest` row at creation time (not a foreign key) — so the historical request keeps the values used even if the card is later deleted, and the existing admin-side withdrawal review UI (`WithdrawalRow` in `Admin/Dashboard.jsx`) needed no changes. If a user has no saved card, `Wallet.jsx` shows a prompt linking to `/profile` instead of the withdrawal form.
+
+### Gold/silver price calculator
+
+The second tab of `Calculator.jsx` (`💰 محاسبه قیمت طلا و نقره`) fetches the same `/api/prices` JSON endpoint `Home.jsx` uses, lets the user pick a metal (gold gram / silver 999 gram / silver 995 gram), pre-fills "price per gram" from the live sell price (editable), takes a grams amount and a fee/profit percentage, and computes base/fee/total. It's read-only/informational — doesn't create a `Transaction` or touch any ledger; for an actual trade the user still goes through `/trade/{item}`.
+
+### Wallet deposits are manual-review placeholders for a future payment gateway
+
+`WalletController::requestDeposit()` / `DepositRequest` is the deposit-side mirror of the existing withdrawal flow, but **doesn't** debit/credit anything at request time — unlike withdrawals (which escrow immediately per the convention above), a deposit request has no funds to escrow yet, since the user hasn't actually paid through the system. The wallet only gets credited (`WalletTransaction` type `deposit`) when an admin approves it (`AdminController::depositApprove`), at which point money is assumed to have arrived by other means (bank transfer, referenced via the free-text `note` field). This whole flow exists explicitly as a stand-in until a real payment gateway is wired up — when that happens, `requestDeposit` should be replaced by a gateway callback that credits the wallet directly, and this manual admin-approval path can either be removed or kept as a fallback for manual transfers.
+
+### Deployment topology (cPanel) — only relevant if asked about production issues
+
+Production's `public_html` (the actual web server document root) is a **separate directory** from this Laravel app's `public/`, connected by hand-made symlinks for `index.php`, `public/build`, and `public/storage` — not a single docroot pointer. Any new top-level static file added to `public/` (the way `public/logo.jpg` was) needs its own manual symlink in `public_html` on the server or it 404s through Laravel's catch-all route, even though the file exists and is correctly referenced in code. This has been the recurring cause of "X isn't showing up in production" reports — check for a missing symlink before assuming a code bug.
+
+## Key environment variables
+
+| Var | Purpose |
+|---|---|
+| `ADMIN_PHONE` | Phone number that auto-promotes to admin on first login |
+| `MASTER_OTP` | Universal OTP fallback for when SMS delivery fails. **Now defaults to empty (disabled).** When set, this code resets/logs into ANY account including admin via the forgot-password flow — so it must be a long random string, never `000000`. Was previously defaulting to `000000`, which was an account-takeover hole; the default was removed. Compared with `hash_equals()`. |
+| `GOLD_FACTOR` | Buy/sell spread fraction around the gold mid-price (e.g. `0.01` = 1%) |
+| `TALALAND_API_BASE`/`USERNAME`/`TOKEN` | Gold price source |
+| `SILVER_DB_PATH` | Path to the *other* project's (sachmebot_laravel) SQLite DB — read-only |
+| `FLASK_SHOP_DB_PATH` | Old Flask app's `shop.db`, only for the one-time import command |
+| `MITHQAL_GRAMS` | Mesghal→gram conversion factor, default 4.3318 |
+| `CACHE_TTL` | Per-price-source cache duration (seconds) |
+| `REFRESH_SECONDS` | Client-side polling interval for the home page price board |

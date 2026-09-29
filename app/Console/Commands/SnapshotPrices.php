@@ -18,8 +18,12 @@ class SnapshotPrices extends Command
     {
         $payload = $prices->all();
 
-        DB::transaction(function () use ($payload) {
-            PriceSnapshot::create(['payload' => $payload]);
+        // هنگام قطعی منبع قیمت طلا، کلیدهای null طلا با آخرین مقدار ثبتشده پر میشود تا
+        // تابلوی قیمت و مصرفکنندههای API (کانال) بدون قیمت نمانند؛ تاریخچه خام میماند.
+        $served = $this->withLastKnownGold($payload);
+
+        DB::transaction(function () use ($payload, $served) {
+            PriceSnapshot::create(['payload' => $served]);
 
             // تاریخچه‌ی ستونی طلا مستقل از اسنپ‌شات‌های موقت نگهداری می‌شود.
             GoldPrice::create(GoldPrice::fromPayload($payload));
@@ -32,5 +36,43 @@ class SnapshotPrices extends Command
         });
 
         return self::SUCCESS;
+    }
+
+    /**
+     * هر کلید null در بخشهای gold و gold_buy را با آخرین مقدار ثبتشدهی همان کلید از
+     * تاریخچهی gold_prices پر میکند. اگر تاریخچهای نباشد یا کلیدی سابقه نداشته باشد،
+     * همان null باقی میماند. سایر بخشهای payload دستنخورده برمیگردند.
+     */
+    private function withLastKnownGold(array $payload): array
+    {
+        if (! is_array($payload['gold'] ?? null) || ! is_array($payload['gold_buy'] ?? null)) {
+            return $payload;
+        }
+
+        $hasMissing = false;
+
+        foreach (['gold', 'gold_buy'] as $section) {
+            if (in_array(null, $payload[$section], true)) {
+                $hasMissing = true;
+
+                break;
+            }
+        }
+
+        if (! $hasMissing) {
+            return $payload;
+        }
+
+        $lastKnown = GoldPrice::lastKnownSellBuy();
+
+        foreach (['gold', 'gold_buy'] as $section) {
+            foreach ($payload[$section] as $key => $value) {
+                if ($value === null && ($lastKnown[$section][$key] ?? null) !== null) {
+                    $payload[$section][$key] = $lastKnown[$section][$key];
+                }
+            }
+        }
+
+        return $payload;
     }
 }

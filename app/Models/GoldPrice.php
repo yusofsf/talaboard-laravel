@@ -60,4 +60,45 @@ class GoldPrice extends Model
             'silver_ounce' => $payload['ounce']['silver'] ?? null,
         ];
     }
+
+    /**
+     * آخرین مقدار غیر-null هر قلم طلا (فروش و خرید) از تاریخچه؛
+     * هنگام قطعی منبع قیمت برای پرکردن کلیدهای null در payload اسنپشات استفاده میشود.
+     *
+     * @return array{gold: array<string, int|null>, gold_buy: array<string, int|null>}
+     */
+    public static function lastKnownSellBuy(): array
+    {
+        $columns = ['bahar', 'nim', 'rob', 'mithqal', 'geram'];
+
+        $sell = array_fill_keys($columns, null);
+        $buy = array_fill_keys($columns, null);
+
+        $latest = static::query()->latest('id')->first();
+
+        if ($latest === null) {
+            return ['gold' => $sell, 'gold_buy' => $buy];
+        }
+
+        // مسیر سریع: ردیف آخر در حالت عادی همهی ستونهای طلا را دارد.
+        foreach ($columns as $key) {
+            $sell[$key] = $latest->{"{$key}_sell"};
+            $buy[$key] = $latest->{"{$key}_buy"};
+        }
+
+        // ستونهای خالی (قطعی منبع): تا آخرین مقدار ثبتشده در تاریخچه به عقب برگرد.
+        foreach ($columns as $key) {
+            if ($sell[$key] === null) {
+                $value = static::query()->whereNotNull("{$key}_sell")->latest('id')->value("{$key}_sell");
+                $sell[$key] = $value !== null ? (int) $value : null;
+            }
+
+            if ($buy[$key] === null) {
+                $value = static::query()->whereNotNull("{$key}_buy")->latest('id')->value("{$key}_buy");
+                $buy[$key] = $value !== null ? (int) $value : null;
+            }
+        }
+
+        return ['gold' => $sell, 'gold_buy' => $buy];
+    }
 }

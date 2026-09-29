@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\GoldPrice;
+use App\Models\PriceSnapshot;
 use App\Services\PriceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery\MockInterface;
@@ -52,5 +53,114 @@ class SnapshotPricesTest extends TestCase
         ]);
         $this->assertCount(1, GoldPrice::all());
         $this->assertDatabaseCount('price_snapshots', 1);
+    }
+
+    public function test_snapshot_falls_back_to_last_known_gold_when_source_returns_nulls(): void
+    {
+        $this->mock(PriceService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('all')->twice()->andReturn(
+                $this->fullGoldPayload(),
+                $this->nullGoldPayload(),
+            );
+        });
+
+        $this->artisan('prices:snapshot')->assertSuccessful();
+        $this->artisan('prices:snapshot')->assertSuccessful();
+
+        $payload = PriceSnapshot::latestPayload();
+
+        $this->assertSame(900_000_000, $payload['gold']['bahar']);
+        $this->assertSame(350_000_000, $payload['gold']['mithqal']);
+        $this->assertSame(80_800_000, $payload['gold']['geram']);
+        $this->assertSame(79_600_000, $payload['gold_buy']['geram']);
+
+        // تاریخچه فقط مقدار مشاهدهشده را نگه میدارد، نه مقدار پر شده.
+        $latestHistory = GoldPrice::query()->latest('id')->first();
+        $this->assertNull($latestHistory->geram_sell);
+        $this->assertNull($latestHistory->bahar_buy);
+        $this->assertCount(2, GoldPrice::all());
+    }
+
+    public function test_snapshot_fills_only_missing_gold_keys_from_history(): void
+    {
+        $this->mock(PriceService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('all')->twice()->andReturn(
+                $this->fullGoldPayload(),
+                [
+                    'gold' => [
+                        'bahar' => null,
+                        'nim' => null,
+                        'rob' => null,
+                        'mithqal' => 360_000_000,
+                        'geram' => null,
+                    ],
+                    'gold_buy' => [
+                        'bahar' => null,
+                        'nim' => null,
+                        'rob' => null,
+                        'mithqal' => 355_000_000,
+                        'geram' => null,
+                    ],
+                    'ounce' => ['gold' => null, 'silver' => null],
+                ],
+            );
+        });
+
+        $this->artisan('prices:snapshot')->assertSuccessful();
+        $this->artisan('prices:snapshot')->assertSuccessful();
+
+        $payload = PriceSnapshot::latestPayload();
+
+        // کلیدهای زنده دستنخورده میمانند و فقط کلیدهای null از تاریخچه پر میشوند.
+        $this->assertSame(360_000_000, $payload['gold']['mithqal']);
+        $this->assertSame(355_000_000, $payload['gold_buy']['mithqal']);
+        $this->assertSame(900_000_000, $payload['gold']['bahar']);
+        $this->assertSame(79_600_000, $payload['gold_buy']['geram']);
+    }
+
+    public function test_snapshot_leaves_gold_null_when_no_history_exists(): void
+    {
+        $this->mock(PriceService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('all')->once()->andReturn($this->nullGoldPayload());
+        });
+
+        $this->artisan('prices:snapshot')->assertSuccessful();
+
+        $payload = PriceSnapshot::latestPayload();
+
+        $this->assertNull($payload['gold']['bahar']);
+        $this->assertNull($payload['gold_buy']['geram']);
+    }
+
+    private function fullGoldPayload(): array
+    {
+        return [
+            'gold' => [
+                'bahar' => 900_000_000,
+                'nim' => 500_000_000,
+                'rob' => 300_000_000,
+                'mithqal' => 350_000_000,
+                'geram' => 80_800_000,
+            ],
+            'gold_buy' => [
+                'bahar' => 890_000_000,
+                'nim' => 490_000_000,
+                'rob' => 290_000_000,
+                'mithqal' => 345_000_000,
+                'geram' => 79_600_000,
+            ],
+            'ounce' => ['gold' => 3_345.67, 'silver' => 38.42],
+        ];
+    }
+
+    private function nullGoldPayload(): array
+    {
+        $nulls = array_fill_keys(['bahar', 'nim', 'rob', 'mithqal', 'geram'], null);
+
+        return [
+            'gold' => $nulls,
+            'gold_buy' => $nulls,
+            'ounce' => ['gold' => null, 'silver' => null],
+        ];
     }
 }

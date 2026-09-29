@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Models\PriceSnapshot;
 use App\Models\Setting;
 use App\Models\User;
+use App\Services\PriceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Mockery\MockInterface;
 use Tests\TestCase;
 
 class PriceApiTest extends TestCase
@@ -86,5 +88,47 @@ class PriceApiTest extends TestCase
             ->getJson('/api/v1/prices')
             ->assertOk()
             ->assertJsonPath('gold.geram', 123456);
+    }
+
+    public function test_price_api_serves_last_known_gold_after_source_outage(): void
+    {
+        $this->configureCredentials();
+
+        $this->mock(PriceService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('all')->twice()->andReturn(
+                [
+                    'gold' => [
+                        'bahar' => 900_000_000,
+                        'nim' => 500_000_000,
+                        'rob' => 300_000_000,
+                        'mithqal' => 350_000_000,
+                        'geram' => 80_800_000,
+                    ],
+                    'gold_buy' => [
+                        'bahar' => 890_000_000,
+                        'nim' => 490_000_000,
+                        'rob' => 290_000_000,
+                        'mithqal' => 345_000_000,
+                        'geram' => 79_600_000,
+                    ],
+                    'ounce' => ['gold' => 3_345.67, 'silver' => 38.42],
+                ],
+                [
+                    'gold' => array_fill_keys(['bahar', 'nim', 'rob', 'mithqal', 'geram'], null),
+                    'gold_buy' => array_fill_keys(['bahar', 'nim', 'rob', 'mithqal', 'geram'], null),
+                    'ounce' => ['gold' => null, 'silver' => null],
+                ],
+            );
+        });
+
+        $this->artisan('prices:snapshot')->assertSuccessful();
+        $this->artisan('prices:snapshot')->assertSuccessful();
+
+        $this->withBasicAuth('price-client', 'test-secret')
+            ->getJson('/api/v1/prices')
+            ->assertOk()
+            ->assertJsonPath('gold.geram', 80_800_000)
+            ->assertJsonPath('gold_buy.geram', 79_600_000)
+            ->assertJsonPath('gold.mithqal', 350_000_000);
     }
 }

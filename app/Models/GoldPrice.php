@@ -39,7 +39,7 @@ class GoldPrice extends Model
         ];
     }
 
-    /** Build the normalized database row from PriceService::all(). */
+    /** Build the normalized database row from the served snapshot payload. */
     public static function fromPayload(array $payload): array
     {
         $sell = $payload['gold'] ?? [];
@@ -100,5 +100,17 @@ class GoldPrice extends Model
         }
 
         return ['gold' => $sell, 'gold_buy' => $buy];
+    }
+
+    /** آخرین مقدار غیر-null انس طلا و نقره از تاریخچه؛ برای پرکردن هنگام قطعی همهی منابع انس. */
+    public static function lastKnownOunce(): array
+    {
+        $gold = static::query()->whereNotNull('ounce')->latest('id')->value('ounce');
+        $silver = static::query()->whereNotNull('silver_ounce')->latest('id')->value('silver_ounce');
+
+        return [
+            'gold' => $gold !== null ? (float) $gold : null,
+            'silver' => $silver !== null ? (float) $silver : null,
+        ];
     }
 }

@@ -18,15 +18,15 @@ class SnapshotPrices extends Command
     {
         $payload = $prices->all();
 
-        // هنگام قطعی منبع قیمت طلا، کلیدهای null طلا با آخرین مقدار ثبتشده پر میشود تا
-        // تابلوی قیمت و مصرفکنندههای API (کانال) بدون قیمت نمانند؛ تاریخچه خام میماند.
+        // هنگام قطعی منبع قیمت طلا، کلیدهای null (طلا، سکه و انس) با آخرین مقدار ثبتشده
+        // پر میشوند تا تابلو، کانال و خوانندههای مستقیم جدول تاریخچه بدون قیمت نمانند.
         $served = $this->withLastKnownGold($payload);
 
-        DB::transaction(function () use ($payload, $served) {
+        DB::transaction(function () use ($served) {
             PriceSnapshot::create(['payload' => $served]);
 
-            // تاریخچه‌ی ستونی طلا مستقل از اسنپ‌شات‌های موقت نگهداری می‌شود.
-            GoldPrice::create(GoldPrice::fromPayload($payload));
+            // تاریخچهی ستونی طلا هم همان مقادیر سرویشده را نگه میدارد تا هیچ خوانندهای null نبیند.
+            GoldPrice::create(GoldPrice::fromPayload($served));
 
             // فقط چند اسنپ‌شات JSON آخر برای نمایش سریع صفحه نگه داشته می‌شود.
             $cutoff = PriceSnapshot::query()->latest('id')->skip(20)->value('id');
@@ -39,23 +39,23 @@ class SnapshotPrices extends Command
     }
 
     /**
-     * هر کلید null در بخشهای gold و gold_buy را با آخرین مقدار ثبتشدهی همان کلید از
-     * تاریخچهی gold_prices پر میکند. اگر تاریخچهای نباشد یا کلیدی سابقه نداشته باشد،
-     * همان null باقی میماند. سایر بخشهای payload دستنخورده برمیگردند.
+     * هر کلید null در بخشهای gold و gold_buy و همچنین انس طلا/نقره را با آخرین مقدار
+     * ثبتشدهی همان کلید از تاریخچهی gold_prices پر میکند. اگر تاریخچهای نباشد یا کلیدی
+     * سابقه نداشته باشد، همان null باقی میماند. سایر بخشهای payload دستنخورده برمیگردند.
      */
     private function withLastKnownGold(array $payload): array
     {
-        if (! is_array($payload['gold'] ?? null) || ! is_array($payload['gold_buy'] ?? null)) {
-            return $payload;
-        }
-
         $hasMissing = false;
 
         foreach (['gold', 'gold_buy'] as $section) {
-            if (in_array(null, $payload[$section], true)) {
+            if (is_array($payload[$section] ?? null) && in_array(null, $payload[$section], true)) {
                 $hasMissing = true;
+            }
+        }
 
-                break;
+        foreach (['gold', 'silver'] as $ounce) {
+            if (is_array($payload['ounce'] ?? null) && ($payload['ounce'][$ounce] ?? null) === null) {
+                $hasMissing = true;
             }
         }
 
@@ -66,9 +66,23 @@ class SnapshotPrices extends Command
         $lastKnown = GoldPrice::lastKnownSellBuy();
 
         foreach (['gold', 'gold_buy'] as $section) {
+            if (! is_array($payload[$section] ?? null)) {
+                continue;
+            }
+
             foreach ($payload[$section] as $key => $value) {
                 if ($value === null && ($lastKnown[$section][$key] ?? null) !== null) {
                     $payload[$section][$key] = $lastKnown[$section][$key];
+                }
+            }
+        }
+
+        if (is_array($payload['ounce'] ?? null)) {
+            $lastOunce = GoldPrice::lastKnownOunce();
+
+            foreach (['gold', 'silver'] as $ounce) {
+                if (($payload['ounce'][$ounce] ?? null) === null && $lastOunce[$ounce] !== null) {
+                    $payload['ounce'][$ounce] = $lastOunce[$ounce];
                 }
             }
         }

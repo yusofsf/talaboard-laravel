@@ -88,6 +88,11 @@ class SeoPagesTest extends TestCase
             ->assertDontSee($siteUrl.'/register', false);
     }
 
+    public function test_sitemap_is_not_shadowed_by_a_stale_public_file(): void
+    {
+        $this->assertFileDoesNotExist(public_path('sitemap.xml'));
+    }
+
     public function test_sitemap_lists_published_articles(): void
     {
         $siteUrl = rtrim(config('seo.url'), '/');

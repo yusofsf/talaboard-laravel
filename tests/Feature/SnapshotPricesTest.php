@@ -73,11 +73,14 @@ class SnapshotPricesTest extends TestCase
         $this->assertSame(350_000_000, $payload['gold']['mithqal']);
         $this->assertSame(80_800_000, $payload['gold']['geram']);
         $this->assertSame(79_600_000, $payload['gold_buy']['geram']);
+        $this->assertEqualsWithDelta(3_345.67, $payload['ounce']['gold'], 0.0001);
 
-        // تاریخچه فقط مقدار مشاهدهشده را نگه میدارد، نه مقدار پر شده.
+        // تاریخچه هم مقادیر سرویشده را نگه میدارد تا خوانندههای مستقیم جدول (مثل ربات) null نبینند.
         $latestHistory = GoldPrice::query()->latest('id')->first();
-        $this->assertNull($latestHistory->geram_sell);
-        $this->assertNull($latestHistory->bahar_buy);
+        $this->assertSame(900_000_000, $latestHistory->bahar_sell);
+        $this->assertSame(79_600_000, $latestHistory->geram_buy);
+        $this->assertEqualsWithDelta(3_345.67, $latestHistory->ounce, 0.0001);
+        $this->assertEqualsWithDelta(38.42, $latestHistory->silver_ounce, 0.0001);
         $this->assertCount(2, GoldPrice::all());
     }
 

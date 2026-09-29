@@ -28,3 +28,6 @@ Thumbs.db
 
 # Claude Code local skills/config
 .claude/
+
+# Local agent skills/config (same convention as .claude/ above)
+.agents/

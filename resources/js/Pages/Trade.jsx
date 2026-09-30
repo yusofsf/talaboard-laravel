@@ -44,6 +44,15 @@ export default function Trade({ item, meta, sellPrice, buyPrice }) {
                         <div className="alert err">قیمت در حال حاضر در دسترس نیست.</div>
                     )}
 
+                    <div style={{
+                        background: 'rgba(246,207,99,.07)',
+                        border: '1px solid rgba(246,207,99,.28)',
+                        borderRadius: 12, padding: '10px 14px', marginBottom: 18,
+                        fontSize: 12.5, lineHeight: 1.9, color: 'var(--txt)',
+                    }}>
+                        ⏰ نرخ‌های خرید و فروش بین ساعت ۱۰ صبح تا ۸ شب می‌باشد و خرید و فروش با نرخ این ساعات مورد تأیید است؛ خارج از این ساعت به نرخ فردا منتقل می‌شود.
+                    </div>
+
                     {errors.quantity && <div className="alert err">{errors.quantity}</div>}
 
                     <form onSubmit={submit}>

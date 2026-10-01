@@ -1467,6 +1467,7 @@ class AdminController extends Controller
         if ($note !== '') {
             $body .= "\nتوضیح ادمین: {$note}";
         }
+        $body .= "\nفیش واریزی مورد تایید می باشد، باتشکر از اعتماد شما";
 
         Notification::create([
             'user_id' => $deposit->user_id,
@@ -1479,7 +1480,7 @@ class AdminController extends Controller
             "{$request->user()->name} افزایش موجودی ".number_format($deposit->amount)." تومانی «{$deposit->user?->name}» را تأیید کرد.".($note !== '' ? " توضیح: {$note}" : '').' تاریخ: '.Jalali::now());
 
         try {
-            $this->sms->send($deposit->user->phone, 'افزایش موجودی '.number_format($deposit->amount).' تومانی شما تأیید و واریز شد.');
+            $this->sms->send($deposit->user->phone, 'افزایش موجودی '.number_format($deposit->amount).' تومانی شما تأیید و واریز شد. فیش واریزی مورد تایید می باشد، باتشکر از اعتماد شما');
         } catch (\Exception) {
         }
 

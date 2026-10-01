@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -141,6 +142,33 @@ class DepositRequestTest extends TestCase
         $adminNotif = Notification::where('user_id', $otherAdmin->id)->first();
         $this->assertNotNull($adminNotif);
         $this->assertStringContainsString('مدیر اول', $adminNotif->body);
+    }
+
+    public function test_deposit_approval_records_and_sends_the_receipt_confirmation_message(): void
+    {
+        $message = 'فیش واریزی مورد تایید می باشد، باتشکر از اعتماد شما';
+
+        config(['sms.enabled' => true, 'sms.kavenegar_api_key' => 'fake-key', 'sms.kavenegar_sender' => '1000']);
+        Http::fake(['*' => Http::response(['return' => ['status' => 200]], 200)]);
+
+        $user = User::factory()->create();
+        $admin = User::factory()->admin()->create();
+        $deposit = DepositRequest::create(['user_id' => $user->id, 'amount' => 300000, 'status' => 'pending']);
+
+        $this->actingAs($admin)->post("/admin/deposits/{$deposit->id}/approve", [])->assertRedirect();
+
+        $userNotif = Notification::where('user_id', $user->id)->first();
+        $this->assertNotNull($userNotif);
+        $this->assertStringContainsString($message, $userNotif->body);
+
+        Http::assertSent(function ($request) use ($message) {
+            if (! str_contains($request->url(), 'sms/send.json')) {
+                return false;
+            }
+
+            return str_contains(urldecode($request->url()), $message)
+                || str_contains((string) ($request->data()['message'] ?? ''), $message);
+        });
     }
 
     public function test_admin_rejecting_a_deposit_requires_a_reason_and_does_not_credit_wallet(): void

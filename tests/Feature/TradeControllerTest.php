@@ -20,14 +20,14 @@ class TradeControllerTest extends TestCase
     {
         $this->mock(PriceService::class, function ($mock) {
             $mock->shouldReceive('all')->andReturn([
-                'gold'       => ['geram' => 50_000_000, 'mithqal' => 216_590_000, 'bahar' => 500_000_000],
-                'gold_buy'   => ['geram' => 49_000_000, 'mithqal' => 212_257_000, 'bahar' => 490_000_000],
-                'silver'     => ['gram_999' => 400_000, 'mithqal_999' => 1_732_720],
-                'silver_buy' => ['gram_999' => 390_000, 'mithqal_999' => 1_689_402],
-                'dollar'     => ['price' => 90_000, 'label' => 'دلار آمریکا'],
-                'ounce'      => ['gold' => null, 'silver' => null],
-                'open'       => [],
-                'errors'     => [],
+                'gold' => ['geram' => 50_000_000, 'mithqal' => 216_590_000, 'bahar' => 500_000_000],
+                'gold_buy' => ['geram' => 49_000_000, 'mithqal' => 212_257_000, 'bahar' => 490_000_000],
+                'silver' => ['gram_999' => 400_000, 'mithqal_999' => 1_732_720, 'gram_995' => 300_000, 'mithqal_995' => 1_299_540],
+                'silver_buy' => ['gram_999' => 390_000, 'mithqal_999' => 1_689_402, 'gram_995' => 292_500, 'mithqal_995' => 1_267_051],
+                'dollar' => ['price' => 90_000, 'label' => 'دلار آمریکا'],
+                'ounce' => ['gold' => null, 'silver' => null],
+                'open' => [],
+                'errors' => [],
                 'updated_at' => '12:00:00',
             ]);
         });
@@ -48,6 +48,15 @@ class TradeControllerTest extends TestCase
         return $this->actingAs($user)->post("/trade/{$item}", [
             'trade_type' => $type,
             'quantity' => $quantity,
+        ]);
+    }
+
+    private function addToCartByAmount(User $user, string $item, string $type, float $amount)
+    {
+        return $this->actingAs($user)->post("/trade/{$item}", [
+            'trade_type' => $type,
+            'mode' => 'money',
+            'amount' => $amount,
         ]);
     }
 
@@ -265,5 +274,106 @@ class TradeControllerTest extends TestCase
         $response = $this->checkout($user);
 
         $response->assertSessionHas('error');
+    }
+
+    public function test_buy_by_amount_converts_whole_money_to_grams(): void
+    {
+        $this->fakePrices();
+        $user = User::factory()->create();
+
+        // هر گرم نقره ۹۹۹/۹ = ۴۰۰٬۰۰۰ — مبلغ ۵٬۰۰۰٬۰۰۱ تومان → ۱۲.۵ گرم (رو به پایین)
+        $response = $this->addToCartByAmount($user, 'gram_999', 'buy', 5_000_001);
+
+        $response->assertRedirect(route('cart'));
+        $cart = CartItem::where('user_id', $user->id)->first();
+        $this->assertNotNull($cart);
+        $this->assertEqualsWithDelta(12.5, (float) $cart->quantity, 0.0001);
+        $this->assertSame(5_000_000, (int) $cart->total);
+    }
+
+    public function test_buy_by_amount_below_minimum_grams_is_rejected(): void
+    {
+        $this->fakePrices();
+        $user = User::factory()->create();
+
+        // ۳٬۰۰۰٬۰۰۰ تومان → ۷.۵ گرم < حداقل ۱۰ گرم
+        $response = $this->addToCartByAmount($user, 'gram_999', 'buy', 3_000_000);
+
+        $response->assertSessionHasErrors('amount');
+        $this->assertSame(0, CartItem::count());
+    }
+
+    public function test_buy_by_amount_coin_floors_to_whole_count(): void
+    {
+        $this->fakePrices();
+        $user = User::factory()->create();
+
+        // سکه تمام = ۵۰۰٬۰۰۰٬۰۰۰ — مبلغ ۱٬۲۵۰٬۰۰۰٬۰۰۰ → فقط ۲ سکهٔ کامل
+        $response = $this->addToCartByAmount($user, 'bahar', 'buy', 1_250_000_000);
+
+        $response->assertRedirect(route('cart'));
+        $cart = CartItem::where('user_id', $user->id)->first();
+        $this->assertNotNull($cart);
+        $this->assertEqualsWithDelta(2, (float) $cart->quantity, 0.0001);
+        $this->assertSame(1_000_000_000, (int) $cart->total);
+    }
+
+    public function test_buy_by_amount_below_one_coin_is_rejected(): void
+    {
+        $this->fakePrices();
+        $user = User::factory()->create();
+
+        $response = $this->addToCartByAmount($user, 'bahar', 'buy', 300_000_000);
+
+        $response->assertSessionHasErrors('amount');
+        $this->assertSame(0, CartItem::count());
+    }
+
+    public function test_buy_by_amount_mithqal_silver_converts_via_mithqal_grams(): void
+    {
+        $this->fakePrices();
+        $user = User::factory()->create();
+
+        // مثقال نقره ۹۹۹/۹ = ۱٬۷۳۲٬۷۲۰ — مبلغ ۵٬۱۹۸٬۱۶۰ → ۳ مثقال
+        $response = $this->addToCartByAmount($user, 'mithqal_999', 'buy', 5_198_160);
+
+        $response->assertRedirect(route('cart'));
+        $cart = CartItem::where('user_id', $user->id)->first();
+        $this->assertNotNull($cart);
+        $this->assertEqualsWithDelta(3, (float) $cart->quantity, 0.0001);
+        $this->assertSame(5_198_160, (int) $cart->total);
+    }
+
+    public function test_buy_by_amount_silver_995_checkout_credits_ledger(): void
+    {
+        $this->fakePrices();
+        $user = User::factory()->create();
+        $this->chargeWallet($user, 5_000_000);
+
+        // هر گرم نقره ۹۹۵ = ۳۰۰٬۰۰۰ — مبلغ ۴٬۵۰۰٬۰۰۰ → ۱۵ گرم
+        $this->addToCartByAmount($user, 'gram_995', 'buy', 4_500_000);
+        $this->checkout($user);
+
+        $this->assertSame(15.0, $user->refresh()->silverBalance('995'));
+        $this->assertSame(500_000, $user->walletBalance());
+    }
+
+    public function test_sell_by_amount_uses_buy_price_and_prior_holding(): void
+    {
+        $this->fakePrices();
+        $user = User::factory()->create();
+        $this->chargeWallet($user, 7_000_000);
+
+        $this->addToCart($user, 'gram_999', 'buy', 15);
+        $this->checkout($user);
+
+        // قیمت خرید ما (فروش کاربر) = ۳۹۰٬۰۰۰ — مبلغ ۳٬۹۰۰٬۰۰۰ → ۱۰ گرم
+        $response = $this->addToCartByAmount($user, 'gram_999', 'sell', 3_900_000);
+
+        $response->assertRedirect(route('cart'));
+        $cart = CartItem::where('user_id', $user->id)->where('trade_type', 'sell')->first();
+        $this->assertNotNull($cart);
+        $this->assertEqualsWithDelta(10, (float) $cart->quantity, 0.0001);
+        $this->assertSame(3_900_000, (int) $cart->total);
     }
 }

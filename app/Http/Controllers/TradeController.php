@@ -52,7 +52,6 @@ class TradeController extends Controller
             'buyPrice' => $this->lookup($data, $item, $meta, 'gold_buy', 'silver_buy'),
             // برای حالت «خرید بر اساس مبلغ» (تبدیل کل مبلغ به مقدار) در فرم صفحه
             'mithqalGrams' => (float) env('MITHQAL_GRAMS', 4.3318),
-            'catalog' => $this->catalog(),
         ]);
     }
 
@@ -166,35 +165,6 @@ class TradeController extends Controller
         return $meta['group'] === 'gold'
             ? ($data[$goldKey][$item] ?? null)
             : ($data[$silverKey][$item] ?? null);
-    }
-
-    /** فهرست گروه‌بندی‌شدهٔ محصولات برای انتخابگر «نوع خرید» در صفحهٔ معامله. */
-    private function catalog(): array
-    {
-        $sections = [
-            ['key' => 'gold',       'label' => 'طلا',        'items' => ['geram', 'mithqal']],
-            ['key' => 'coin',       'label' => 'سکه',        'items' => ['bahar', 'nim', 'rob']],
-            ['key' => 'silver_999', 'label' => 'نقره ۹۹۹/۹', 'items' => ['gram_999', 'mithqal_999']],
-            ['key' => 'silver_995', 'label' => 'نقره ۹۹۵',   'items' => ['gram_995', 'mithqal_995']],
-        ];
-
-        $catalog = [];
-        foreach ($sections as $section) {
-            foreach ($section['items'] as $key) {
-                if (! isset(self::ITEMS[$key])) {
-                    continue;
-                }
-                $catalog[] = [
-                    'key' => $key,
-                    'label' => self::ITEMS[$key]['label'],
-                    'group' => self::ITEMS[$key]['group'],
-                    'section' => $section['key'],
-                    'section_label' => $section['label'],
-                ];
-            }
-        }
-
-        return $catalog;
     }
 
     private function displayPrices(): array

@@ -1,18 +1,14 @@
 import { useForm, usePage } from '@inertiajs/react';
 import AppLayout, { faNum } from '../Layouts/AppLayout';
 
-export default function Trade({ item, meta, sellPrice, buyPrice, mithqalGrams, catalog }) {
+export default function Trade({ item, meta, sellPrice, buyPrice, mithqalGrams }) {
     const MITHQAL = mithqalGrams || 4.3318;
 
-    // پارامترهای URL فقط برای حفظ حالت هنگام جابه‌جایی بین محصولات (طلا/سکه/نقره) خوانده می‌شوند
-    const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
-    const urlAmount = parseFloat(params.get('amount'));
-
     const { data, setData, post, processing, errors } = useForm({
-        trade_type: params.get('type') === 'sell' ? 'sell' : 'buy',
-        mode: params.get('mode') === 'money' ? 'money' : 'quantity',
+        trade_type: 'buy',
+        mode: 'quantity',
         quantity: '',
-        amount: Number.isFinite(urlAmount) && urlAmount > 0 ? String(urlAmount) : '',
+        amount: '',
     });
 
     const page = usePage();
@@ -52,45 +48,11 @@ export default function Trade({ item, meta, sellPrice, buyPrice, mithqalGrams, c
         post(`/trade/${item}`);
     }
 
-    // جابه‌جایی بین محصولات با حفظ نوع عملیات و (در حالت مبلغ) مبلغ واردشده
-    function switchItem(nextItem) {
-        if (nextItem === item) return;
-        const q = new URLSearchParams();
-        q.set('type', data.trade_type);
-        if (data.mode === 'money') {
-            q.set('mode', 'money');
-            if (data.amount) q.set('amount', data.amount);
-        }
-        window.location.href = `/trade/${nextItem}?${q.toString()}`;
-    }
-
-    const groups = [];
-    (catalog || []).forEach(it => {
-        let g = groups.find(x => x.section === it.section);
-        if (!g) { g = { label: it.section_label, items: [] }; groups.push(g); }
-        g.items.push(it);
-    });
-
     return (
         <AppLayout>
             <div className="page">
                 <div className="fcard">
                     <h2>{meta.label}</h2>
-
-                    {groups.length > 0 && (
-                        <div className="field" style={{ marginTop: 16 }}>
-                            <label>انتخاب محصول (طلا، سکه یا نقره — گرم/مثقال)</label>
-                            <select value={item} onChange={e => switchItem(e.target.value)}
-                                style={{ background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)', color: 'var(--txt)', borderRadius: 12, padding: '11px 14px', fontFamily: 'inherit', fontSize: 15, width: '100%' }}>
-                                {groups.map(g => (
-                                    <optgroup key={g.label} label={g.label}>
-                                        {g.items.map(it => <option key={it.key} value={it.key}>{it.label}</option>)}
-                                    </optgroup>
-                                ))}
-                            </select>
-                        </div>
-                    )}
-
                     <div style={{ height: 20 }} />
 
                     {price ? (
